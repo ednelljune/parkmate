@@ -1,0 +1,98 @@
+{
+  "expo": {
+    "name": "ParkMate",
+    "slug": "parkmate",
+    "scheme": "parkmate",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/parkmate-logo.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.parkmate.mobile",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "ParkMate uses your location to show nearby parking zones, live spots, and directions.",
+        "NSCameraUsageDescription": "ParkMate uses the camera when you add photos or scan parking-related information.",
+        "NSContactsUsageDescription": "ParkMate uses contacts only when you choose to share or invite people.",
+        "NSMicrophoneUsageDescription": "ParkMate uses the microphone for audio features you explicitly start.",
+        "NSPhotoLibraryUsageDescription": "ParkMate uses your photo library when you choose images to upload.",
+        "NSPhotoLibraryAddUsageDescription": "ParkMate saves generated or exported images to your photo library only when you request it."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/parkmate-logo.png",
+        "backgroundColor": "#0b1f33"
+      },
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "com.parkmate.mobile"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "sitemap": false
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "personal-bun"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/parkmate-logo.png",
+          "backgroundColor": "#0b1f33",
+          "imageWidth": 180,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-audio",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      "expo-notifications",
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
+    ],
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/images/parkmate-logo.png"
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false,
+        "sitemap": false
+      },
+      "eas": {
+        "projectId": "a3bb6530-d906-447c-a4c7-a499e16a0054"
+      }
+    }
+  }
+}

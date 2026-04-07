@@ -1,0 +1,1274 @@
+import React from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Platform,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useFocusEffect } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  BellRing,
+  Circle,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  Flag,
+  MapPin,
+  Trash2,
+} from "lucide-react-native";
+import { Swipeable } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { useActivityNotifications } from "@/hooks/useActivityNotifications";
+import { formatTimeAgo } from "@/utils/formatters";
+import { BRAND_PALETTE } from "@/theme/brandColors";
+import { useAuthStore } from "@/utils/auth/store";
+import {
+  getActivityLastViewedAt,
+  getActivityReadStateVersion,
+  hydrateActivityReadState,
+  isActivityNotificationUnread,
+  markAllActivityNotificationsRead,
+  deleteAllActivityNotifications,
+  deleteActivityNotification,
+  markActivityNotificationRead,
+  markActivityNotificationUnread,
+  subscribeToActivityReadState,
+} from "@/utils/activityReadState";
+
+const ACTIVITY_META = {
+  reported: {
+    label: "Reported",
+    icon: MapPin,
+    accent: BRAND_PALETTE.accentBold,
+    soft: "#DFF5FF",
+    chipBackground: "#E0F2FE",
+    chipText: "#075985",
+  },
+  claimed: {
+    label: "Claimed",
+    icon: CheckCircle2,
+    accent: BRAND_PALETTE.success,
+    soft: "#E7FFF5",
+    chipBackground: "#DDF8EC",
+    chipText: "#047857",
+  },
+  false_reported: {
+    label: "False Report",
+    icon: Flag,
+    accent: BRAND_PALETTE.gold,
+    soft: "#FFF4DB",
+    chipBackground: "#FFF0C2",
+    chipText: "#B45309",
+  },
+};
+
+const getEmptyStateMessage = () => {
+  return "Your parking activity will appear here as you use the app.";
+};
+
+const getParkingLabel = (item) => item.parking_type || item.zone_type || "Parking";
+
+const getQuantityLabel = (item) => {
+  const quantity = Math.max(1, Number(item?.quantity) || 1);
+  const parkingType = getParkingLabel(item);
+  return `${quantity} ${parkingType} spot${quantity === 1 ? "" : "s"}`;
+};
+
+const getActivitySummary = (item) => {
+  const activityLabel =
+    ACTIVITY_META[item.activity_type]?.label || ACTIVITY_META.reported.label;
+  const zoneName = item.zone_name || "Unknown location";
+
+  return `${activityLabel} ${getQuantityLabel(item)} at ${zoneName}`;
+};
+
+const getActivityDetail = (item) => {
+  if (item.activity_type === "claimed") {
+    return "Claim completed";
+  }
+
+  if (item.activity_type === "false_reported") {
+    return "Marked as false report";
+  }
+
+  return "Spot reported";
+};
+
+const getHeaderStats = (notifications, viewedAt) => {
+  const unreadCount = notifications.filter((item) =>
+    isActivityNotificationUnread(item, viewedAt),
+  ).length;
+
+  const reportedCount = notifications.filter(
+    (item) => item?.activity_type === "reported",
+  ).length;
+
+  const claimedCount = notifications.filter(
+    (item) => item?.activity_type === "claimed",
+  ).length;
+
+  const falseCount = notifications.filter(
+    (item) => item?.activity_type === "false_reported",
+  ).length;
+
+  return {
+    unreadCount,
+    reportedCount,
+    claimedCount,
+    falseCount,
+  };
+};
+
+function StatChip({ label, value, accent, tone = "light" }) {
+  const backgroundColor = tone === "dark" ? "rgba(255,255,255,0.14)" : "#FFFFFF";
+  const textColor = tone === "dark" ? "#FFFFFF" : BRAND_PALETTE.navy;
+  const labelColor = tone === "dark" ? "rgba(255,255,255,0.72)" : BRAND_PALETTE.muted;
+
+  return (
+    <View style={[styles.statChip, { backgroundColor }]}>
+      <View style={[styles.statChipAccent, { backgroundColor: accent }]} />
+      <Text style={[styles.statChipValue, { color: textColor }]}>{value}</Text>
+      <Text style={[styles.statChipLabel, { color: labelColor }]}>{label}</Text>
+    </View>
+  );
+}
+
+function SwipeAction({ title, detail, accent, destructive = false }) {
+  return (
+    <View
+      style={[
+        styles.swipeAction,
+        {
+          backgroundColor: destructive ? "#FEE2E2" : "#E0F2FE",
+          borderColor: destructive ? "#FCA5A5" : "#93C5FD",
+        },
+      ]}
+    >
+      <Text style={[styles.swipeActionTitle, { color: accent }]}>{title}</Text>
+      <Text style={styles.swipeActionDetail}>{detail}</Text>
+    </View>
+  );
+}
+
+function HeaderIconButton({
+  icon: Icon,
+  onPress,
+  disabled = false,
+  destructive = false,
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.headerIconButton,
+        destructive ? styles.headerIconButtonDestructive : styles.headerIconButtonPrimary,
+        disabled && styles.headerIconButtonDisabled,
+        pressed && !disabled && styles.headerIconButtonPressed,
+      ]}
+    >
+      <Icon
+        size={16}
+        color={destructive ? "#BE123C" : BRAND_PALETTE.accentBold}
+      />
+    </Pressable>
+  );
+}
+
+function HeaderTextButton({ label, onPress, disabled = false }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.headerTextButton,
+        disabled && styles.headerTextButtonDisabled,
+        pressed && !disabled && styles.headerTextButtonPressed,
+      ]}
+    >
+      <Text style={styles.headerTextButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const ActivityRow = React.memo(function ActivityRow({
+  item,
+  viewedAt,
+  isEditing = false,
+  isSelected = false,
+  onToggleSelect,
+}) {
+  const meta = ACTIVITY_META[item.activity_type] || ACTIVITY_META.reported;
+  const Icon = meta.icon;
+  const unread = isActivityNotificationUnread(item, viewedAt);
+  const swipeableRef = React.useRef(null);
+
+  const handleToggleReadState = React.useCallback(async () => {
+    if (unread) {
+      await markActivityNotificationRead(item).catch(() => {});
+    } else {
+      await markActivityNotificationUnread(item).catch(() => {});
+    }
+    swipeableRef.current?.close();
+  }, [item, unread]);
+
+  const handleDelete = React.useCallback(async () => {
+    Alert.alert(
+      "Delete activity?",
+      "This will remove the activity item from your list.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => swipeableRef.current?.close(),
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteActivityNotification(item).catch(() => {});
+            swipeableRef.current?.close();
+          },
+        },
+      ],
+    );
+  }, [item]);
+
+  const card = (
+    <Pressable
+      accessibilityRole={isEditing ? "checkbox" : "button"}
+      accessibilityState={isEditing ? { checked: isSelected } : undefined}
+      disabled={!isEditing}
+      onPress={() => {
+        if (isEditing) {
+          onToggleSelect?.(item);
+        }
+      }}
+      style={({ pressed }) => [
+        styles.feedCard,
+        isEditing && styles.feedCardEditing,
+        isSelected && styles.feedCardSelected,
+        {
+          backgroundColor: unread ? "#FFFFFF" : "rgba(255,255,255,0.84)",
+          borderColor: isSelected
+            ? meta.accent
+            : unread
+              ? meta.soft
+              : "rgba(148, 163, 184, 0.2)",
+          opacity: pressed && isEditing ? 0.96 : 1,
+        },
+      ]}
+    >
+      <View style={styles.feedCardRail}>
+        <View style={[styles.feedCardLine, { backgroundColor: meta.accent }]} />
+        <View
+          style={[
+            styles.feedCardIconWrap,
+            { backgroundColor: unread ? meta.accent : meta.soft },
+          ]}
+        >
+          <Icon size={18} color={unread ? "#FFFFFF" : meta.accent} />
+        </View>
+      </View>
+
+      <View style={styles.feedCardBody}>
+        <View style={styles.feedCardTopRow}>
+          <View
+            style={[
+              styles.activityChip,
+              { backgroundColor: meta.chipBackground },
+            ]}
+          >
+            <Text style={[styles.activityChipText, { color: meta.chipText }]}>
+              {meta.label}
+            </Text>
+          </View>
+
+          <View style={styles.feedCardTopActions}>
+            <View style={styles.activityTimeWrap}>
+              <Clock3 size={13} color={BRAND_PALETTE.muted} />
+              <Text style={styles.activityTime}>{formatTimeAgo(item.sent_at)}</Text>
+            </View>
+            {isEditing ? (
+              <View
+                style={[
+                  styles.selectionCheckbox,
+                  isSelected && styles.selectionCheckboxSelected,
+                ]}
+              >
+                {isSelected ? (
+                  <CheckCircle2 size={16} color="#FFFFFF" />
+                ) : (
+                  <Circle size={16} color={BRAND_PALETTE.muted} />
+                )}
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <Text style={styles.feedCardTitle} numberOfLines={2}>
+          {getActivitySummary(item)}
+        </Text>
+        <Text style={styles.feedCardDetail} numberOfLines={1}>
+          {getActivityDetail(item)}
+        </Text>
+
+        <View style={styles.feedCardMetaRow}>
+          <View style={styles.metaPill}>
+            <Text style={styles.metaPillText}>{getQuantityLabel(item)}</Text>
+          </View>
+          <View style={styles.metaPill}>
+            <Text style={styles.metaPillText}>{item.zone_name || "Reported spot"}</Text>
+          </View>
+        </View>
+
+        <View style={styles.feedCardFooter}>
+          {unread ? (
+            <View style={[styles.statusPill, styles.statusPillUnread]}>
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: meta.accent },
+                ]}
+              />
+              <Text style={styles.statusPillUnreadText}>New activity</Text>
+            </View>
+          ) : (
+            <View style={[styles.statusPill, styles.statusPillRead]}>
+              <Text style={styles.statusPillReadText}>Reviewed</Text>
+            </View>
+          )}
+
+          {!isEditing ? (
+            <Text style={styles.swipeHint}>
+              {Platform.OS === "ios" ? "Activity item" : "Swipe to manage"}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </Pressable>
+  );
+
+  if (isEditing) {
+    return card;
+  }
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      overshootLeft={false}
+      overshootRight={false}
+      leftThreshold={56}
+      rightThreshold={56}
+      renderLeftActions={() => (
+        <SwipeAction
+          title={unread ? "Mark Read" : "Mark Unread"}
+          detail={
+            unread
+              ? "Slide right to clear this item"
+              : "Slide right to bring this item back"
+          }
+          accent={BRAND_PALETTE.accentBold}
+        />
+      )}
+      renderRightActions={() => (
+        <SwipeAction
+          title="Delete"
+          detail="Slide left to remove this activity item"
+          accent="#B91C1C"
+          destructive
+        />
+      )}
+      onSwipeableOpen={(direction) => {
+        if (direction === "left") {
+          handleToggleReadState();
+          return;
+        }
+
+        if (direction === "right") {
+          handleDelete();
+        }
+      }}
+    >
+      {card}
+    </Swipeable>
+  );
+});
+
+const ListHeader = React.memo(function ListHeader({
+  notifications,
+  viewedAt,
+  isEditing,
+  onStartEditing,
+  onCancelEditing,
+  onMarkSelectedRead,
+  onDeleteSelected,
+  readDisabled,
+  deleteDisabled,
+  actionBusy,
+}) {
+  const stats = React.useMemo(
+    () => getHeaderStats(notifications, viewedAt),
+    [notifications, viewedAt],
+  );
+
+  const lastActivity = notifications[0];
+
+  return (
+    <View style={styles.listHeaderWrap}>
+      <LinearGradient
+        colors={["#082032", "#0F3B56", "#0284C7"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
+        <View style={styles.heroGlowLarge} />
+        <View style={styles.heroGlowSmall} />
+
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroBadge}>
+            <BellRing size={16} color="#FFFFFF" />
+            <Text style={styles.heroBadgeText}>Live Activity</Text>
+          </View>
+          <Text style={styles.heroCaption}>
+            {stats.unreadCount > 0 ? `${stats.unreadCount} unread` : "All caught up"}
+          </Text>
+        </View>
+
+        <Text style={styles.heroTitle}>Your parking moves, in one feed.</Text>
+        <Text style={styles.heroSubtitle}>
+          Reports, claims, and false-report actions in one cleaner timeline.
+        </Text>
+
+        <View style={styles.heroStatsRow}>
+          <StatChip
+            label="Unread"
+            value={stats.unreadCount}
+            accent="#7DD3FC"
+            tone="dark"
+          />
+          <StatChip
+            label="Reports"
+            value={stats.reportedCount}
+            accent={BRAND_PALETTE.accent}
+            tone="dark"
+          />
+          <StatChip
+            label="Claims"
+            value={stats.claimedCount}
+            accent="#6EE7B7"
+            tone="dark"
+          />
+        </View>
+      </LinearGradient>
+
+      <View style={styles.insightRow}>
+        <StatChip
+          label="False Reports"
+          value={stats.falseCount}
+          accent={BRAND_PALETTE.gold}
+        />
+        <View style={styles.insightCard}>
+          <Text style={styles.insightEyebrow}>Latest activity</Text>
+          <Text style={styles.insightHeadline}>
+            {lastActivity ? getActivitySummary(lastActivity) : "No recent events yet"}
+          </Text>
+          <Text style={styles.insightSubline}>
+            {lastActivity
+              ? `${formatTimeAgo(lastActivity.sent_at)} | ${lastActivity.zone_name || "Reported spot"}`
+              : "Start reporting or claiming spots to build your timeline."}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeadingRow}>
+          <Text style={styles.sectionTitle}>Timeline</Text>
+          <View style={styles.headerActionsRow}>
+            {isEditing ? (
+              <>
+                <HeaderIconButton
+                  icon={Eye}
+                  onPress={onMarkSelectedRead}
+                  disabled={readDisabled || actionBusy}
+                />
+                <HeaderIconButton
+                  icon={Trash2}
+                  onPress={onDeleteSelected}
+                  disabled={deleteDisabled || actionBusy}
+                  destructive
+                />
+              </>
+            ) : null}
+            <HeaderTextButton
+              label={isEditing ? "Cancel" : "Edit"}
+              onPress={isEditing ? onCancelEditing : onStartEditing}
+              disabled={actionBusy}
+            />
+          </View>
+        </View>
+        <Text style={styles.sectionSubtitle}>
+          {isEditing
+            ? "Select activity items, then use the icons beside cancel."
+            : "Newest activity first. Swipe any item to manage it."}
+        </Text>
+      </View>
+    </View>
+  );
+});
+
+function LoadingState() {
+  return (
+    <View style={styles.stateScreen}>
+      <LinearGradient
+        colors={["#DBF1FF", "#F0F9FF"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.statePanel}
+      >
+        <View style={styles.stateIconShell}>
+          <ActivityIndicator size="large" color={BRAND_PALETTE.accentBold} />
+        </View>
+        <Text style={styles.stateTitle}>Loading your activity</Text>
+        <Text style={styles.stateMessage}>
+          Building the latest timeline from your parking actions.
+        </Text>
+      </LinearGradient>
+    </View>
+  );
+}
+
+function ErrorState({ error, onRetry }) {
+  return (
+    <View style={styles.stateScreen}>
+      <LinearGradient
+        colors={["#FFF4E8", "#FFF9F1"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.statePanel}
+      >
+        <View style={[styles.stateIconShell, { backgroundColor: "#FFF1E0" }]}>
+          <Flag size={28} color={BRAND_PALETTE.gold} />
+        </View>
+        <Text style={styles.stateTitle}>Unable to load activity</Text>
+        <Text style={styles.stateMessage}>
+          {error?.message || "The activity feed request failed."}
+        </Text>
+        <TouchableOpacity onPress={onRetry} style={styles.retryButton}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    </View>
+  );
+}
+
+function EmptyState() {
+  return (
+    <View style={styles.emptyState}>
+      <LinearGradient
+        colors={["#FFFFFF", "#EAF7FF"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.emptyPanel}
+      >
+        <View style={styles.emptyIconWrap}>
+          <BellRing size={28} color={BRAND_PALETTE.accentBold} />
+        </View>
+        <Text style={styles.emptyTitle}>No Activity Yet</Text>
+        <Text style={styles.emptyMessage}>{getEmptyStateMessage()}</Text>
+      </LinearGradient>
+    </View>
+  );
+}
+
+export default function NotificationsScreen() {
+  const insets = useSafeAreaInsets();
+  const { session } = useAuthStore();
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState([]);
+  const [actionBusy, setActionBusy] = React.useState(false);
+  const activityReadStateVersion = React.useSyncExternalStore(
+    subscribeToActivityReadState,
+    getActivityReadStateVersion,
+    getActivityReadStateVersion,
+  );
+  const {
+    data: notifications = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = useActivityNotifications(100, Boolean(session?.access_token));
+
+  React.useEffect(() => {
+    hydrateActivityReadState().catch(() => {});
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
+
+  const viewedAt = React.useMemo(
+    () => getActivityLastViewedAt(),
+    [activityReadStateVersion],
+  );
+  const selectedNotifications = React.useMemo(() => {
+    if (selectedIds.length === 0) {
+      return [];
+    }
+
+    const selectedIdSet = new Set(selectedIds);
+    return notifications.filter((item) => selectedIdSet.has(String(item.id)));
+  }, [notifications, selectedIds]);
+  const selectedIdSet = React.useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedUnreadNotifications = React.useMemo(
+    () =>
+      selectedNotifications.filter((item) => isActivityNotificationUnread(item, viewedAt)),
+    [selectedNotifications, viewedAt],
+  );
+  const readDisabled = selectedUnreadNotifications.length === 0;
+  const deleteDisabled = selectedNotifications.length === 0;
+
+  React.useEffect(() => {
+    const visibleIds = new Set(notifications.map((item) => String(item.id)));
+    setSelectedIds((current) => current.filter((id) => visibleIds.has(id)));
+
+    if (notifications.length === 0) {
+      setIsEditing(false);
+    }
+  }, [notifications]);
+
+  const handleStartEditing = React.useCallback(() => {
+    if (notifications.length === 0) {
+      return;
+    }
+
+    setSelectedIds([]);
+    setIsEditing(true);
+  }, [notifications.length]);
+
+  const handleCancelEditing = React.useCallback(() => {
+    setSelectedIds([]);
+    setIsEditing(false);
+  }, []);
+
+  const handleToggleSelect = React.useCallback((notification) => {
+    const notificationId = String(notification?.id || "");
+    if (!notificationId) {
+      return;
+    }
+
+    setSelectedIds((current) =>
+      current.includes(notificationId)
+        ? current.filter((id) => id !== notificationId)
+        : [...current, notificationId],
+    );
+  }, []);
+
+  const handleMarkSelectedRead = React.useCallback(async () => {
+    if (selectedUnreadNotifications.length === 0) {
+      return;
+    }
+
+    setActionBusy(true);
+
+    try {
+      await markAllActivityNotificationsRead(selectedUnreadNotifications);
+      setSelectedIds([]);
+    } catch {
+      Alert.alert("Unable to mark selected read", "Please try again.");
+    } finally {
+      setActionBusy(false);
+    }
+  }, [selectedUnreadNotifications]);
+
+  const handleDeleteSelectedConfirmed = React.useCallback(async () => {
+    setActionBusy(true);
+
+    try {
+      await deleteAllActivityNotifications(selectedNotifications);
+      setSelectedIds([]);
+    } catch {
+      Alert.alert("Unable to delete activity", "Please try again.");
+    } finally {
+      setActionBusy(false);
+    }
+  }, [selectedNotifications]);
+
+  const handleDeleteSelected = React.useCallback(() => {
+    if (selectedNotifications.length === 0) {
+      return;
+    }
+
+    Alert.alert(
+      "Delete selected activity?",
+      "This will remove the selected activity items from your list.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            handleDeleteSelectedConfirmed().catch(() => {});
+          },
+        },
+      ],
+    );
+  }, [handleDeleteSelectedConfirmed, selectedNotifications.length]);
+  const renderActivityRow = React.useCallback(
+    ({ item }) => (
+      <ActivityRow
+        item={item}
+        viewedAt={viewedAt}
+        isEditing={isEditing}
+        isSelected={selectedIdSet.has(String(item.id))}
+        onToggleSelect={handleToggleSelect}
+      />
+    ),
+    [handleToggleSelect, isEditing, selectedIdSet, viewedAt],
+  );
+
+  if (isLoading && notifications.length === 0) {
+    return <LoadingState />;
+  }
+
+  if (isError && notifications.length === 0) {
+    return <ErrorState error={error} onRetry={() => refetch()} />;
+  }
+
+  return (
+    <View style={styles.screen}>
+      <FlatList
+        data={notifications}
+        keyExtractor={(item) => String(item.id)}
+        style={styles.list}
+        contentContainerStyle={{
+          paddingTop: insets.top + 14,
+          paddingBottom: insets.bottom + 110,
+        }}
+        ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={BRAND_PALETTE.accentBold}
+          />
+        }
+        ListHeaderComponent={
+          <ListHeader
+            notifications={notifications}
+            viewedAt={viewedAt}
+            isEditing={isEditing}
+            onStartEditing={handleStartEditing}
+            onCancelEditing={handleCancelEditing}
+            onMarkSelectedRead={handleMarkSelectedRead}
+            onDeleteSelected={handleDeleteSelected}
+            readDisabled={readDisabled}
+            deleteDisabled={deleteDisabled}
+            actionBusy={actionBusy}
+          />
+        }
+        ListEmptyComponent={<EmptyState />}
+        renderItem={renderActivityRow}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#EAF6FF",
+  },
+  list: {
+    flex: 1,
+  },
+  listHeaderWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 18,
+  },
+  heroCard: {
+    overflow: "hidden",
+    borderRadius: 28,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 16,
+    marginBottom: 12,
+  },
+  heroGlowLarge: {
+    position: "absolute",
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: "rgba(125,211,252,0.18)",
+    top: -32,
+    right: -28,
+  },
+  heroGlowSmall: {
+    position: "absolute",
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    bottom: -22,
+    left: -18,
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    gap: 12,
+  },
+  heroBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  heroBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+  heroCaption: {
+    color: "rgba(255,255,255,0.72)",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  heroTitle: {
+    fontSize: 24,
+    lineHeight: 29,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    maxWidth: "92%",
+  },
+  heroSubtitle: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "rgba(255,255,255,0.8)",
+    maxWidth: "94%",
+  },
+  heroStatsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  statChip: {
+    flex: 1,
+    minHeight: 68,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    justifyContent: "space-between",
+  },
+  statChipAccent: {
+    width: 24,
+    height: 4,
+    borderRadius: 999,
+    marginBottom: 8,
+  },
+  statChipValue: {
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  statChipLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  insightRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "stretch",
+  },
+  insightCard: {
+    flex: 1.45,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderWidth: 1,
+    borderColor: "rgba(203, 213, 225, 0.7)",
+  },
+  insightEyebrow: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    color: BRAND_PALETTE.muted,
+  },
+  insightHeadline: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "800",
+    color: BRAND_PALETTE.navy,
+  },
+  insightSubline: {
+    marginTop: 3,
+    fontSize: 10,
+    lineHeight: 14,
+    color: BRAND_PALETTE.muted,
+  },
+  sectionHeader: {
+    marginTop: 18,
+  },
+  sectionHeadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+  },
+  headerActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  headerIconButtonPrimary: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#BFDBFE",
+  },
+  headerIconButtonDestructive: {
+    backgroundColor: "#FFF1F2",
+    borderColor: "#FBCFE8",
+  },
+  headerIconButtonDisabled: {
+    opacity: 0.45,
+  },
+  headerIconButtonPressed: {
+    transform: [{ scale: 0.96 }],
+  },
+  headerTextButton: {
+    minHeight: 34,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  headerTextButtonDisabled: {
+    opacity: 0.45,
+  },
+  headerTextButtonPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  headerTextButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: BRAND_PALETTE.accentBold,
+  },
+  sectionSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 19,
+    color: BRAND_PALETTE.muted,
+  },
+  itemSeparator: {
+    height: 6,
+  },
+  feedCard: {
+    marginHorizontal: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 11,
+    flexDirection: "row",
+    shadowColor: "#082032",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 2,
+  },
+  feedCardEditing: {
+    borderWidth: 1.5,
+  },
+  feedCardSelected: {
+    shadowOpacity: 0.12,
+    elevation: 4,
+  },
+  feedCardRail: {
+    width: 32,
+    alignItems: "center",
+    marginRight: 8,
+  },
+  feedCardLine: {
+    position: "absolute",
+    top: 2,
+    bottom: 2,
+    width: 2,
+    borderRadius: 999,
+    opacity: 0.9,
+  },
+  feedCardIconWrap: {
+    marginTop: 3,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  feedCardBody: {
+    flex: 1,
+  },
+  feedCardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  feedCardTopActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginLeft: 8,
+  },
+  activityChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  activityChipText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+  activityTimeWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  activityTime: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: BRAND_PALETTE.muted,
+  },
+  selectionCheckbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  selectionCheckboxSelected: {
+    backgroundColor: BRAND_PALETTE.accentBold,
+    borderColor: BRAND_PALETTE.accentBold,
+  },
+  feedCardTitle: {
+    marginTop: 6,
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+  },
+  feedCardDetail: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 15,
+    color: BRAND_PALETTE.muted,
+  },
+  feedCardMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 5,
+    marginTop: 8,
+  },
+  metaPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "#F4F8FC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  metaPillText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: BRAND_PALETTE.navy,
+  },
+  feedCardFooter: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  statusPillUnread: {
+    backgroundColor: "#ECFDF5",
+  },
+  statusPillRead: {
+    backgroundColor: "#F1F5F9",
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginRight: 6,
+  },
+  statusPillUnreadText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#047857",
+  },
+  statusPillReadText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: BRAND_PALETTE.muted,
+  },
+  swipeHint: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 9,
+    lineHeight: 12,
+    color: BRAND_PALETTE.muted,
+  },
+  swipeAction: {
+    width: 176,
+    borderRadius: 20,
+    borderWidth: 1,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  swipeActionTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  swipeActionDetail: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 16,
+    color: BRAND_PALETTE.muted,
+  },
+  stateScreen: {
+    flex: 1,
+    backgroundColor: "#EAF6FF",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  statePanel: {
+    borderRadius: 28,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    alignItems: "center",
+  },
+  stateIconShell: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+  stateTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+    textAlign: "center",
+  },
+  stateMessage: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 21,
+    color: BRAND_PALETTE.muted,
+    textAlign: "center",
+  },
+  retryButton: {
+    marginTop: 18,
+    backgroundColor: BRAND_PALETTE.accentBold,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 999,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  emptyState: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  emptyPanel: {
+    borderRadius: 28,
+    paddingHorizontal: 24,
+    paddingVertical: 36,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D7E9F5",
+  },
+  emptyIconWrap: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+    textAlign: "center",
+  },
+  emptyMessage: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 21,
+    color: BRAND_PALETTE.muted,
+    textAlign: "center",
+    maxWidth: 280,
+  },
+});

@@ -24,18 +24,18 @@ export async function POST(request) {
 
     const reportResults = await sql`
       SELECT
-        user_id,
-        zone_id,
-        parking_type,
-        quantity,
-        status,
-        ST_X(location::geometry) AS longitude,
-        ST_Y(location::geometry) AS latitude,
+        live_reports.user_id,
+        live_reports.zone_id,
+        live_reports.parking_type,
+        live_reports.quantity,
+        live_reports.status,
+        ST_X(live_reports.location::geometry) AS longitude,
+        ST_Y(live_reports.location::geometry) AS latitude,
         pz.zone_type,
         pz.name AS zone_name
       FROM live_reports
       LEFT JOIN parking_zones pz ON pz.id = live_reports.zone_id
-      WHERE id = ${reportId}
+      WHERE live_reports.id = ${reportId}
       LIMIT 1;
     `;
 

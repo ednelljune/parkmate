@@ -58,16 +58,16 @@ export async function POST(request) {
         LEFT JOIN parking_zones pz ON lr.zone_id = pz.id
         WHERE COALESCE(lr.status, 'available') = 'available'
           AND ${effectiveExpiresAtSql} > CURRENT_TIMESTAMP
-          AND LOWER(COALESCE(pz.zone_type, lr.parking_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
+          AND LOWER(COALESCE(pz.zone_type, lr.parking_type, '')) NOT LIKE '%' || $4 || '%'
           AND ST_DWithin(
             lr.location::geography,
             ST_SetSRID(ST_Point($1, $2), 4326)::geography,
             $3
           )
         ORDER BY lr.created_at DESC
-        LIMIT $4
+        LIMIT $5
       `,
-      [longitude, latitude, radiusMeters, limit],
+      [longitude, latitude, radiusMeters, EXCLUDED_ZONE_TYPE, limit],
     );
 
     console.log("[reports.nearby] Nearby query completed", {

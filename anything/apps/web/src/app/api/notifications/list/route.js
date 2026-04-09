@@ -71,11 +71,11 @@ export async function POST(request) {
         ST_SetSRID(ST_Point($1, $2), 4326)::geography,
         $4
       )
-        AND LOWER(COALESCE(pz.zone_type, lr.parking_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
+        AND LOWER(COALESCE(pz.zone_type, lr.parking_type, '')) NOT LIKE '%' || $5 || '%'
     `;
 
-    const params = [longitude, latitude, user?.id || null, radiusMeters];
-    let paramIndex = 5;
+    const params = [longitude, latitude, user?.id || null, radiusMeters, EXCLUDED_ZONE_TYPE];
+    let paramIndex = 6;
 
     if (search) {
       baseQuery += ` AND (

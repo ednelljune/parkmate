@@ -39,10 +39,10 @@ export async function POST(request) {
       FROM live_reports lr
       LEFT JOIN parking_zones pz ON lr.zone_id = pz.id
       WHERE lr.id = $1
-        AND LOWER(COALESCE(pz.zone_type, lr.parking_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
+        AND LOWER(COALESCE(pz.zone_type, lr.parking_type, '')) NOT LIKE '%' || $2 || '%'
       LIMIT 1;
     `,
-      [reportId],
+      [reportId, EXCLUDED_ZONE_TYPE],
     );
 
     if (reportResults.length === 0) {

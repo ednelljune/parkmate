@@ -54,6 +54,7 @@ export const logUserActivity = async ({
   occurredAt = null,
 }) => {
   await ensureActivityLogSchema();
+  const resolvedOccurredAt = occurredAt || new Date().toISOString();
 
   await sql`
     INSERT INTO user_activity_logs (
@@ -80,7 +81,7 @@ export const logUserActivity = async ({
       ${zoneType},
       ${zoneName},
       ${spotStatus},
-      ${occurredAt}
+      ${resolvedOccurredAt}
     )
     ON CONFLICT (user_id, report_id, activity_type) DO NOTHING;
   `;

@@ -18,6 +18,8 @@ if (__DEV__ && errorUtils && typeof errorUtils.setGlobalHandler === 'function') 
 
 import 'react-native-url-polyfill/auto';
 import './src/__create/polyfills';
+import './src/utils/installConsolePrivacyGate';
+import { getRuntimeEnvironment } from './src/utils/runtimeLogging';
 global.Buffer = require('buffer').Buffer;
 
 import '@expo/metro-runtime';
@@ -38,14 +40,13 @@ addSentryBreadcrumb({
   category: 'app.lifecycle',
   message: 'Mobile app bootstrap started',
   data: {
-    createEnv: process.env.EXPO_PUBLIC_CREATE_ENV || 'unknown',
+    createEnv: getRuntimeEnvironment(),
     isDev: __DEV__,
   },
 });
 
 AppRegistry.setWrapperComponentProvider(() => ({ children }) => {
-  const isDevelopmentRuntime =
-    __DEV__ || process.env.EXPO_PUBLIC_CREATE_ENV === 'DEVELOPMENT';
+  const isDevelopmentRuntime = getRuntimeEnvironment() === 'development';
   const wrappedChildren = (
     <DeviceErrorBoundaryWrapper>
       {children}

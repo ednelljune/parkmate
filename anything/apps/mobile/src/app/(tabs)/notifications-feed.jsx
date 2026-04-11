@@ -976,6 +976,7 @@ export default function NotificationsScreen() {
   );
   const {
     data: notifications = [],
+    allNotifications = [],
     isLoading,
     isError,
     error,
@@ -1050,8 +1051,8 @@ export default function NotificationsScreen() {
     [readTargets],
   );
   const systemUpdateItems = React.useMemo(
-    () => deriveSystemUpdateItems(notifications),
-    [notifications],
+    () => deriveSystemUpdateItems(allNotifications),
+    [allNotifications],
   );
   const systemUpdateSummary = React.useMemo(
     () => getMailboxStats(systemUpdateItems, null),

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import fetch from "@/__create/fetch";
 import { resolveBackendUrl } from "@/utils/backend";
 import { useActivityBackendVersion } from "@/hooks/useActivityBackendVersion";
+import { isSystemUpdateActivity } from "@/utils/systemUpdates";
 import {
   getLocalNotifications,
   getLocalReportsVersion,
@@ -60,9 +61,7 @@ const fetchActivityNotifications = async (activityFeedUrl) => {
     const notifications = await readActivityResponse(response);
     console.log("[activity.fetch] Activity received", {
       count: notifications.length,
-      systemUpdates: notifications.filter(
-        (item) => Boolean(item?.is_system_update),
-      ).length,
+      systemUpdates: notifications.filter(isSystemUpdateActivity).length,
     });
 
     return notifications;
@@ -143,7 +142,7 @@ export const useActivityNotifications = (
     retry: false,
   });
 
-  const data = useMemo(() => {
+  const allNotifications = useMemo(() => {
     const localNotifications = getLocalNotifications();
     const deletedIds = getDeletedActivityIds();
     const localEntries = Array.isArray(localNotifications)
@@ -185,10 +184,20 @@ export const useActivityNotifications = (
       return !deletedIds.has(itemId) && !deletedIds.has(canonicalId);
     });
   }, [localReportsVersion, activityReadStateVersion, query.data]);
+  const data = useMemo(
+    () => allNotifications.filter((item) => !isSystemUpdateActivity(item)),
+    [allNotifications],
+  );
+  const systemUpdateNotifications = useMemo(
+    () => allNotifications.filter((item) => isSystemUpdateActivity(item)),
+    [allNotifications],
+  );
 
   return {
     ...query,
     data,
+    allNotifications,
+    systemUpdateNotifications,
     activityVersion: activityVersionQuery.data,
     refetchActivityVersion: activityVersionQuery.refetch,
     isActivityVersionRefetching: activityVersionQuery.isRefetching,

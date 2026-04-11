@@ -1,11 +1,13 @@
 const CLAIM_POINTS_AWARDED = 10;
 const FALSE_REPORT_TRUST_THRESHOLD = 3;
 
+export const isSystemUpdateActivity = (item) => Boolean(item?.is_system_update);
+
 const normalizeSystemUpdateFromActivity = (item) => {
   const activityType = String(item?.activity_type || "");
   const reportId = item?.report_id ? String(item.report_id) : "";
   const itemId = String(item?.id || "").trim();
-  const isSystemUpdate = Boolean(item?.is_system_update);
+  const isSystemUpdate = isSystemUpdateActivity(item);
 
   if (!itemId || !reportId) {
     return null;

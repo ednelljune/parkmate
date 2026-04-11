@@ -209,7 +209,7 @@ function AuthenticatedTabLayout() {
     normalizedReportAlerts.length + normalizedZoneAlerts.length;
   const {
     unreadCount: unreadActivityCount,
-    data: activityNotifications = [],
+    allNotifications: activityNotifications = [],
   } = useUnreadActivityCount(
     100,
     Boolean(session?.access_token),

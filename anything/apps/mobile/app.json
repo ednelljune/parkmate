@@ -4,6 +4,11 @@
     "slug": "parkmate",
     "scheme": "parkmate",
     "version": "1.0.0",
+    "autolinking": {
+      "exclude": [
+        "expo-speech-recognition"
+      ]
+    },
     "orientation": "portrait",
     "icon": "./assets/images/parkmate-logo.png",
     "userInterfaceStyle": "automatic",
@@ -18,7 +23,10 @@
         "NSContactsUsageDescription": "ParkMate uses contacts only when you choose to share or invite people.",
         "NSMicrophoneUsageDescription": "ParkMate uses the microphone for audio features you explicitly start.",
         "NSPhotoLibraryUsageDescription": "ParkMate uses your photo library when you choose images to upload.",
-        "NSPhotoLibraryAddUsageDescription": "ParkMate saves generated or exported images to your photo library only when you request it."
+        "NSPhotoLibraryAddUsageDescription": "ParkMate saves generated or exported images to your photo library only when you request it.",
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {

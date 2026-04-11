@@ -1,5 +1,4 @@
 {
-  "dependencies": {
-    "expo": "^55.0.12"
-  }
+  "name": "parkmate-root",
+  "private": true
 }

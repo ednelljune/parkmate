@@ -11,7 +11,6 @@ import {
   X,
   MapPin,
   AlertTriangle,
-  Map,
   Trash2,
 } from "lucide-react-native";
 import { formatDistance, formatTimeLeft } from "@/utils/formatters";
@@ -25,18 +24,12 @@ export const SpotDetailsModal = ({
   isReportingFalse,
   insets,
   onClose,
-  onGetDirections,
   onClaimSpot,
   onReportFalse,
   onDeleteSpot,
 }) => {
   const { data: user } = useUser();
   const isOwnReport = user?.id && spot?.user_id === user.id;
-
-  const handleGetDirections = () => {
-    onClose(); // Close modal immediately
-    onGetDirections();
-  };
 
   const handleClaimSpot = () => {
     if (!spot) return;
@@ -221,24 +214,6 @@ export const SpotDetailsModal = ({
                 gap: 12,
               }}
             >
-              <TouchableOpacity
-                style={{
-                  flexDirection: "row",
-                  backgroundColor: "#3B82F6",
-                  paddingVertical: 14,
-                  borderRadius: 12,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-                onPress={handleGetDirections}
-              >
-                <Map size={20} color="#FFF" />
-                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>
-                  Start In-App Navigation
-                </Text>
-              </TouchableOpacity>
-
               {spot.status === "available" &&
                 (isOwnReport ? (
                   <TouchableOpacity

@@ -118,6 +118,8 @@ const MAILBOX_META = {
   },
 };
 
+const INITIAL_ACTIVITY_LOAD_TIMEOUT_MS = 20000;
+
 const getEmptyStateMessage = () => {
   return "Your parking activity will appear here as you use the app.";
 };
@@ -988,6 +990,21 @@ export default function NotificationsScreen() {
     refetchOnMount: false,
     staleTimeMs: Infinity,
   });
+  const [initialLoadTimedOut, setInitialLoadTimedOut] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isLoading) {
+      setInitialLoadTimedOut(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setInitialLoadTimedOut(true);
+    }, INITIAL_ACTIVITY_LOAD_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [isLoading]);
+
   React.useEffect(() => {
     hydrateActivityReadState().catch(() => {});
   }, []);
@@ -1174,8 +1191,20 @@ export default function NotificationsScreen() {
     [handleToggleSelect, isEditing, selectedIdSet, viewedAt],
   );
 
-  if (isLoading && notifications.length === 0) {
+  if (isLoading && notifications.length === 0 && !initialLoadTimedOut) {
     return <LoadingState />;
+  }
+
+  if (initialLoadTimedOut && notifications.length === 0) {
+    return (
+      <ErrorState
+        error={{
+          message:
+            "The activity feed is taking too long to respond. Check the preview backend and app base URL, then try again.",
+        }}
+        onRetry={() => handleRefresh()}
+      />
+    );
   }
 
   if (isError && notifications.length === 0) {

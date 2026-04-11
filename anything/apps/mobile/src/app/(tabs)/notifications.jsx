@@ -137,7 +137,7 @@ const getAlertKindTheme = (alertType) =>
         soft: "rgba(16, 185, 129, 0.12)",
         panel: "rgba(16, 185, 129, 0.08)",
         button: BRAND_PALETTE.success,
-        buttonText: "Navigate to Spot",
+        buttonText: "Open Spot on Map",
       };
 
 const formatTimeRemaining = (diffMs) => {
@@ -332,18 +332,29 @@ export default function NotificationsScreen() {
     });
   };
 
-  const handleNavigateToSpot = (spot) => {
-    openBuiltInNavigation({
-      latitude: spot.latitude,
-      longitude: spot.longitude,
-      label: spot.zone_name || "Parking Spot",
-      type: spot.parking_type || spot.zone_type || "Parking",
-      extras: {
+  const handleOpenSpotOnMap = (spot) => {
+    if (spot?.latitude == null || spot?.longitude == null) {
+      Alert.alert("Map Error", "Location data is missing.");
+      return;
+    }
+
+    router.navigate({
+      pathname: "/",
+      params: {
+        navigate: "false",
+        navigationRequestId: String(Date.now()),
         spotId: String(spot.id ?? ""),
         spotLat: String(Number(spot.latitude)),
         spotLng: String(Number(spot.longitude)),
         spotName: spot.zone_name || "Parking Spot",
         spotType: spot.parking_type || spot.zone_type || "Parking",
+        zoneId: "",
+        zoneName: "",
+        zoneType: "",
+        zoneLat: "",
+        zoneLng: "",
+        zoneCapacity: "",
+        zoneRules: "",
       },
     });
   };
@@ -904,7 +915,7 @@ export default function NotificationsScreen() {
                         onPress={() =>
                           isZoneAlert
                             ? handleNavigateToZone(alert)
-                            : handleNavigateToSpot(alert)
+                            : handleOpenSpotOnMap(alert)
                         }
                         style={[
                           styles.mapButton,

@@ -1275,17 +1275,6 @@ function ParkMateContent() {
     [clearRoute, logSpotSelection],
   );
 
-  const handleGetDirections = useCallback(() => {
-    if (!selectedSpot) {
-      return;
-    }
-
-    startInAppNavigation(
-      selectedSpot,
-      "Spot location not available for navigation.",
-    );
-  }, [selectedSpot, startInAppNavigation]);
-
   const handleZoneDirections = useCallback(
     (zoneToNavigate) => {
       const targetZone = zoneToNavigate || selectedZone;
@@ -1757,7 +1746,6 @@ function ParkMateContent() {
           setSelectedSpot(null);
           clearRoute();
         }}
-        onGetDirections={handleGetDirections}
         onClaimSpot={handleClaimSpot}
         onReportFalse={handleReportFalseSpot}
         onDeleteSpot={handleDeleteSpotWithTarget}

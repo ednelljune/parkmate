@@ -54,6 +54,9 @@ const PODIUM_META = {
   },
 };
 
+const LEADERBOARD_REQUEST_TIMEOUT_MS = 15000;
+const INITIAL_LOAD_TIMEOUT_MS = 20000;
+
 const formatNumber = (value) => {
   const numeric = Number(value) || 0;
   return numeric.toLocaleString();
@@ -93,6 +96,31 @@ const getSummaryStats = (users) => {
     averageTrust: Math.round(totals.trust / users.length),
     totalReports: totals.reports,
   };
+};
+
+const fetchLeaderboardResponse = async (leaderboardUrl) => {
+  let timeoutId;
+
+  try {
+    const response = await Promise.race([
+      fetch(leaderboardUrl),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(
+            new Error(
+              `Leaderboard request timed out after ${Math.round(LEADERBOARD_REQUEST_TIMEOUT_MS / 1000)}s`,
+            ),
+          );
+        }, LEADERBOARD_REQUEST_TIMEOUT_MS);
+      }),
+    ]);
+
+    return response;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 };
 
 function SummaryChip({ label, value, accent }) {
@@ -341,7 +369,7 @@ export default function LeaderboardScreen() {
         throw new Error("Leaderboard backend URL is not configured");
       }
 
-      const response = await fetch(leaderboardUrl);
+      const response = await fetchLeaderboardResponse(leaderboardUrl);
       const responseText = await response.text();
       let result = {};
 
@@ -362,7 +390,23 @@ export default function LeaderboardScreen() {
     staleTime: Infinity,
     refetchInterval: false,
     refetchOnMount: false,
+    retry: false,
   });
+
+  const [initialLoadTimedOut, setInitialLoadTimedOut] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isPending) {
+      setInitialLoadTimedOut(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setInitialLoadTimedOut(true);
+    }, INITIAL_LOAD_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [isPending]);
 
   const handleRefresh = React.useCallback(async () => {
     await Promise.allSettled([refetch(), refetchLeaderboardVersion?.()]);
@@ -463,7 +507,7 @@ export default function LeaderboardScreen() {
     </View>
   );
 
-  if (isPending) {
+  if (isPending && !initialLoadTimedOut) {
     return (
       <View style={[styles.stateScreen, { paddingTop: insets.top + 18 }]}>
         <LinearGradient
@@ -478,6 +522,27 @@ export default function LeaderboardScreen() {
           <Text style={styles.stateTitle}>Building the leaderboard</Text>
           <Text style={styles.stateMessage}>
             Pulling the latest trust scores from the community.
+          </Text>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  if (initialLoadTimedOut && !leaderboard.length) {
+    return (
+      <View style={[styles.stateScreen, { paddingTop: insets.top + 18 }]}>
+        <LinearGradient
+          colors={["#FFF1F2", "#FFF9FB"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.emptyCard}
+        >
+          <View style={styles.emptyIconWrap}>
+            <Medal size={30} color={BRAND_PALETTE.error || "#D64545"} />
+          </View>
+          <Text style={styles.emptyTitle}>Leaderboard unavailable</Text>
+          <Text style={styles.emptyMessage}>
+            The leaderboard request is taking too long. Check the preview backend and app base URL, then try again.
           </Text>
         </LinearGradient>
       </View>

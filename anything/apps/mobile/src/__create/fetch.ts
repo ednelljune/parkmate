@@ -103,6 +103,12 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   const configuredBaseUrl = getConfiguredBaseUrl();
   if (typeof input === 'string') {
     if (input.startsWith('/')) {
+      if (!baseURL) {
+        throw new Error(
+          'Backend base URL is not configured for first-party requests. Set EXPO_PUBLIC_BASE_URL or EXPO_PUBLIC_APP_URL for this build.'
+        );
+      }
+
       finalInput = `${baseURL}${input}`;
     } else if (
       baseURL &&

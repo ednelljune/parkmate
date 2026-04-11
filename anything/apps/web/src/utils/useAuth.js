@@ -14,6 +14,21 @@ function sanitizeCallbackTarget(target) {
 	return target;
 }
 
+function buildEmailConfirmationRedirect(target) {
+	if (typeof window === 'undefined') {
+		return undefined;
+	}
+
+	const signInUrl = new URL('/account/signin', window.location.origin);
+	const sanitizedTarget = sanitizeCallbackTarget(target);
+
+	if (sanitizedTarget !== '/') {
+		signInUrl.searchParams.set('callbackUrl', sanitizedTarget);
+	}
+
+	return signInUrl.toString();
+}
+
 function useAuth() {
 	const callbackUrl =
 		typeof window !== 'undefined'
@@ -54,10 +69,7 @@ function useAuth() {
 				email: options.email.trim().toLowerCase(),
 				password: options.password,
 				options: {
-					emailRedirectTo:
-						typeof window !== 'undefined'
-							? `${window.location.origin}${target}`
-							: undefined,
+					emailRedirectTo: buildEmailConfirmationRedirect(target),
 				},
 			});
 

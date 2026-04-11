@@ -62,6 +62,9 @@ const ZONE_META = {
   },
 };
 
+const REMINDER_MINUTES = [30, 15];
+const REMINDER_WARNING_SECONDS = REMINDER_MINUTES[REMINDER_MINUTES.length - 1] * 60;
+
 const formatTime = (seconds) => {
   const safeSeconds = Math.max(0, Number(seconds) || 0);
   const hours = Math.floor(safeSeconds / 3600);
@@ -177,7 +180,7 @@ export default function TimerScreen() {
   const timerNotificationsUnsupported =
     notificationsUnsupportedInCurrentRuntime || (isExpoGo && Platform.OS === "ios");
   const percentRemaining = Math.round((timeRemaining / Math.max(totalDurationSeconds, 1)) * 100);
-  const isWarning = timeRemaining <= 600 && timeRemaining > 0;
+  const isWarning = timeRemaining <= REMINDER_WARNING_SECONDS && timeRemaining > 0;
   const zoneMeta = ZONE_META[selectedZone];
   const statusLabel = timeRemaining <= 0
     ? "Expired"
@@ -198,7 +201,7 @@ export default function TimerScreen() {
   const reminderLabel = timerNotificationsUnsupported
     ? "Dev build required"
     : hasReminder
-      ? "10 min warning ready"
+      ? "30/15/0 reminders ready"
       : isRunning
         ? "Checking reminder"
         : "Reminder idle";
@@ -253,7 +256,7 @@ export default function TimerScreen() {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "Parking Timer Started",
-          body: "Your timer is running. You'll get a 10-minute warning before expiry.",
+          body: "Your timer is running. You'll get alerts at 30 minutes left, 15 minutes left, and when it expires.",
           sound: true,
         },
         trigger: null,
@@ -263,18 +266,22 @@ export default function TimerScreen() {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         channelId: "alerts",
       };
-      const tenMinutesBeforeExpiry = durationSeconds - 600;
+      for (const reminderMinutes of REMINDER_MINUTES) {
+        const secondsUntilReminder = durationSeconds - reminderMinutes * 60;
 
-      if (tenMinutesBeforeExpiry > 0) {
+        if (secondsUntilReminder <= 0) {
+          continue;
+        }
+
         await Notifications.scheduleNotificationAsync({
           content: {
             title: "Parking Time Warning",
-            body: "Your parking expires in 10 minutes!",
+            body: `Your parking expires in ${reminderMinutes} minutes!`,
             sound: true,
           },
           trigger: {
             ...triggerBase,
-            seconds: tenMinutesBeforeExpiry,
+            seconds: secondsUntilReminder,
           },
         });
       }
@@ -741,7 +748,7 @@ export default function TimerScreen() {
             <View style={styles.tipCopy}>
               <Text style={styles.tipTitle}>Reminder logic</Text>
               <Text style={styles.tipText}>
-                The timer sends a start alert, then a 10-minute warning before expiry, then a final expiry alert.
+                The timer sends a start alert, then warnings at 30 minutes left and 15 minutes left, then a final expiry alert.
               </Text>
             </View>
           </View>

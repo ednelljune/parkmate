@@ -1,9 +1,11 @@
 import { useAuthStore } from '@/utils/auth/store';
 import { signInWithCredentials } from '@/utils/auth/credentialsAuth';
-import { Link, Redirect, router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { Redirect, router, useNavigation } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
+  BackHandler,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -21,6 +23,7 @@ const errorMessages = {
 };
 
 export default function Signup() {
+  const navigation = useNavigation();
   const { session, isReady, setSession } = useAuthStore();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,6 +33,12 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const scrollViewRef = useRef(null);
+  const allowScreenExitRef = useRef(false);
+
+  const routeToLogin = useCallback(() => {
+    allowScreenExitRef.current = true;
+    router.replace('/accounts/login');
+  }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -51,6 +60,31 @@ export default function Signup() {
       hideSubscription.remove();
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      allowScreenExitRef.current = false;
+
+      const beforeRemoveSubscription = navigation.addListener('beforeRemove', (event) => {
+        if (allowScreenExitRef.current) {
+          return;
+        }
+
+        event.preventDefault();
+        routeToLogin();
+      });
+
+      const backHandlerSubscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        routeToLogin();
+        return true;
+      });
+
+      return () => {
+        beforeRemoveSubscription();
+        backHandlerSubscription.remove();
+      };
+    }, [navigation, routeToLogin])
+  );
 
   if (!isReady) {
     return null;
@@ -86,10 +120,12 @@ export default function Signup() {
       });
 
       if (data.session) {
+        allowScreenExitRef.current = true;
         setSession(data.session);
         router.replace('/');
       } else {
         setSuccess('Check your email to confirm your account, then sign in.');
+        routeToLogin();
       }
     } catch (submitError) {
       setError(
@@ -190,7 +226,10 @@ export default function Signup() {
           </Pressable>
 
           <Text style={styles.footerText}>
-            Already have an account? <Link href="/accounts/login" style={styles.linkText}>Sign in</Link>
+            Already have an account?{' '}
+            <Text onPress={routeToLogin} style={styles.linkText}>
+              Sign in
+            </Text>
           </Text>
         </View>
       </ScrollView>

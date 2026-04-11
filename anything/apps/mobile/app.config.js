@@ -3,6 +3,8 @@ const path = require("path");
 const { expo: appJson } = require("./app.json");
 
 const GOOGLE_SERVICES_FILE = "./google-services.json";
+const DEFAULT_BACKEND_URL = "https://parkmate-api.onrender.com";
+const DEFAULT_BACKEND_HOST = "parkmate-api.onrender.com";
 
 const getExpoPublicEnvironment = () =>
   Object.fromEntries(
@@ -16,6 +18,10 @@ const getExpoPublicEnvironment = () =>
 
 module.exports = () => {
   const expoPublicEnvironment = getExpoPublicEnvironment();
+  const backendUrl =
+    expoPublicEnvironment.EXPO_PUBLIC_BASE_URL ||
+    expoPublicEnvironment.EXPO_PUBLIC_APP_URL ||
+    DEFAULT_BACKEND_URL;
   const googleMapsApiKey = expoPublicEnvironment.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
   const existingExtra =
     appJson.extra && typeof appJson.extra === "object" ? appJson.extra : {};
@@ -60,6 +66,9 @@ module.exports = () => {
       publicConfig: {
         ...existingPublicConfig,
         ...expoPublicEnvironment,
+        EXPO_PUBLIC_BASE_URL: backendUrl,
+        EXPO_PUBLIC_APP_URL: backendUrl,
+        EXPO_PUBLIC_HOST: expoPublicEnvironment.EXPO_PUBLIC_HOST || DEFAULT_BACKEND_HOST,
         EXPO_PUBLIC_ANDROID_FCM_CONFIGURED: String(androidFcmConfigured),
       },
     },

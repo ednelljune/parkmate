@@ -4,7 +4,14 @@
   "version": "1.0.0",
   "scripts": {
     "dev:remote": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-remote-dev.ps1",
+    "dev:remote:localtunnel": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-remote-dev.ps1 -TunnelProvider localtunnel",
     "dev:remote:help": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-remote-dev.ps1 -PrintOnly",
+    "dev:remote:help:localtunnel": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-remote-dev.ps1 -TunnelProvider localtunnel -PrintOnly",
+    "dev:go": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-expo-go.ps1",
+    "dev:go:localtunnel": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-expo-go.ps1 -TunnelProvider localtunnel",
+    "dev:go:help": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-expo-go.ps1 -PrintOnly",
+    "dev:go:help:localtunnel": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-expo-go.ps1 -TunnelProvider localtunnel -PrintOnly",
+    "dev:go:lan": "npx expo start --go --lan --clear",
     "eas-build-post-install": "node ./scripts/patch-sentry-gradle.cjs",
     "postinstall": "patch-package && node ./scripts/dedupe-native-deps.cjs"
   },
@@ -117,6 +124,7 @@
   "jest": {
     "preset": "jest-expo"
   },
+  "packageManager": "npm@10.9.3",
   "private": true,
   "overrides": {
     "@react-navigation/bottom-tabs": "^7.4.0",

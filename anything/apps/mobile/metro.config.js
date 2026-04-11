@@ -75,12 +75,47 @@ const SHARED_ALIASES = {
   "@sentry/types": path.resolve(__dirname, "./node_modules/@sentry/types"),
 };
 const INTERNAL_ALIAS_PREFIX = "@/";
+const escapeForRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const generatedExpoExportDirPattern = new RegExp(
+  `${escapeForRegex(__dirname)}[\\\\/](?:\\.expo-[^\\\\/]+)(?:[\\\\/].*)?$`,
+);
+const mergeBlockList = (existingBlockList, additionalPatterns) => {
+  const patternSources = [];
+
+  if (existingBlockList instanceof RegExp) {
+    patternSources.push(existingBlockList.source);
+  } else if (Array.isArray(existingBlockList)) {
+    existingBlockList.forEach((pattern) => {
+      if (pattern instanceof RegExp) {
+        patternSources.push(pattern.source);
+      }
+    });
+  }
+
+  additionalPatterns.forEach((pattern) => {
+    if (pattern instanceof RegExp) {
+      patternSources.push(pattern.source);
+    }
+  });
+
+  if (patternSources.length === 0) {
+    return existingBlockList;
+  }
+
+  return new RegExp(patternSources.join("|"));
+};
 fs.mkdirSync(VIRTUAL_ROOT_UNRESOLVED, { recursive: true });
 config.watchFolders = [
   ...config.watchFolders,
   VIRTUAL_ROOT,
   VIRTUAL_ROOT_UNRESOLVED,
 ];
+config.resolver = {
+  ...config.resolver,
+  blockList: mergeBlockList(config.resolver?.blockList, [
+    generatedExpoExportDirPattern,
+  ]),
+};
 
 // Add web-specific alias configuration through resolveRequest
 config.resolver.resolveRequest = (context, moduleName, platform) => {

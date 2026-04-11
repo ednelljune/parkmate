@@ -18,6 +18,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import fetch from "@/__create/fetch";
+import {
+  LEADERBOARD_QUERY_KEY,
+  useLeaderboardVersion,
+} from "@/hooks/useLeaderboardVersion";
 import { BRAND_PALETTE } from "@/theme/brandColors";
 import {
   getTrustBadgeMeta,
@@ -323,10 +327,15 @@ function RankedRow({ item, rank }) {
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
-  const leaderboardUrl = resolveBackendUrl("/api/users/leaderboard?limit=50");
+  const leaderboardLimit = 50;
+  const leaderboardUrl = resolveBackendUrl(`/api/users/leaderboard?limit=${leaderboardLimit}`);
+  const { refetch: refetchLeaderboardVersion } = useLeaderboardVersion(
+    leaderboardLimit,
+    Boolean(leaderboardUrl),
+  );
 
   const { data, error, isError, isPending, refetch, isRefetching } = useQuery({
-    queryKey: ["leaderboard", leaderboardUrl],
+    queryKey: [...LEADERBOARD_QUERY_KEY, leaderboardLimit],
     queryFn: async () => {
       if (!leaderboardUrl) {
         throw new Error("Leaderboard backend URL is not configured");
@@ -350,9 +359,14 @@ export default function LeaderboardScreen() {
 
       return sortUsersByTrust(result?.users);
     },
-    refetchInterval: 60000,
-    staleTime: 0,
+    staleTime: Infinity,
+    refetchInterval: false,
+    refetchOnMount: false,
   });
+
+  const handleRefresh = React.useCallback(async () => {
+    await Promise.allSettled([refetch(), refetchLeaderboardVersion?.()]);
+  }, [refetch, refetchLeaderboardVersion]);
 
   const leaderboard = Array.isArray(data) ? data : [];
   const podium = leaderboard.slice(0, 3);
@@ -423,7 +437,7 @@ export default function LeaderboardScreen() {
               <Text style={styles.sectionEyebrow}>Top Three</Text>
               <Text style={styles.sectionTitle}>The podium</Text>
             </View>
-            <Text style={styles.sectionHint}>Updated every minute</Text>
+            <Text style={styles.sectionHint}>Refreshes on change</Text>
           </View>
 
           <View style={styles.podiumRow}>
@@ -526,7 +540,7 @@ export default function LeaderboardScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
-            onRefresh={refetch}
+            onRefresh={handleRefresh}
             tintColor={BRAND_PALETTE.accentBold}
           />
         }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
 import { getResolvedBaseUrl, resolveBackendUrl } from "@/utils/backend";
@@ -10,14 +10,23 @@ import {
   addLocalReport,
   addLocalNotification,
   removeLocalReport,
+  isLocalReportWithinSyncGrace,
   upsertLocalReport,
   getLocalReportsVersion,
   subscribeToLocalReports,
 } from "@/utils/localReports";
 import { ACTIVITY_NOTIFICATIONS_QUERY_KEY } from "@/hooks/useActivityNotifications";
+import { ACTIVITY_MAILBOX_QUERY_KEY } from "@/hooks/useActivityMailbox";
 
 const CLAIM_SPOT_MAX_DISTANCE_METERS = 75;
 const REPORT_TTL_MS = 3 * 60 * 1000;
+const DEFAULT_NEARBY_REPORTS_STALE_TIME_MS = 15000;
+const DEFAULT_NEARBY_REPORTS_REFETCH_INTERVAL_MS = 15000;
+const DEFAULT_NEARBY_REPORTS_VERSION_REFETCH_INTERVAL_MS = 10000;
+const NEARBY_REPORTS_VERSION_TIMEOUT_MS = 8000;
+
+export const NEARBY_REPORTS_QUERY_KEY = ["nearby_reports"];
+export const NEARBY_REPORTS_VERSION_QUERY_KEY = ["nearby_reports_version"];
 
 const normalizeCoordinate = (value) => {
   const parsed = typeof value === "number" ? value : Number.parseFloat(value);
@@ -102,6 +111,58 @@ const getQueryLocation = (location, precision = 4) => {
   }
 
   return { latitude, longitude };
+};
+
+const getNearbyReportsQueryKey = (queryLocation, radiusMeters) => [
+  ...NEARBY_REPORTS_QUERY_KEY,
+  queryLocation?.latitude,
+  queryLocation?.longitude,
+  radiusMeters,
+];
+
+const readNearbyReportsVersionResponse = async (response) => {
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    throw new Error(responseText || "Failed to check nearby report updates");
+  }
+
+  try {
+    return responseText ? JSON.parse(responseText) : { version: "empty" };
+  } catch {
+    throw new Error(
+      `Nearby reports update check returned invalid JSON: ${responseText.slice(0, 120) || "empty response"}`,
+    );
+  }
+};
+
+const fetchNearbyReportsVersion = async (nearbyReportsVersionUrl, payload) => {
+  let timeoutId;
+
+  try {
+    const response = await Promise.race([
+      fetch(nearbyReportsVersionUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(
+            new Error(
+              `Nearby reports update check timed out after ${Math.round(NEARBY_REPORTS_VERSION_TIMEOUT_MS / 1000)}s`,
+            ),
+          );
+        }, NEARBY_REPORTS_VERSION_TIMEOUT_MS);
+      }),
+    ]);
+
+    return readNearbyReportsVersionResponse(response);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 };
 
 const expandAndRoundRegion = (region, paddingFactor = 0.2, precision = 3) => {
@@ -390,6 +451,102 @@ export const useParkingZones = (location, radiusMeters = 500) => {
   return zonesData?.zones || [];
 };
 
+export const useNearbyReportsBackendVersion = (
+  location,
+  radiusMeters = 500,
+  enabled = true,
+  options = {},
+) => {
+  const { refetchIntervalMs = DEFAULT_NEARBY_REPORTS_VERSION_REFETCH_INTERVAL_MS } = options;
+  const queryClient = useQueryClient();
+  const previousVersionRef = useRef(null);
+  const scopeKeyRef = useRef(null);
+  const queryLocation = useMemo(() => getQueryLocation(location), [location]);
+  const nearbyReportsVersionUrl = resolveBackendUrl("/api/reports/nearby/version");
+  const nearbyReportsQueryKey = useMemo(
+    () => getNearbyReportsQueryKey(queryLocation, radiusMeters),
+    [queryLocation, radiusMeters],
+  );
+  const scopeKey = `${queryLocation?.latitude ?? "none"}:${queryLocation?.longitude ?? "none"}:${radiusMeters}`;
+
+  const query = useQuery({
+    queryKey: [
+      ...NEARBY_REPORTS_VERSION_QUERY_KEY,
+      queryLocation?.latitude,
+      queryLocation?.longitude,
+      radiusMeters,
+    ],
+    queryFn: async () => {
+      if (!nearbyReportsVersionUrl) {
+        throw new Error("Nearby reports update backend URL is not configured");
+      }
+
+      if (!queryLocation) {
+        return { version: "empty" };
+      }
+
+      return fetchNearbyReportsVersion(nearbyReportsVersionUrl, {
+        latitude: queryLocation.latitude,
+        longitude: queryLocation.longitude,
+        radiusMeters,
+      });
+    },
+    enabled: enabled && !!queryLocation,
+    refetchInterval:
+      enabled && refetchIntervalMs !== false
+        ? Math.max(
+            1000,
+            Number(refetchIntervalMs) || DEFAULT_NEARBY_REPORTS_VERSION_REFETCH_INTERVAL_MS,
+          )
+        : false,
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  useEffect(() => {
+    if (scopeKeyRef.current === scopeKey) {
+      return;
+    }
+
+    scopeKeyRef.current = scopeKey;
+    previousVersionRef.current = null;
+  }, [scopeKey]);
+
+  useEffect(() => {
+    if (!enabled || !queryLocation) {
+      previousVersionRef.current = null;
+      return;
+    }
+
+    const nextVersion = query.data?.version ? String(query.data.version) : null;
+    if (!nextVersion) {
+      return;
+    }
+
+    if (previousVersionRef.current == null) {
+      previousVersionRef.current = nextVersion;
+      return;
+    }
+
+    if (previousVersionRef.current === nextVersion) {
+      return;
+    }
+
+    previousVersionRef.current = nextVersion;
+    queryClient.invalidateQueries({ queryKey: nearbyReportsQueryKey, exact: true });
+    queryClient
+      .refetchQueries({
+        queryKey: nearbyReportsQueryKey,
+        exact: true,
+        type: "active",
+      })
+      .catch(() => {});
+  }, [enabled, nearbyReportsQueryKey, query.data?.version, queryClient, queryLocation]);
+
+  return query;
+};
+
 export const useCurrentZone = (location) => {
   const queryLocation = useMemo(() => getQueryLocation(location), [location]);
   const { data: currentZoneData } = useQuery({
@@ -417,7 +574,12 @@ export const useCurrentZone = (location) => {
   return currentZoneData?.zone || null;
 };
 
-export const useNearbyReports = (location, radiusMeters = 500) => {
+export const useNearbyReports = (location, radiusMeters = 500, options = {}) => {
+  const {
+    refetchIntervalMs = DEFAULT_NEARBY_REPORTS_REFETCH_INTERVAL_MS,
+    refetchOnMount = true,
+    staleTimeMs = DEFAULT_NEARBY_REPORTS_STALE_TIME_MS,
+  } = options;
   const queryLocation = useMemo(() => getQueryLocation(location), [location]);
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
   const localReportsVersion = useSyncExternalStore(
@@ -435,14 +597,9 @@ export const useNearbyReports = (location, radiusMeters = 500) => {
   }, []);
 
   const queryResult = useQuery({
-    queryKey: [
-      "nearby_reports",
-      queryLocation?.latitude,
-      queryLocation?.longitude,
-      radiusMeters,
-    ],
+    queryKey: getNearbyReportsQueryKey(queryLocation, radiusMeters),
     queryFn: async () => {
-      if (!queryLocation) return { spots: [] };
+      if (!queryLocation) return { success: false, spots: [] };
 
       const response = await fetch("/api/reports/nearby", {
         method: "POST",
@@ -455,15 +612,25 @@ export const useNearbyReports = (location, radiusMeters = 500) => {
       });
 
       if (!response.ok) {
-        return { spots: [] };
+        return { success: false, spots: [] };
       }
 
       return response.json();
     },
     enabled: !!queryLocation,
     placeholderData: (previousData) => previousData,
-    staleTime: 15000,
-    refetchInterval: 15000,
+    staleTime:
+      staleTimeMs === Infinity
+        ? Infinity
+        : Math.max(0, Number(staleTimeMs) || DEFAULT_NEARBY_REPORTS_STALE_TIME_MS),
+    refetchOnMount,
+    refetchInterval:
+      refetchIntervalMs === false
+        ? false
+        : Math.max(
+            1000,
+            Number(refetchIntervalMs) || DEFAULT_NEARBY_REPORTS_REFETCH_INTERVAL_MS,
+          ),
   });
 
   const localReports = useMemo(
@@ -482,17 +649,43 @@ export const useNearbyReports = (location, radiusMeters = 500) => {
         .filter((report) => isReportActive(report, currentTimeMs)),
     [queryResult.data, currentTimeMs],
   );
-  const mergedReports = useMemo(() => {
-    if (queryResult.isSuccess) {
-      return remoteReports;
+  const reportIdsFromRemote = useMemo(
+    () => new Set(remoteReports.map((report) => report.id)),
+    [remoteReports],
+  );
+  const localOnlyReports = useMemo(
+    () =>
+      localReports.filter((report) => {
+        if (reportIdsFromRemote.has(report.id)) {
+          return false;
+        }
+
+        return isLocalReportWithinSyncGrace(report, currentTimeMs);
+      }),
+    [currentTimeMs, localReports, reportIdsFromRemote],
+  );
+
+  useEffect(() => {
+    if (!queryResult.isSuccess || queryResult.data?.success !== true) {
+      return;
     }
 
-    const localIds = new Set(localReports.map((report) => report.id));
-    return [
-      ...localReports,
-      ...remoteReports.filter((report) => !localIds.has(report.id)),
-    ];
-  }, [localReports, remoteReports, queryResult.isSuccess]);
+    localReports.forEach((report) => {
+      if (reportIdsFromRemote.has(report.id)) {
+        return;
+      }
+
+      if (isLocalReportWithinSyncGrace(report, currentTimeMs)) {
+        return;
+      }
+
+      removeLocalReport(report.id);
+    });
+  }, [currentTimeMs, localReports, queryResult.data?.success, queryResult.isSuccess, reportIdsFromRemote]);
+
+  const mergedReports = useMemo(() => {
+    return [...remoteReports, ...localOnlyReports];
+  }, [localOnlyReports, remoteReports]);
 
   return {
     reports: mergedReports,
@@ -506,7 +699,8 @@ export const useReportSpot = (location, onSuccess) => {
   const queryClient = useQueryClient();
   const { data: user } = useUser();
   const baseUrl = getResolvedBaseUrl();
-  const reportSpotUrl = resolveBackendUrl("/api/reports/create");
+    const reportSpotUrl = resolveBackendUrl("/api/reports/create");
+    const resolvedReportRequestUrl = reportSpotUrl || "/api/reports/create";
 
   const appendNotificationCache = (notification) => {
     queryClient
@@ -549,26 +743,26 @@ export const useReportSpot = (location, onSuccess) => {
         throw new Error("Please sign in to report parking spots");
       }
 
-      console.log("[report.create] Reporting spot", {
-        userId: user.id,
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        parkingType,
-        quantity,
-        zoneId,
-        apiBaseUrl: baseUrl || "relative fetch",
-        reportSpotUrl,
-        hasSession: !!session,
-        hasAccessToken: !!session?.access_token,
-      });
+        console.log("[report.create] Reporting spot", {
+          userId: user.id,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          parkingType,
+          quantity,
+          zoneId,
+          apiBaseUrl: baseUrl || "relative fetch",
+          reportSpotUrl,
+          hasSession: !!session,
+          hasAccessToken: !!session?.access_token,
+        });
 
       try {
-        const response = await fetch("/api/reports/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            latitude: coords.latitude,
-            longitude: coords.longitude,
+          const response = await fetch(resolvedReportRequestUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              latitude: coords.latitude,
+              longitude: coords.longitude,
             parkingType: parkingType || "1P",
             quantity: quantity || 1,
             zoneId: zoneId || null,
@@ -578,18 +772,18 @@ export const useReportSpot = (location, onSuccess) => {
         const responseText = await response.text().catch(() => "");
         const responseJson = safeJsonParse(responseText);
 
-        console.log("[report.create] Report response received", {
-          status: response.status,
-          ok: response.ok,
-          requestPath: "/api/reports/create",
-          resolvedBackendUrl: reportSpotUrl,
-          body: responseJson || responseText || null,
-        });
+          console.log("[report.create] Report response received", {
+            status: response.status,
+            ok: response.ok,
+            requestUrl: resolvedReportRequestUrl,
+            resolvedBackendUrl: reportSpotUrl,
+            body: responseJson || responseText || null,
+          });
 
         if (!response.ok) {
           let errorMessage = `Server error: ${response.status}`;
           if (response.status === 404) {
-            errorMessage = `Reporting API not found at ${reportSpotUrl || baseUrl || "configured backend"}. Verify EXPO_PUBLIC_BASE_URL points to a deployed ParkMate server.`;
+            errorMessage = `Reporting API not found at ${resolvedReportRequestUrl}. Verify EXPO_PUBLIC_BASE_URL points to a deployed ParkMate server.`;
           }
           const errorData = responseJson;
           errorMessage =
@@ -604,11 +798,11 @@ export const useReportSpot = (location, onSuccess) => {
         console.log("[report.create] Report success payload", data);
         return data;
       } catch (networkError) {
-        console.error("[report.create] Report request failed", {
-          message: networkError?.message || String(networkError),
-          apiBaseUrl: baseUrl || null,
-          reportSpotUrl,
-        });
+          console.error("[report.create] Report request failed", {
+            message: networkError?.message || String(networkError),
+            apiBaseUrl: baseUrl || null,
+            reportSpotUrl,
+          });
         throw networkError;
       }
     },
@@ -647,6 +841,7 @@ export const useReportSpot = (location, onSuccess) => {
         queryClient.invalidateQueries({ queryKey: ["spots_count"] });
         queryClient.invalidateQueries({ queryKey: ["notifications_count"] });
         queryClient.invalidateQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY });
         console.log("[report.create] Invalidated report-related queries");
         if (onSuccess) onSuccess(data);
       } catch (successError) {
@@ -661,12 +856,13 @@ export const useReportSpot = (location, onSuccess) => {
         );
       }
     },
-    onError: (error) => {
-      console.error("[report.create] Report error", {
-        message: error?.message || String(error),
-        location,
-        reportSpotUrl,
-      });
+      onError: (error) => {
+        console.error("[report.create] Report error", {
+          message: error?.message || String(error),
+          location,
+          reportSpotUrl,
+          requestUrl: resolvedReportRequestUrl,
+        });
       Alert.alert(
         "Report Failed",
         error?.message || "Unable to report parking spot. Please try again.",
@@ -829,6 +1025,7 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
       qc.invalidateQueries({ queryKey: ["spots_count"] });
       qc.invalidateQueries({ queryKey: ["notifications_count"] });
       qc.invalidateQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY });
       if (onSuccess) {
         onSuccess({
           parkingType,
@@ -851,13 +1048,20 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
 export const useReportFalseSpot = (onSuccess) => {
   const queryClient = useQueryClient();
   const { data: user } = useUser();
+  const reportFalseUrl = resolveBackendUrl("/api/reports/report-false");
 
   return useMutation({
     mutationFn: async (reportId) => {
       if (!user?.id) throw new Error("User not authenticated");
       const reportSnapshot = findReportSnapshot(queryClient, reportId);
 
-      const response = await fetch("/api/reports/report-false", {
+      console.log("[report.false] Submitting false-report request", {
+        reportId,
+        requestUrl: reportFalseUrl || "/api/reports/report-false",
+        hasUser: !!user?.id,
+      });
+
+      const response = await fetch(reportFalseUrl || "/api/reports/report-false", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -866,20 +1070,38 @@ export const useReportFalseSpot = (onSuccess) => {
       });
 
       if (!response.ok) {
-        const responseText = await response.text().catch(() => "");
-        const error = safeJsonParse(responseText);
-        throw new Error(
-          error?.message ||
-            error?.error ||
-            responseText ||
-            "Failed to report false spot",
+      const responseText = await response.text().catch(() => "");
+      const error = safeJsonParse(responseText);
+      console.log("[report.false] False-report response received", {
+        reportId,
+        requestUrl: reportFalseUrl || "/api/reports/report-false",
+        status: response.status,
+        ok: response.ok,
+        body: error || responseText || null,
+      });
+      throw new Error(
+        error?.message ||
+          error?.error ||
+          responseText ||
+          "Failed to report false spot",
         );
       }
       const responseText = await response.text().catch(() => "");
       const result = safeJsonParse(responseText) || {};
+      console.log("[report.false] False-report success payload", {
+        reportId,
+        requestUrl: reportFalseUrl || "/api/reports/report-false",
+        body: result,
+      });
       return { ...result, reportId, reportSnapshot };
     },
-    onSuccess: ({ reportId, reportSnapshot }) => {
+    onSuccess: ({
+      reportId,
+      reportSnapshot,
+      falseReportCount,
+      trustScoreThreshold,
+      trustScoreAffected,
+    }) => {
       if (reportSnapshot) {
         const activityEntry = {
           ...createActivityEntry({
@@ -897,16 +1119,76 @@ export const useReportFalseSpot = (onSuccess) => {
 
       removeLocalReport(reportId);
       removeReportFromNearbyQueries(queryClient, reportId);
+      const threshold = Number(trustScoreThreshold) || 3;
+      const count = Number(falseReportCount) || 0;
+      const remainingReports = Math.max(0, threshold - count);
+      const successMessage = trustScoreAffected
+        ? "Three users have now flagged this spot as false, so the reporter's trust score has been reduced."
+        : remainingReports === 1
+          ? "Thanks for helping keep the map accurate. One more false report on this spot will affect the reporter's trust score."
+          : `Thanks for helping keep the map accurate. ${remainingReports} more false reports on this spot are needed before the reporter's trust score changes.`;
       Alert.alert(
         "Report Submitted",
-        "Thank you for helping keep our data accurate. The reporter's trust score has been updated.",
+        successMessage,
       );
       queryClient.invalidateQueries({ queryKey: ["nearby_reports"] });
       queryClient.invalidateQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY });
       if (onSuccess) onSuccess();
     },
     onError: (error) => {
       Alert.alert("Error", error.message);
+    },
+  });
+};
+
+export const useDeleteReportSpot = (onSuccess) => {
+  const queryClient = useQueryClient();
+  const deleteReportUrl = resolveBackendUrl("/api/reports/delete");
+
+  return useMutation({
+    mutationFn: async (reportId) => {
+      if (!reportId) {
+        throw new Error("reportId is required");
+      }
+
+      const response = await fetch(deleteReportUrl || "/api/reports/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId,
+        }),
+      });
+
+      const responseText = await response.text().catch(() => "");
+      const responseJson = safeJsonParse(responseText);
+
+      if (!response.ok) {
+        throw new Error(
+          responseJson?.error ||
+            responseJson?.message ||
+            responseText ||
+            "Failed to delete report",
+        );
+      }
+
+      return responseJson || { success: true, reportId };
+    },
+    onSuccess: ({ reportId }) => {
+      removeLocalReport(reportId);
+      removeReportFromNearbyQueries(queryClient, reportId);
+      queryClient.invalidateQueries({ queryKey: ["nearby_reports"] });
+      queryClient.invalidateQueries({ queryKey: ["spots_count"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications_count"] });
+      queryClient.invalidateQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY });
+
+      if (onSuccess) {
+        onSuccess({ reportId });
+      }
+    },
+    onError: (error) => {
+      Alert.alert("Error", error?.message || "Failed to delete report");
     },
   });
 };

@@ -2,23 +2,34 @@ import { useEffect, useMemo, useRef } from "react";
 import { Redirect, Tabs, useRouter } from "expo-router";
 import { Bell, Clock, History, MapPin, Trophy, User } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 
 import { useLocation } from "@/hooks/useLocation";
 import { getDistanceMeters } from "@/utils/geo";
 import { useNearbyReports, useParkingZones } from "@/hooks/useParkingData";
-import { LOCAL_COUNCIL_PARKINGS } from "@/constants/localCouncilParkings";
 import {
   configureNotificationHandler,
   isExpoGo,
+  notificationsUnsupportedInCurrentRuntime,
   scheduleLocalAlertNotification,
 } from "@/lib/notifications";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAuthStore } from "@/utils/auth/store";
 import useUser from "@/utils/auth/useUser";
 import { BRAND_PALETTE } from "@/theme/brandColors";
-import { mergeDistinctZones } from "@/utils/zoneDeduplication";
+import { getDetectedZonePins } from "@/utils/parkingZonePins";
+import {
+  normalizeApiZoneAlert,
+  normalizeCouncilZoneAlert,
+} from "@/utils/zoneAlerts";
+import { PARKING_ALERT_RADIUS_METERS } from "@/constants/detectionRadius";
 import { useUnreadActivityCount } from "@/hooks/useActivityNotifications";
+import {
+  hydrateSystemUpdateNotificationState,
+  markSystemUpdatesNotified,
+  primeSystemUpdatesNotified,
+} from "@/utils/systemUpdateNotificationState";
+import { deriveSystemUpdateItems } from "@/utils/systemUpdates";
 import {
   addSentryBreadcrumb,
   captureError,
@@ -29,8 +40,7 @@ export const unstable_settings = {
   initialRouteName: "index",
 };
 
-const ALERT_RADIUS_METERS = 300;
-
+const ALERT_RADIUS_METERS = PARKING_ALERT_RADIUS_METERS;
 const isFiniteCoordinate = (value) => Number.isFinite(Number(value));
 const toNotificationString = (value, fallback = "") => {
   if (value == null) {
@@ -106,6 +116,50 @@ const buildAlertNotificationPayload = (alert, count) => {
   };
 };
 
+const buildSystemUpdateNotificationPayload = (item) => {
+  const zoneName = item?.zone_name || "Reported spot";
+  const parkingType = item?.parking_type || item?.zone_type || "Parking";
+  const quantity = Math.max(1, Number(item?.quantity) || 1);
+  const quantityLabel =
+    quantity > 1 ? `${quantity} ${parkingType} spots` : `${parkingType} spot`;
+  const falseReportCount = Math.max(1, Number(item?.false_report_count) || 1);
+  const trustThreshold = Math.max(1, Number(item?.trust_score_threshold) || 3);
+
+  if (item?.mailbox_type === "claimed") {
+    return {
+      title: "Your reported spot was claimed",
+      body: `${quantityLabel} in ${zoneName} was claimed. You earned +${Math.max(0, Number(item?.claim_points_awarded) || 10)} contribution points.`,
+    };
+  }
+
+  if (item?.mailbox_type === "expired") {
+    return {
+      title: "Your reported spot expired",
+      body: `${quantityLabel} in ${zoneName} expired without being claimed.`,
+    };
+  }
+
+  return {
+    title: "Your reported spot was flagged",
+    body:
+      falseReportCount >= trustThreshold
+        ? `${quantityLabel} in ${zoneName} was flagged as false by ${falseReportCount} drivers. Trust score impact has been applied.`
+        : `${quantityLabel} in ${zoneName} was flagged as false by ${falseReportCount} drivers.`,
+  };
+};
+
+const buildSystemUpdateNotificationData = (item) => ({
+  screen: "activity",
+  type: item?.mailbox_type || "system_update",
+  reportId: item?.report_id ? String(item.report_id) : "",
+  zone_name: item?.zone_name || "Reported spot",
+  zone_type: item?.zone_type || "",
+  parking_type: item?.parking_type || "",
+  quantity: Math.max(1, Number(item?.quantity) || 1),
+  latitude: item?.latitude != null ? String(item.latitude) : "",
+  longitude: item?.longitude != null ? String(item.longitude) : "",
+});
+
 function AuthenticatedTabLayout() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -117,26 +171,14 @@ function AuthenticatedTabLayout() {
   const alertedAlertIdsRef = useRef(new Set());
   const { reports: nearbySpots } = useNearbyReports(location, ALERT_RADIUS_METERS);
   const nearbyZones = useParkingZones(location, ALERT_RADIUS_METERS);
-  const validNearbyZones = useMemo(
+  const detectedZonePins = useMemo(
     () =>
-      nearbyZones.filter((zone) => {
-        const latitude = Number(zone?.center_lat);
-        const longitude = Number(zone?.center_lng);
-        return Number.isFinite(latitude) && Number.isFinite(longitude);
+      getDetectedZonePins({
+        apiZones: nearbyZones,
+        location,
+        radiusMeters: ALERT_RADIUS_METERS,
       }),
-    [nearbyZones],
-  );
-  const nearbyCouncilZones = useMemo(
-    () =>
-      LOCAL_COUNCIL_PARKINGS.filter((zone) => {
-        const distance = getDistanceMeters(location, {
-          latitude: zone.latitude,
-          longitude: zone.longitude,
-        });
-
-        return distance !== null && distance <= ALERT_RADIUS_METERS;
-      }),
-    [location?.latitude, location?.longitude],
+    [location, nearbyZones],
   );
   const normalizedReportAlerts = useMemo(
     () =>
@@ -148,44 +190,33 @@ function AuthenticatedTabLayout() {
     [nearbySpots],
   );
   const normalizedZoneAlerts = useMemo(() => {
-    const apiZoneAlerts = validNearbyZones.map((zone) => ({
-      id: `api-zone-${zone.id}`,
-      alertType: "zone",
-      zoneId: zone.id,
-      zone_name: zone.name || "Parking zone",
-      zone_type: zone.zone_type || "Parking",
-      capacity_spaces: zone.capacity_spaces ?? null,
-      rules_description: zone.rules_description || "",
-      distance_meters:
-        typeof zone.distance_meters === "number"
-          ? zone.distance_meters
-          : Number.parseFloat(zone.distance_meters) || 0,
-      center_lat: Number(zone.center_lat),
-      center_lng: Number(zone.center_lng),
-    }));
-    const councilZoneAlerts = nearbyCouncilZones.map((zone) => ({
-      id: `council-zone-${zone.id}`,
-      alertType: "zone",
-      zoneId: zone.id,
-      zone_name: zone.name || "Parking zone",
-      zone_type: zone.type || zone.zone_type || "Parking",
-      capacity_spaces: zone.capacity_spaces ?? zone.capacitySpaces ?? null,
-      rules_description: zone.rules || zone.rules_description || "",
-      distance_meters: getDistanceMeters(location, {
-        latitude: zone.latitude,
-        longitude: zone.longitude,
-      }),
-      center_lat: zone.latitude,
-      center_lng: zone.longitude,
-    }));
+    const apiZoneAlerts = detectedZonePins.apiZones
+      .map((zone) => normalizeApiZoneAlert(zone, location))
+      .filter(Boolean)
+      .map((zone) => ({
+        ...zone,
+        id: `api-zone-${zone.zoneId}`,
+      }));
+    const councilZoneAlerts = detectedZonePins.councilZones
+      .map((zone) =>
+        normalizeCouncilZoneAlert(zone, location, ALERT_RADIUS_METERS),
+      )
+      .filter(Boolean);
 
-    return mergeDistinctZones(apiZoneAlerts, councilZoneAlerts);
-  }, [location?.latitude, location?.longitude, nearbyCouncilZones, validNearbyZones]);
+    return [...apiZoneAlerts, ...councilZoneAlerts];
+  }, [detectedZonePins.councilZones, detectedZonePins.apiZones, location]);
   const alertsBadgeCount =
     normalizedReportAlerts.length + normalizedZoneAlerts.length;
-  const { unreadCount: unreadActivityCount } = useUnreadActivityCount(
+  const {
+    unreadCount: unreadActivityCount,
+    data: activityNotifications = [],
+  } = useUnreadActivityCount(
     100,
     Boolean(session?.access_token),
+  );
+  const systemUpdateItems = useMemo(
+    () => deriveSystemUpdateItems(activityNotifications),
+    [activityNotifications],
   );
 
   const getTabBadge = (count) => {
@@ -242,6 +273,16 @@ function AuthenticatedTabLayout() {
           zoneId: data.zoneId || null,
         }),
       });
+
+      if (
+        data.screen === "activity" ||
+        data.type === "report_claimed" ||
+        data.type === "false_reported" ||
+        data.type === "expired"
+      ) {
+        router.navigate("/activity");
+        return;
+      }
 
       if (
         data.zoneId &&
@@ -312,6 +353,76 @@ function AuthenticatedTabLayout() {
   });
 
   useEffect(() => {
+    let isActive = true;
+
+    if (!user?.id || systemUpdateItems.length === 0) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    (async () => {
+      const state = await hydrateSystemUpdateNotificationState(user.id);
+      if (!isActive) {
+        return;
+      }
+
+      if (!state.initialized) {
+        await primeSystemUpdatesNotified(user.id, systemUpdateItems);
+        return;
+      }
+
+      const unseenItems = systemUpdateItems.filter(
+        (item) => item?.id && !state.notifiedIds.has(String(item.id)),
+      );
+
+      if (unseenItems.length === 0) {
+        return;
+      }
+
+      const sortedUnseenItems = [...unseenItems].sort((a, b) => {
+        const aTime = new Date(a?.sent_at || a?.occurred_at || 0).getTime();
+        const bTime = new Date(b?.sent_at || b?.occurred_at || 0).getTime();
+        return aTime - bTime;
+      });
+
+      for (const item of sortedUnseenItems) {
+        const payload = buildSystemUpdateNotificationPayload(item);
+        const data = buildSystemUpdateNotificationData(item);
+
+        if (notificationsUnsupportedInCurrentRuntime) {
+          Alert.alert(payload.title, payload.body);
+          continue;
+        }
+
+        if (item?.mailbox_type === "claimed") {
+          continue;
+        }
+
+        await scheduleLocalAlertNotification({
+          title: payload.title,
+          body: payload.body,
+          data,
+        }).catch(() => {});
+      }
+
+      await markSystemUpdatesNotified(user.id, sortedUnseenItems);
+    })().catch((error) => {
+      captureError(error, {
+        handled: true,
+        level: "error",
+        tags: {
+          notifications_stage: "system_update_local_delivery",
+        },
+      });
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [systemUpdateItems, user?.id]);
+
+  useEffect(() => {
     if (isExpoGo) {
       addSentryBreadcrumb({
         category: "notifications.alert",
@@ -338,7 +449,7 @@ function AuthenticatedTabLayout() {
     const previousLocation = lastNearbyAlertLocationRef.current;
     const movedFar =
       previousLocation &&
-      getDistanceMeters(previousLocation, currentLocation) > 250;
+      getDistanceMeters(previousLocation, currentLocation) > ALERT_RADIUS_METERS;
 
     lastNearbyAlertLocationRef.current = currentLocation;
 

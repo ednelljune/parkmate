@@ -12,6 +12,7 @@ export function AnimatedParkMateLogo({
   style,
   playOnce = false,
   onAnimationComplete,
+  staticOnly = false,
 }) {
   const [hasWebViewError, setHasWebViewError] = useState(false);
   const completionRef = useRef(false);
@@ -22,10 +23,10 @@ export function AnimatedParkMateLogo({
 
   useEffect(() => {
     completionRef.current = false;
-  }, [onAnimationComplete, playOnce]);
+  }, [onAnimationComplete, playOnce, staticOnly]);
 
   useEffect(() => {
-    if (!onAnimationComplete || !playOnce || completionRef.current) {
+    if (!onAnimationComplete || !playOnce || staticOnly || completionRef.current) {
       return;
     }
 
@@ -38,27 +39,34 @@ export function AnimatedParkMateLogo({
     }, PARKMATE_LOGO_ANIMATION_DURATION_MS);
 
     return () => clearTimeout(timer);
-  }, [onAnimationComplete, playOnce]);
+  }, [onAnimationComplete, playOnce, staticOnly]);
 
   return (
     <View
       pointerEvents="none"
       style={[styles.container, { width: size, height: size }, style]}
     >
-      {hasWebViewError ? (
+      {staticOnly || hasWebViewError ? (
         <Image
           resizeMode="contain"
           source={LOGO_FALLBACK_SOURCE}
           style={styles.logo}
         />
       ) : (
-        <WebView
-          bounces={false}
-          onError={() => setHasWebViewError(true)}
-          scrollEnabled={false}
-          source={{ html: logoHtml }}
-          style={styles.webView}
-        />
+        <>
+          <Image
+            resizeMode="contain"
+            source={LOGO_FALLBACK_SOURCE}
+            style={styles.logo}
+          />
+          <WebView
+            bounces={false}
+            onError={() => setHasWebViewError(true)}
+            scrollEnabled={false}
+            source={{ html: logoHtml }}
+            style={styles.webView}
+          />
+        </>
       )}
     </View>
   );
@@ -76,8 +84,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   webView: {
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent',
   },
 });

@@ -1,4 +1,7 @@
-export const LOCAL_COUNCIL_PARKINGS = [
+import { mergeDistinctZones } from "@/utils/zoneDeduplication";
+import { RESEARCHED_PUBLIC_PARKING_ZONES } from "@/constants/researchedPublicParkingZones";
+
+const BASE_LOCAL_COUNCIL_PARKINGS = [
   {
     id: "burgundy-one-hour-south",
     name: "Burgundy Street One Hour South",
@@ -1093,3 +1096,8 @@ export const LOCAL_COUNCIL_PARKINGS = [
     rules: "All day parking",
   },
 ];
+
+export const LOCAL_COUNCIL_PARKINGS = mergeDistinctZones(
+  BASE_LOCAL_COUNCIL_PARKINGS,
+  RESEARCHED_PUBLIC_PARKING_ZONES,
+);

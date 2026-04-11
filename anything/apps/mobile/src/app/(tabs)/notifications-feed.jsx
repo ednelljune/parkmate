@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -11,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   BellRing,
@@ -22,6 +22,7 @@ import {
   Flag,
   MapPin,
   Trash2,
+  X,
 } from "lucide-react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,6 +31,7 @@ import { useActivityNotifications } from "@/hooks/useActivityNotifications";
 import { formatTimeAgo } from "@/utils/formatters";
 import { BRAND_PALETTE } from "@/theme/brandColors";
 import { useAuthStore } from "@/utils/auth/store";
+import { deriveSystemUpdateItems } from "@/utils/systemUpdates";
 import {
   getActivityLastViewedAt,
   getActivityReadStateVersion,
@@ -60,6 +62,22 @@ const ACTIVITY_META = {
     chipBackground: "#DDF8EC",
     chipText: "#047857",
   },
+  report_claimed: {
+    label: "System Update",
+    icon: BellRing,
+    accent: BRAND_PALETTE.gold,
+    soft: "#FFF7D6",
+    chipBackground: "#FFF0C2",
+    chipText: "#B45309",
+  },
+  expired: {
+    label: "Expired",
+    icon: Clock3,
+    accent: BRAND_PALETTE.accentBold,
+    soft: "#DFF5FF",
+    chipBackground: "#E0F2FE",
+    chipText: "#075985",
+  },
   false_reported: {
     label: "False Report",
     icon: Flag,
@@ -67,6 +85,36 @@ const ACTIVITY_META = {
     soft: "#FFF4DB",
     chipBackground: "#FFF0C2",
     chipText: "#B45309",
+  },
+};
+
+const MAILBOX_META = {
+  claimed: {
+    label: "Claimed",
+    icon: CheckCircle2,
+    accent: BRAND_PALETTE.success,
+    chipBackground: "#DDF8EC",
+    chipText: "#047857",
+    panel: "#F5FFFA",
+    border: "rgba(16, 185, 129, 0.18)",
+  },
+  expired: {
+    label: "Expired",
+    icon: Clock3,
+    accent: BRAND_PALETTE.accentBold,
+    chipBackground: "#E0F2FE",
+    chipText: "#075985",
+    panel: "#F7FBFF",
+    border: "rgba(2, 132, 199, 0.16)",
+  },
+  false_reported: {
+    label: "False Reported",
+    icon: Flag,
+    accent: BRAND_PALETTE.gold,
+    chipBackground: "#FFF0C2",
+    chipText: "#B45309",
+    panel: "#FFFBF2",
+    border: "rgba(245, 158, 11, 0.18)",
   },
 };
 
@@ -87,6 +135,18 @@ const getActivitySummary = (item) => {
     ACTIVITY_META[item.activity_type]?.label || ACTIVITY_META.reported.label;
   const zoneName = item.zone_name || "Unknown location";
 
+  if (item.activity_type === "report_claimed") {
+    return `Your reported ${getQuantityLabel(item)} at ${zoneName} was claimed`;
+  }
+
+  if (item.activity_type === "expired") {
+    return `Your reported ${getQuantityLabel(item)} at ${zoneName} expired`;
+  }
+
+  if (item.activity_type === "false_reported" && item?.is_system_update) {
+    return `Your reported ${getQuantityLabel(item)} at ${zoneName} was flagged as false`;
+  }
+
   return `${activityLabel} ${getQuantityLabel(item)} at ${zoneName}`;
 };
 
@@ -95,11 +155,62 @@ const getActivityDetail = (item) => {
     return "Claim completed";
   }
 
+  if (item.activity_type === "report_claimed") {
+    return "System update: you earned +10 contribution points";
+  }
+
+  if (item.activity_type === "expired") {
+    return "System update: this report expired before anyone claimed it";
+  }
+
   if (item.activity_type === "false_reported") {
+    if (item?.is_system_update) {
+      return item?.trust_score_affected
+        ? "System update: multiple drivers flagged this report and trust impact was applied"
+        : "System update: drivers flagged this report as false";
+    }
+
     return "Marked as false report";
   }
 
   return "Spot reported";
+};
+
+const getMailboxSummary = (item) => {
+  const zoneName = item?.zone_name || "Reported spot";
+  const quantityLabel = getQuantityLabel(item);
+
+  if (item?.mailbox_type === "claimed") {
+    return `${quantityLabel} at ${zoneName} was claimed`;
+  }
+
+  if (item?.mailbox_type === "expired") {
+    return `${quantityLabel} at ${zoneName} expired unclaimed`;
+  }
+
+  return `${quantityLabel} at ${zoneName} was flagged as false`;
+};
+
+const getMailboxDetail = (item) => {
+  if (item?.mailbox_type === "claimed") {
+    const points = Math.max(0, Number(item?.claim_points_awarded) || 0);
+    return points > 0
+      ? `Your reported spot was claimed. You earned +${points} contribution points.`
+      : "Your reported spot was claimed.";
+  }
+
+  if (item?.mailbox_type === "expired") {
+    return "This report expired before another driver claimed it.";
+  }
+
+  const falseReportCount = Math.max(1, Number(item?.false_report_count) || 1);
+  const threshold = Math.max(1, Number(item?.trust_score_threshold) || 3);
+
+  if (item?.trust_score_affected) {
+    return `Flagged ${falseReportCount} times. Trust score impact was triggered after the ${threshold}rd report.`;
+  }
+
+  return `Flagged ${falseReportCount} times. Trust score changes start once ${threshold} users flag the same spot.`;
 };
 
 const getHeaderStats = (notifications, viewedAt) => {
@@ -118,13 +229,45 @@ const getHeaderStats = (notifications, viewedAt) => {
   const falseCount = notifications.filter(
     (item) => item?.activity_type === "false_reported",
   ).length;
+  const systemUpdateCount = notifications.filter(
+    (item) => Boolean(item?.is_system_update),
+  ).length;
 
   return {
     unreadCount,
     reportedCount,
     claimedCount,
     falseCount,
+    systemUpdateCount,
   };
+};
+
+const getMailboxStats = (items, summary) => {
+  if (summary && typeof summary === "object") {
+    return {
+      total: Number(summary.total) || 0,
+      claimed: Number(summary.claimed) || 0,
+      expired: Number(summary.expired) || 0,
+      falseReported: Number(summary.falseReported) || 0,
+    };
+  }
+
+  return (items || []).reduce(
+    (accumulator, item) => {
+      accumulator.total += 1;
+
+      if (item?.mailbox_type === "claimed") {
+        accumulator.claimed += 1;
+      } else if (item?.mailbox_type === "expired") {
+        accumulator.expired += 1;
+      } else if (item?.mailbox_type === "false_reported") {
+        accumulator.falseReported += 1;
+      }
+
+      return accumulator;
+    },
+    { total: 0, claimed: 0, expired: 0, falseReported: 0 },
+  );
 };
 
 function StatChip({ label, value, accent, tone = "light" }) {
@@ -197,6 +340,45 @@ function HeaderTextButton({ label, onPress, disabled = false }) {
       ]}
     >
       <Text style={styles.headerTextButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function MailboxCard({ summary, lastItem, loading, onPress }) {
+  const hasItems = (summary?.total || 0) > 0;
+  const isInitialLoading = loading && !hasItems;
+  const helperText = loading
+    ? "Syncing"
+    : hasItems
+      ? getMailboxSummary(lastItem || {})
+      : "Tap to view";
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.mailboxCard,
+        pressed && styles.mailboxCardPressed,
+      ]}
+    >
+      <View style={styles.mailboxStatAccent} />
+      <View style={styles.mailboxCompactHeader}>
+        <BellRing size={14} color={BRAND_PALETTE.gold} />
+        <Text style={styles.mailboxCompactEyebrow}>Updates</Text>
+      </View>
+
+      <Text style={styles.mailboxCompactValue}>
+        {isInitialLoading ? "..." : summary?.total || 0}
+      </Text>
+      <Text style={styles.mailboxCompactLabel}>
+        {hasItems ? "System updates" : "Updates"}
+      </Text>
+      <View style={styles.mailboxCompactFooter}>
+        <Text style={styles.mailboxCompactHelper} numberOfLines={2}>
+          {helperText}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -405,14 +587,197 @@ const ActivityRow = React.memo(function ActivityRow({
   );
 });
 
+const MailboxItemRow = React.memo(function MailboxItemRow({ item }) {
+  const meta = MAILBOX_META[item.mailbox_type] || MAILBOX_META.false_reported;
+  const Icon = meta.icon;
+  const quantityLabel = getQuantityLabel(item);
+  const falseReportCount = Math.max(0, Number(item?.false_report_count) || 0);
+  const claimPoints = Math.max(0, Number(item?.claim_points_awarded) || 0);
+
+  return (
+    <View
+      style={[
+        styles.mailboxItemCard,
+        {
+          backgroundColor: meta.panel,
+          borderColor: meta.border,
+        },
+      ]}
+    >
+      <View style={styles.mailboxItemHeader}>
+        <View style={styles.mailboxItemLead}>
+          <View
+            style={[
+              styles.mailboxItemIconWrap,
+              { backgroundColor: meta.accent },
+            ]}
+          >
+            <Icon size={16} color="#FFFFFF" />
+          </View>
+          <View style={styles.mailboxItemHeaderText}>
+            <View
+              style={[
+                styles.activityChip,
+                { backgroundColor: meta.chipBackground },
+              ]}
+            >
+              <Text style={[styles.activityChipText, { color: meta.chipText }]}>
+                {meta.label}
+              </Text>
+            </View>
+            <Text style={styles.mailboxItemTitle}>{getMailboxSummary(item)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.mailboxItemTimeWrap}>
+          <Clock3 size={13} color={BRAND_PALETTE.muted} />
+          <Text style={styles.activityTime}>{formatTimeAgo(item.sent_at)}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.mailboxItemDetail}>{getMailboxDetail(item)}</Text>
+
+      <View style={styles.mailboxPillRow}>
+        <View style={styles.metaPill}>
+          <Text style={styles.metaPillText}>{quantityLabel}</Text>
+        </View>
+        <View style={styles.metaPill}>
+          <Text style={styles.metaPillText}>{item.zone_name || "Reported spot"}</Text>
+        </View>
+        {item.mailbox_type === "claimed" && claimPoints > 0 ? (
+          <View style={[styles.metaPill, styles.mailboxAccentPill]}>
+            <Text style={styles.mailboxAccentPillText}>+{claimPoints} pts</Text>
+          </View>
+        ) : null}
+        {item.mailbox_type === "expired" ? (
+          <View style={[styles.metaPill, styles.mailboxNeutralPill]}>
+            <Text style={styles.mailboxNeutralPillText}>No claim landed</Text>
+          </View>
+        ) : null}
+        {item.mailbox_type === "false_reported" ? (
+          <View style={[styles.metaPill, styles.mailboxWarningPill]}>
+            <Text style={styles.mailboxWarningPillText}>
+              {falseReportCount} false {falseReportCount === 1 ? "report" : "reports"}
+            </Text>
+          </View>
+        ) : null}
+        {item.mailbox_type === "false_reported" && item.trust_score_affected ? (
+          <View style={[styles.metaPill, styles.mailboxWarningPillStrong]}>
+            <Text style={styles.mailboxWarningPillStrongText}>Trust impacted</Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+});
+
+function MailboxModal({
+  visible,
+  onClose,
+  items,
+  summary,
+  loading,
+  onRefresh,
+  insets,
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.mailboxModalBackdrop}>
+        <Pressable style={styles.mailboxModalBackdropPressable} onPress={onClose} />
+
+        <View
+          style={[
+            styles.mailboxModalSheet,
+            { paddingBottom: Math.max(insets.bottom, 16) },
+          ]}
+        >
+          <View style={styles.mailboxModalHandle} />
+
+          <View style={styles.mailboxModalHeader}>
+            <View style={styles.mailboxModalHeaderCopy}>
+              <Text style={styles.mailboxModalEyebrow}>System updates</Text>
+              <Text style={styles.mailboxModalTitle}>Reported spot updates</Text>
+              <Text style={styles.mailboxModalSubtitle}>
+                Claims, expiries, and false reports for your spots are grouped here.
+              </Text>
+            </View>
+            <Pressable onPress={onClose} style={styles.mailboxCloseButton}>
+              <X size={18} color={BRAND_PALETTE.deepNavy} />
+            </Pressable>
+          </View>
+
+          <View style={styles.mailboxSummaryRow}>
+            <View style={styles.mailboxSummaryChip}>
+              <Text style={styles.mailboxSummaryValue}>{summary?.claimed || 0}</Text>
+              <Text style={styles.mailboxSummaryLabel}>Claimed</Text>
+            </View>
+            <View style={styles.mailboxSummaryChip}>
+              <Text style={styles.mailboxSummaryValue}>{summary?.expired || 0}</Text>
+              <Text style={styles.mailboxSummaryLabel}>Expired</Text>
+            </View>
+            <View style={styles.mailboxSummaryChip}>
+              <Text style={styles.mailboxSummaryValue}>{summary?.falseReported || 0}</Text>
+              <Text style={styles.mailboxSummaryLabel}>False</Text>
+            </View>
+          </View>
+
+          {loading && items.length === 0 ? (
+            <View style={styles.mailboxStateWrap}>
+              <ActivityIndicator size="large" color={BRAND_PALETTE.accentBold} />
+              <Text style={styles.mailboxStateTitle}>Loading updates</Text>
+              <Text style={styles.mailboxStateText}>
+                Pulling the latest status changes from your reported spots.
+              </Text>
+            </View>
+          ) : items.length === 0 ? (
+            <View style={styles.mailboxStateWrap}>
+              <BellRing size={28} color={BRAND_PALETTE.accentBold} />
+              <Text style={styles.mailboxStateTitle}>No system updates yet</Text>
+              <Text style={styles.mailboxStateText}>
+                When one of your reports changes status, it
+                will appear here.
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={items}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => <MailboxItemRow item={item} />}
+              contentContainerStyle={styles.mailboxListContent}
+              ItemSeparatorComponent={() => <View style={styles.mailboxListSeparator} />}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={loading}
+                  onRefresh={onRefresh}
+                  tintColor={BRAND_PALETTE.accentBold}
+                />
+              }
+            />
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const ListHeader = React.memo(function ListHeader({
   notifications,
   viewedAt,
+  mailboxItems,
+  mailboxSummary,
+  mailboxLoading,
   isEditing,
   onStartEditing,
   onCancelEditing,
   onMarkSelectedRead,
   onDeleteSelected,
+  onOpenMailbox,
   readDisabled,
   deleteDisabled,
   actionBusy,
@@ -423,6 +788,11 @@ const ListHeader = React.memo(function ListHeader({
   );
 
   const lastActivity = notifications[0];
+  const mailboxStats = React.useMemo(
+    () => getMailboxStats(mailboxItems, mailboxSummary),
+    [mailboxItems, mailboxSummary],
+  );
+  const latestMailboxItem = mailboxItems[0] || null;
 
   return (
     <View style={styles.listHeaderWrap}>
@@ -473,10 +843,11 @@ const ListHeader = React.memo(function ListHeader({
       </LinearGradient>
 
       <View style={styles.insightRow}>
-        <StatChip
-          label="False Reports"
-          value={stats.falseCount}
-          accent={BRAND_PALETTE.gold}
+        <MailboxCard
+          summary={mailboxStats}
+          lastItem={latestMailboxItem}
+          loading={mailboxLoading}
+          onPress={onOpenMailbox}
         />
         <View style={styles.insightCard}>
           <Text style={styles.insightEyebrow}>Latest activity</Text>
@@ -597,6 +968,7 @@ export default function NotificationsScreen() {
   const [isEditing, setIsEditing] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState([]);
   const [actionBusy, setActionBusy] = React.useState(false);
+  const [isMailboxVisible, setIsMailboxVisible] = React.useState(false);
   const activityReadStateVersion = React.useSyncExternalStore(
     subscribeToActivityReadState,
     getActivityReadStateVersion,
@@ -609,17 +981,22 @@ export default function NotificationsScreen() {
     error,
     refetch,
     isRefetching,
-  } = useActivityNotifications(100, Boolean(session?.access_token));
-
+    refetchActivityVersion,
+  } = useActivityNotifications(100, Boolean(session?.access_token), {
+    refetchIntervalMs: false,
+    refetchOnMount: false,
+    staleTimeMs: Infinity,
+  });
   React.useEffect(() => {
     hydrateActivityReadState().catch(() => {});
   }, []);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      refetch();
-    }, [refetch]),
-  );
+  const handleRefresh = React.useCallback(async () => {
+    await Promise.allSettled([
+      refetch(),
+      refetchActivityVersion?.(),
+    ]);
+  }, [refetch, refetchActivityVersion]);
 
   const viewedAt = React.useMemo(
     () => getActivityLastViewedAt(),
@@ -639,8 +1016,48 @@ export default function NotificationsScreen() {
       selectedNotifications.filter((item) => isActivityNotificationUnread(item, viewedAt)),
     [selectedNotifications, viewedAt],
   );
-  const readDisabled = selectedUnreadNotifications.length === 0;
+  const selectedReadNotifications = React.useMemo(
+    () =>
+      selectedNotifications.filter((item) => !isActivityNotificationUnread(item, viewedAt)),
+    [selectedNotifications, viewedAt],
+  );
+  const unreadNotifications = React.useMemo(
+    () => notifications.filter((item) => isActivityNotificationUnread(item, viewedAt)),
+    [notifications, viewedAt],
+  );
+  const hasSelection = selectedIds.length > 0;
+  const readActionMode = hasSelection
+    ? selectedUnreadNotifications.length > 0
+      ? "read"
+      : selectedReadNotifications.length > 0
+        ? "unread"
+        : null
+    : unreadNotifications.length > 0
+      ? "read"
+      : null;
+  const readTargets =
+    readActionMode === "read"
+      ? hasSelection
+        ? selectedUnreadNotifications
+        : unreadNotifications
+      : readActionMode === "unread"
+        ? selectedReadNotifications
+        : [];
+  const readDisabled = readTargets.length === 0;
   const deleteDisabled = selectedNotifications.length === 0;
+  const readTargetIds = React.useMemo(
+    () => readTargets.map((item) => String(item?.id || "")).filter(Boolean),
+    [readTargets],
+  );
+  const systemUpdateItems = React.useMemo(
+    () => deriveSystemUpdateItems(notifications),
+    [notifications],
+  );
+  const systemUpdateSummary = React.useMemo(
+    () => getMailboxStats(systemUpdateItems, null),
+    [systemUpdateItems],
+  );
+  const systemUpdatesLoading = (isLoading || isRefetching) && systemUpdateItems.length === 0;
 
   React.useEffect(() => {
     const visibleIds = new Set(notifications.map((item) => String(item.id)));
@@ -656,9 +1073,9 @@ export default function NotificationsScreen() {
       return;
     }
 
-    setSelectedIds([]);
+    setSelectedIds(unreadNotifications.map((item) => String(item?.id || "")).filter(Boolean));
     setIsEditing(true);
-  }, [notifications.length]);
+  }, [notifications.length, unreadNotifications]);
 
   const handleCancelEditing = React.useCallback(() => {
     setSelectedIds([]);
@@ -679,21 +1096,33 @@ export default function NotificationsScreen() {
   }, []);
 
   const handleMarkSelectedRead = React.useCallback(async () => {
-    if (selectedUnreadNotifications.length === 0) {
+    if (readTargets.length === 0) {
       return;
     }
 
     setActionBusy(true);
 
     try {
-      await markAllActivityNotificationsRead(selectedUnreadNotifications);
-      setSelectedIds([]);
+      if (!hasSelection) {
+        setSelectedIds(readTargetIds);
+      }
+
+      if (readActionMode === "unread") {
+        await Promise.all(readTargets.map((item) => markActivityNotificationUnread(item)));
+      } else {
+        await markAllActivityNotificationsRead(readTargets);
+      }
+
+      if (hasSelection) {
+        setSelectedIds([]);
+        setIsEditing(false);
+      }
     } catch {
-      Alert.alert("Unable to mark selected read", "Please try again.");
+      Alert.alert("Unable to update activity state", "Please try again.");
     } finally {
       setActionBusy(false);
     }
-  }, [selectedUnreadNotifications]);
+  }, [hasSelection, readActionMode, readTargetIds, readTargets]);
 
   const handleDeleteSelectedConfirmed = React.useCallback(async () => {
     setActionBusy(true);
@@ -749,11 +1178,20 @@ export default function NotificationsScreen() {
   }
 
   if (isError && notifications.length === 0) {
-    return <ErrorState error={error} onRetry={() => refetch()} />;
+    return <ErrorState error={error} onRetry={() => handleRefresh()} />;
   }
 
   return (
     <View style={styles.screen}>
+      <MailboxModal
+        visible={isMailboxVisible}
+        onClose={() => setIsMailboxVisible(false)}
+        items={systemUpdateItems}
+        summary={systemUpdateSummary}
+        loading={systemUpdatesLoading}
+        onRefresh={handleRefresh}
+        insets={insets}
+      />
       <FlatList
         data={notifications}
         keyExtractor={(item) => String(item.id)}
@@ -765,8 +1203,8 @@ export default function NotificationsScreen() {
         ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
         refreshControl={
           <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
+            refreshing={isRefetching || systemUpdatesLoading}
+            onRefresh={handleRefresh}
             tintColor={BRAND_PALETTE.accentBold}
           />
         }
@@ -774,11 +1212,15 @@ export default function NotificationsScreen() {
           <ListHeader
             notifications={notifications}
             viewedAt={viewedAt}
+            mailboxItems={systemUpdateItems}
+            mailboxSummary={systemUpdateSummary}
+            mailboxLoading={systemUpdatesLoading}
             isEditing={isEditing}
             onStartEditing={handleStartEditing}
             onCancelEditing={handleCancelEditing}
             onMarkSelectedRead={handleMarkSelectedRead}
             onDeleteSelected={handleDeleteSelected}
+            onOpenMailbox={() => setIsMailboxVisible(true)}
             readDisabled={readDisabled}
             deleteDisabled={deleteDisabled}
             actionBusy={actionBusy}
@@ -903,6 +1345,60 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     alignItems: "stretch",
+  },
+  mailboxCard: {
+    flex: 0.9,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.22)",
+    justifyContent: "space-between",
+  },
+  mailboxCardPressed: {
+    transform: [{ scale: 0.985 }],
+  },
+  mailboxStatAccent: {
+    width: 24,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: BRAND_PALETTE.gold,
+    marginBottom: 6,
+  },
+  mailboxCompactHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  mailboxCompactEyebrow: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: BRAND_PALETTE.gold,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  mailboxCompactValue: {
+    marginTop: 4,
+    fontSize: 22,
+    lineHeight: 25,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+  },
+  mailboxCompactLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: "700",
+    color: BRAND_PALETTE.muted,
+  },
+  mailboxCompactFooter: {
+    marginTop: 6,
+  },
+  mailboxCompactHelper: {
+    fontSize: 10,
+    lineHeight: 13,
+    color: BRAND_PALETTE.accentBold,
+    fontWeight: "800",
   },
   insightCard: {
     flex: 1.45,
@@ -1188,6 +1684,215 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     color: BRAND_PALETTE.muted,
+  },
+  mailboxModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(8, 32, 50, 0.48)",
+    justifyContent: "flex-end",
+  },
+  mailboxModalBackdropPressable: {
+    flex: 1,
+  },
+  mailboxModalSheet: {
+    maxHeight: "84%",
+    backgroundColor: "#F8FBFF",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 10,
+    paddingHorizontal: 16,
+  },
+  mailboxModalHandle: {
+    alignSelf: "center",
+    width: 54,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "#C7D7E6",
+    marginBottom: 12,
+  },
+  mailboxModalHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  mailboxModalHeaderCopy: {
+    flex: 1,
+  },
+  mailboxModalEyebrow: {
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
+    color: BRAND_PALETTE.gold,
+  },
+  mailboxModalTitle: {
+    marginTop: 6,
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+  },
+  mailboxModalSubtitle: {
+    marginTop: 5,
+    fontSize: 13,
+    lineHeight: 19,
+    color: BRAND_PALETTE.muted,
+    maxWidth: "92%",
+  },
+  mailboxCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#D9E6F2",
+  },
+  mailboxSummaryRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 14,
+  },
+  mailboxSummaryChip: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#DCEAF5",
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  mailboxSummaryValue: {
+    fontSize: 20,
+    lineHeight: 23,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+  },
+  mailboxSummaryLabel: {
+    marginTop: 3,
+    fontSize: 11,
+    fontWeight: "800",
+    color: BRAND_PALETTE.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.45,
+  },
+  mailboxListContent: {
+    paddingBottom: 12,
+  },
+  mailboxListSeparator: {
+    height: 10,
+  },
+  mailboxStateWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 42,
+    gap: 10,
+  },
+  mailboxStateTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+    textAlign: "center",
+  },
+  mailboxStateText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: BRAND_PALETTE.muted,
+    textAlign: "center",
+    maxWidth: 280,
+  },
+  mailboxItemCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 13,
+    paddingVertical: 13,
+  },
+  mailboxItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  mailboxItemLead: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  mailboxItemIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  mailboxItemHeaderText: {
+    flex: 1,
+    gap: 6,
+  },
+  mailboxItemTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+  },
+  mailboxItemTimeWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 2,
+  },
+  mailboxItemDetail: {
+    marginTop: 10,
+    fontSize: 13,
+    lineHeight: 19,
+    color: BRAND_PALETTE.muted,
+  },
+  mailboxPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 12,
+  },
+  mailboxAccentPill: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#86EFAC",
+  },
+  mailboxAccentPillText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#047857",
+  },
+  mailboxNeutralPill: {
+    backgroundColor: "#EFF6FF",
+    borderColor: "#BFDBFE",
+  },
+  mailboxNeutralPillText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#1D4ED8",
+  },
+  mailboxWarningPill: {
+    backgroundColor: "#FFF7D6",
+    borderColor: "#FCD34D",
+  },
+  mailboxWarningPillText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#B45309",
+  },
+  mailboxWarningPillStrong: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#FCA5A5",
+  },
+  mailboxWarningPillStrongText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#B91C1C",
   },
   stateScreen: {
     flex: 1,

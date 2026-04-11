@@ -45,6 +45,7 @@ export const MapBrandingBadge = ({ insets, topOffset = 0, location }) => {
       >
         <AnimatedParkMateLogo
           size={42}
+          staticOnly
           style={{
             width: 42,
             height: 42,

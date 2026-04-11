@@ -1,7 +1,7 @@
 import { useAuth } from '@/utils/auth/useAuth';
 import { AnimatedParkMateLogo } from '@/components/AnimatedParkMateLogo';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -84,12 +84,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView onLayout={hideNativeSplash} style={{ flex: 1 }}>
         <StatusBar style="dark" animated />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="accounts/login" />
-          <Stack.Screen name="accounts/signup" />
-          <Stack.Screen name="auth/callback" />
-        </Stack>
+        <Slot />
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

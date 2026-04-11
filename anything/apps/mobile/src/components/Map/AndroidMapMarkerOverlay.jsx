@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 const DEFAULT_FRAME = { width: 52, height: 62 };
 const DEFAULT_ANCHOR = { x: 0.5, y: 1 };
 const MARKER_PROJECTION_BATCH_SIZE = 48;
+const OFFSCREEN_BUFFER_PX = 120;
 
 const normalizePoint = (point) => {
   if (!point) return null;
@@ -16,6 +17,70 @@ const normalizePoint = (point) => {
   }
 
   return { x, y };
+};
+
+const normalizeRegion = (region) => {
+  if (!region) return null;
+
+  const latitude = Number(region.latitude);
+  const longitude = Number(region.longitude);
+  const latitudeDelta = Number(region.latitudeDelta);
+  const longitudeDelta = Number(region.longitudeDelta);
+
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    !Number.isFinite(latitudeDelta) ||
+    !Number.isFinite(longitudeDelta) ||
+    latitudeDelta <= 0 ||
+    longitudeDelta <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    latitude,
+    longitude,
+    latitudeDelta,
+    longitudeDelta,
+  };
+};
+
+const getInterpolatedPoint = ({
+  point,
+  projectedRegion,
+  currentRegion,
+  layout,
+}) => {
+  const normalizedPoint = normalizePoint(point);
+  const baseRegion = normalizeRegion(projectedRegion);
+  const nextRegion = normalizeRegion(currentRegion);
+
+  if (
+    !normalizedPoint ||
+    !baseRegion ||
+    !nextRegion ||
+    layout.width <= 0 ||
+    layout.height <= 0
+  ) {
+    return normalizedPoint;
+  }
+
+  const centerX = layout.width / 2;
+  const centerY = layout.height / 2;
+  const scaleX = baseRegion.longitudeDelta / nextRegion.longitudeDelta;
+  const scaleY = baseRegion.latitudeDelta / nextRegion.latitudeDelta;
+  const translateX =
+    (layout.width * (baseRegion.longitude - nextRegion.longitude)) /
+    nextRegion.longitudeDelta;
+  const translateY =
+    (layout.height * (nextRegion.latitude - baseRegion.latitude)) /
+    nextRegion.latitudeDelta;
+
+  return {
+    x: centerX + (normalizedPoint.x - centerX) * scaleX + translateX,
+    y: centerY + (normalizedPoint.y - centerY) * scaleY + translateY,
+  };
 };
 
 const projectMarkers = async (map, markers) => {
@@ -65,13 +130,16 @@ export const AndroidMapMarkerOverlay = ({
   mapRef,
   markers,
   revision,
+  region,
 }) => {
   const [layout, setLayout] = useState({ width: 0, height: 0 });
   const [resolvedMarkers, setResolvedMarkers] = useState([]);
+  const [projectedRegion, setProjectedRegion] = useState(null);
   const latestInputsRef = useRef({
     markers,
     width: 0,
     height: 0,
+    region: normalizeRegion(region),
   });
   const resolutionStateRef = useRef({
     mounted: true,
@@ -84,8 +152,9 @@ export const AndroidMapMarkerOverlay = ({
       markers,
       width: layout.width,
       height: layout.height,
+      region: normalizeRegion(region),
     };
-  }, [layout.height, layout.width, markers, revision]);
+  }, [layout.height, layout.width, markers, region, revision]);
 
   useEffect(() => {
     return () => {
@@ -118,6 +187,7 @@ export const AndroidMapMarkerOverlay = ({
           ) {
             if (resolutionState.mounted && !resolutionState.pending) {
               setResolvedMarkers([]);
+              setProjectedRegion(null);
             }
             continue;
           }
@@ -129,6 +199,7 @@ export const AndroidMapMarkerOverlay = ({
 
           if (resolutionState.mounted && !resolutionState.pending) {
             setResolvedMarkers(projectedMarkers);
+            setProjectedRegion(latestInputs.region);
           }
         } while (resolutionState.pending && resolutionState.mounted);
       } finally {
@@ -155,17 +226,27 @@ export const AndroidMapMarkerOverlay = ({
       }}
     >
       {resolvedMarkers.map((marker) => {
+        const point = getInterpolatedPoint({
+          point: marker.point,
+          projectedRegion,
+          currentRegion: region,
+          layout,
+        });
+        if (!point) {
+          return null;
+        }
+
         const frame = marker.frame || DEFAULT_FRAME;
         const anchor = marker.anchor || DEFAULT_ANCHOR;
-        const left = marker.point.x - frame.width * anchor.x;
-        const top = marker.point.y - frame.height * anchor.y;
+        const left = point.x - frame.width * anchor.x;
+        const top = point.y - frame.height * anchor.y;
         const right = left + frame.width;
         const bottom = top + frame.height;
         const isVisible =
-          right >= -24 &&
-          left <= layout.width + 24 &&
-          bottom >= -24 &&
-          top <= layout.height + 24;
+          right >= -OFFSCREEN_BUFFER_PX &&
+          left <= layout.width + OFFSCREEN_BUFFER_PX &&
+          bottom >= -OFFSCREEN_BUFFER_PX &&
+          top <= layout.height + OFFSCREEN_BUFFER_PX;
 
         if (!isVisible) {
           return null;

@@ -2,15 +2,13 @@ diff --git a/node_modules/expo-router/build/getLinkingConfig.js b/node_modules/e
 index 2a0ee73..302afc0 100644
 --- a/node_modules/expo-router/build/getLinkingConfig.js
 +++ b/node_modules/expo-router/build/getLinkingConfig.js
-@@ -7,6 +7,7 @@ const constants_1 = require("./constants");
+@@ -8,4 +8,5 @@ const constants_1 = require("./constants");
  const getReactNavigationConfig_1 = require("./getReactNavigationConfig");
  const getRoutesRedirects_1 = require("./getRoutesRedirects");
  const linking_1 = require("./link/linking");
 +const isAnythingApp = expo_modules_core_1.Platform.OS === 'ios' && !globalThis.expo?.modules?.ExpoGo;
  function getNavigationConfig(routes, metaOnly, { sitemap, notFound }) {
-     const config = (0, getReactNavigationConfig_1.getReactNavigationConfig)(routes, metaOnly);
-     const sitemapRoute = (() => {
-@@ -61,7 +62,10 @@ function getLinkingConfig(routes, context, getRouteInfo, { metaOnly = true, serv
+@@ -62,5 +63,8 @@ function getLinkingConfig(routes, context, getRouteInfo, { metaOnly = true, serv
              // Expo Router calls `getInitialURL` twice, which may confuse the user if they provide a custom `getInitialURL`.
              // Therefor we memoize the result.
              if (!hasCachedInitialUrl) {
@@ -20,22 +18,17 @@ index 2a0ee73..302afc0 100644
 +                }
 +                else if (expo_modules_core_1.Platform.OS === 'web') {
                      initialUrl = serverUrl ?? (0, linking_1.getInitialURL)();
-                 }
-                 else {
 diff --git a/node_modules/expo-router/build/link/linking.js b/node_modules/expo-router/build/link/linking.js
 index b9535b5..ec99c96 100644
 --- a/node_modules/expo-router/build/link/linking.js
 +++ b/node_modules/expo-router/build/link/linking.js
-@@ -46,6 +46,7 @@ Object.defineProperty(exports, "getStateFromPath", { enumerable: true, get: func
+@@ -47,4 +47,5 @@ Object.defineProperty(exports, "getStateFromPath", { enumerable: true, get: func
  const useLinking_1 = require("../fork/useLinking");
  const getRoutesRedirects_1 = require("../getRoutesRedirects");
  const isExpoGo = typeof expo !== 'undefined' && globalThis.expo?.modules?.ExpoGo;
 +const isAnythingApp = react_native_1.Platform.OS === 'ios' && !globalThis.expo?.modules?.ExpoGo;
  // A custom getInitialURL is used on native to ensure the app always starts at
- // the root path if it's launched from something other than a deep link.
- // This helps keep the native functionality working like the web functionality.
-@@ -124,7 +125,11 @@ function subscribe(nativeLinking, redirects) {
-                 }
+@@ -126,7 +127,11 @@ function subscribe(nativeLinking, redirects) {
              };
          }
 -        const subscription = Linking.addEventListener('url', callback);
@@ -47,3 +40,27 @@ index b9535b5..ec99c96 100644
          return () => {
              // https://github.com/facebook/react-native/commit/6d1aca806cee86ad76de771ed3a1cc62982ebcd7
              subscription?.remove?.();
+             legacySubscription?.();
+diff --git a/node_modules/expo-router/build/fork/useLinking.native.js b/node_modules/expo-router/build/fork/useLinking.native.js
+index 95ec69e..fbecae0 100644
+--- a/node_modules/expo-router/build/fork/useLinking.native.js
++++ b/node_modules/expo-router/build/fork/useLinking.native.js
+@@ -65,18 +65,6 @@ function useLinking(ref, { enabled = true, prefixes, filter, config, getInitialU
+         if (independent) {
+             return undefined;
+         }
+-        if (enabled !== false && linkingHandlers.length) {
+-            console.error([
+-                'Looks like you have configured linking in multiple places. This is likely an error since deep links should only be handled in one place to avoid conflicts. Make sure that:',
+-                "- You don't have multiple NavigationContainers in the app each with 'linking' enabled",
+-                '- Only a single instance of the root component is rendered',
+-                react_native_1.Platform.OS === 'android'
+-                    ? "- You have set 'android:launchMode=singleTask' in the '<activity />' section of the 'AndroidManifest.xml' file to avoid launching multiple instances"
+-                    : '',
+-            ]
+-                .join('\n')
+-                .trim());
+-        }
+         const handler = Symbol();
+         if (enabled !== false) {
+             linkingHandlers.push(handler);

@@ -25,14 +25,24 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLocation } from "@/hooks/useLocation";
-import { useNearbyReports, useParkingZones } from "@/hooks/useParkingData";
-import { LOCAL_COUNCIL_PARKINGS } from "@/constants/localCouncilParkings";
-import { getDistanceMeters } from "@/utils/geo";
+import {
+  useNearbyReports,
+  useNearbyReportsBackendVersion,
+  useParkingZones,
+} from "@/hooks/useParkingData";
 import { formatDistance, formatTimeAgo } from "@/utils/formatters";
-import { mergeDistinctZones } from "@/utils/zoneDeduplication";
+import { getDetectedZonePins } from "@/utils/parkingZonePins";
+import {
+  normalizeApiZoneAlert,
+  normalizeCouncilZoneAlert,
+} from "@/utils/zoneAlerts";
+import {
+  PARKING_ALERT_RADIUS_LABEL,
+  PARKING_ALERT_RADIUS_METERS,
+} from "@/constants/detectionRadius";
 import { BRAND_PALETTE } from "@/theme/brandColors";
 
-const ALERT_RADIUS_METERS = 300;
+const ALERT_RADIUS_METERS = PARKING_ALERT_RADIUS_METERS;
 const ALERT_TABS = [
   { id: "all", label: "All" },
   { id: "reports", label: "Reports" },
@@ -155,62 +165,6 @@ const formatTimeRemaining = (diffMs) => {
   return `${hours}h ${remainingMinutes}m left`;
 };
 
-const normalizeZoneAlert = (zone) => {
-  const latitude = Number(zone?.center_lat);
-  const longitude = Number(zone?.center_lng);
-
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return null;
-  }
-
-  return {
-    id: `zone-${zone.id}`,
-    alertType: "zone",
-    zoneId: zone.id,
-    zone_name: zone.name || "Parking zone",
-    zone_type: zone.zone_type || "Parking",
-    capacity_spaces: zone.capacity_spaces ?? null,
-    rules_description: zone.rules_description,
-    distance_meters:
-      typeof zone.distance_meters === "number"
-        ? zone.distance_meters
-        : Number.parseFloat(zone.distance_meters) || 0,
-    center_lat: latitude,
-    center_lng: longitude,
-  };
-};
-
-const normalizeCouncilZoneAlert = (zone, location) => {
-  if (!location) return null;
-
-  const center = {
-    latitude: Number(zone?.latitude),
-    longitude: Number(zone?.longitude),
-  };
-
-  if (!Number.isFinite(center.latitude) || !Number.isFinite(center.longitude)) {
-    return null;
-  }
-
-  const distance = getDistanceMeters(location, center);
-  if (distance === null || distance > ALERT_RADIUS_METERS) {
-    return null;
-  }
-
-  return {
-    id: `council-zone-${zone.id}`,
-    alertType: "zone",
-    zoneId: zone.id,
-    zone_name: zone.name || "Parking zone",
-    zone_type: zone.type || zone.zone_type || "Parking",
-    capacity_spaces: zone.capacity_spaces ?? zone.capacitySpaces ?? null,
-    rules_description: zone.rules || zone.rules_description || "",
-    distance_meters: distance,
-    center_lat: center.latitude,
-    center_lng: center.longitude,
-  };
-};
-
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -219,6 +173,7 @@ export default function NotificationsScreen() {
   const [selectedTab, setSelectedTab] = useState("all");
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
   const isCompactAndroid = Platform.OS === "android" && windowWidth <= 420;
+  const reportsVersionEnabled = Boolean(location);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -232,14 +187,25 @@ export default function NotificationsScreen() {
     reports,
     refetch,
     isRefetching,
-  } = useNearbyReports(location, ALERT_RADIUS_METERS);
+  } = useNearbyReports(location, ALERT_RADIUS_METERS, {
+    refetchIntervalMs: false,
+    refetchOnMount: false,
+    staleTimeMs: Infinity,
+  });
+  useNearbyReportsBackendVersion(
+    location,
+    ALERT_RADIUS_METERS,
+    reportsVersionEnabled,
+  );
   const nearbyZones = useParkingZones(location, ALERT_RADIUS_METERS);
-  const nearbyCouncilZones = useMemo(
+  const detectedZonePins = useMemo(
     () =>
-      LOCAL_COUNCIL_PARKINGS.map((zone) =>
-        normalizeCouncilZoneAlert(zone, location),
-      ).filter(Boolean),
-    [location?.latitude, location?.longitude],
+      getDetectedZonePins({
+        apiZones: nearbyZones,
+        location,
+        radiusMeters: ALERT_RADIUS_METERS,
+      }),
+    [location, nearbyZones],
   );
 
   const reportAlerts = useMemo(
@@ -257,13 +223,18 @@ export default function NotificationsScreen() {
   );
 
   const zoneAlerts = useMemo(() => {
-    const apiZoneAlerts = nearbyZones
-      .map((zone) => normalizeZoneAlert(zone))
+    const apiZoneAlerts = detectedZonePins.apiZones
+      .map((zone) => normalizeApiZoneAlert(zone, location))
       .filter(Boolean);
-    return mergeDistinctZones(apiZoneAlerts, nearbyCouncilZones).sort(
+    const councilZoneAlerts = detectedZonePins.councilZones
+      .map((zone) =>
+        normalizeCouncilZoneAlert(zone, location, ALERT_RADIUS_METERS),
+      )
+      .filter(Boolean);
+    return [...apiZoneAlerts, ...councilZoneAlerts].sort(
       (a, b) => (a.distance_meters || 0) - (b.distance_meters || 0),
     );
-  }, [nearbyCouncilZones, nearbyZones]);
+  }, [detectedZonePins.apiZones, detectedZonePins.councilZones, location]);
 
   const alerts = useMemo(
     () =>
@@ -494,7 +465,9 @@ export default function NotificationsScreen() {
               </View>
               <View style={styles.spotlightMetaChip}>
                 <Navigation size={13} color={BRAND_PALETTE.accentBold} />
-                <Text style={styles.spotlightMetaText}>300m radius</Text>
+                <Text style={styles.spotlightMetaText}>
+                  {PARKING_ALERT_RADIUS_LABEL} radius
+                </Text>
               </View>
             </View>
           </View>
@@ -508,7 +481,7 @@ export default function NotificationsScreen() {
             </View>
             <View style={styles.radiusPill}>
               <Navigation size={12} color={BRAND_PALETTE.accentBold} />
-              <Text style={styles.radiusPillText}>300m</Text>
+              <Text style={styles.radiusPillText}>{PARKING_ALERT_RADIUS_LABEL}</Text>
             </View>
           </View>
 

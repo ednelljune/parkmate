@@ -2,6 +2,7 @@ import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import fetch from "@/__create/fetch";
 import { resolveBackendUrl } from "@/utils/backend";
+import { useActivityBackendVersion } from "@/hooks/useActivityBackendVersion";
 import {
   getLocalNotifications,
   getLocalReportsVersion,
@@ -18,6 +19,7 @@ import {
 
 export const ACTIVITY_NOTIFICATIONS_QUERY_KEY = ["activity_notifications"];
 const ACTIVITY_FEED_TIMEOUT_MS = 15000;
+const DEFAULT_ACTIVITY_FEED_REFETCH_INTERVAL_MS = 10000;
 
 const readActivityResponse = async (response) => {
   const responseText = await response.text();
@@ -55,7 +57,15 @@ const fetchActivityNotifications = async (activityFeedUrl) => {
       }),
     ]);
 
-    return readActivityResponse(response);
+    const notifications = await readActivityResponse(response);
+    console.log("[activity.fetch] Activity received", {
+      count: notifications.length,
+      systemUpdates: notifications.filter(
+        (item) => Boolean(item?.is_system_update),
+      ).length,
+    });
+
+    return notifications;
   } finally {
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -89,7 +99,19 @@ const normalizeActivityItem = (item) => {
   };
 };
 
-export const useActivityNotifications = (limit = 100, enabled = true) => {
+const getCanonicalActivityId = (value) => String(value || "").replace(/-local$/, "");
+
+export const useActivityNotifications = (
+  limit = 100,
+  enabled = true,
+  options = {},
+) => {
+  const {
+    refetchIntervalMs = false,
+    refetchOnMount = false,
+    staleTimeMs = Infinity,
+  } = options;
+  const activityVersionQuery = useActivityBackendVersion(enabled);
   const localReportsVersion = useSyncExternalStore(
     subscribeToLocalReports,
     getLocalReportsVersion,
@@ -112,7 +134,12 @@ export const useActivityNotifications = (limit = 100, enabled = true) => {
       return fetchActivityNotifications(activityFeedUrl);
     },
     enabled,
-    refetchInterval: 30000,
+    staleTime: staleTimeMs === Infinity ? Infinity : Math.max(0, Number(staleTimeMs) || 0),
+    refetchOnMount,
+    refetchInterval:
+      enabled && refetchIntervalMs !== false
+        ? Math.max(1000, Number(refetchIntervalMs) || DEFAULT_ACTIVITY_FEED_REFETCH_INTERVAL_MS)
+        : false,
     retry: false,
   });
 
@@ -128,33 +155,43 @@ export const useActivityNotifications = (limit = 100, enabled = true) => {
     const remoteEntries = Array.isArray(query.data)
       ? query.data.map(normalizeActivityItem).filter(Boolean)
       : [];
-    const seenIds = new Set();
-    const merged = [];
+    const mergedByCanonicalId = new Map();
 
     localEntries.forEach((item) => {
-      const id = String(item?.id || "");
-      if (!id || seenIds.has(id)) return;
-      seenIds.add(id);
-      merged.push(item);
+      const canonicalId = getCanonicalActivityId(item?.id);
+      if (!canonicalId || mergedByCanonicalId.has(canonicalId)) {
+        return;
+      }
+
+      mergedByCanonicalId.set(canonicalId, item);
     });
 
     remoteEntries.forEach((item) => {
-      const id = String(item?.id || "");
-      if (!id || seenIds.has(id)) return;
-      seenIds.add(id);
-      merged.push(item);
+      const canonicalId = getCanonicalActivityId(item?.id);
+      if (!canonicalId) {
+        return;
+      }
+
+      mergedByCanonicalId.set(canonicalId, item);
     });
 
-    return merged.sort((a, b) => {
+    return [...mergedByCanonicalId.values()].sort((a, b) => {
       const aTime = new Date(a?.sent_at || a?.occurred_at || 0).getTime();
       const bTime = new Date(b?.sent_at || b?.occurred_at || 0).getTime();
       return bTime - aTime;
-    }).filter((item) => !deletedIds.has(String(item?.id || "")));
+    }).filter((item) => {
+      const itemId = String(item?.id || "");
+      const canonicalId = getCanonicalActivityId(itemId);
+      return !deletedIds.has(itemId) && !deletedIds.has(canonicalId);
+    });
   }, [localReportsVersion, activityReadStateVersion, query.data]);
 
   return {
     ...query,
     data,
+    activityVersion: activityVersionQuery.data,
+    refetchActivityVersion: activityVersionQuery.refetch,
+    isActivityVersionRefetching: activityVersionQuery.isRefetching,
   };
 };
 

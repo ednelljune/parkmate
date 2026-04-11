@@ -18,6 +18,8 @@ import {
   setSentryUser,
 } from "@/monitoring/sentry";
 import fetch from "@/__create/fetch";
+import { ACTIVITY_MAILBOX_QUERY_KEY } from "@/hooks/useActivityMailbox";
+import { ACTIVITY_NOTIFICATIONS_QUERY_KEY } from "@/hooks/useActivityNotifications";
 import { resolveBackendUrl } from "@/utils/backend";
 import useUser from "@/utils/auth/useUser";
 
@@ -49,6 +51,8 @@ export const useNotifications = (onNotificationResponse) => {
     queryClient.invalidateQueries({ queryKey: ["nearby_reports"] });
     queryClient.invalidateQueries({ queryKey: ["parking_zones"] });
     queryClient.invalidateQueries({ queryKey: ["notifications_count"] });
+    queryClient.invalidateQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY });
 
     addSentryBreadcrumb({
       category: "notifications.response",
@@ -441,6 +445,8 @@ export const useNotifications = (onNotificationResponse) => {
           queryClient.invalidateQueries({ queryKey: ["nearby_reports"] });
           queryClient.invalidateQueries({ queryKey: ["parking_zones"] });
           queryClient.invalidateQueries({ queryKey: ["notifications_count"] });
+          queryClient.invalidateQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY });
+          queryClient.invalidateQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY });
 
           addSentryBreadcrumb({
             category: "notifications.received",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { memo, useEffect, useState } from "react";
 import { View, Text, Platform } from "react-native";
 import { Marker } from "react-native-maps";
 
@@ -16,8 +16,9 @@ export const getPinFrameSize = (baseValue, axis = "both") => {
 
 export const getZoneMarkerLabel = (type) => {
   const normalizedType = String(type || "").trim();
+  const normalizedTypeLower = normalizedType.toLowerCase();
 
-  switch (type) {
+  switch (normalizedType) {
     case "Full Hour":
       return "FH";
     case "Loading Zone":
@@ -26,9 +27,25 @@ export const getZoneMarkerLabel = (type) => {
       return "NP";
     case "Permit":
       return "PM";
+    case "Zone 2":
+      return "Z2";
+    case "P5 Minute":
+    case "5Min":
+      return "5M";
+    case "P10 Minute":
+      return "10M";
+    case "P2 Minute":
+      return "2M";
+    case "1/2P":
+      return "30M";
+    case "1/4P":
+      return "15M";
     default:
       if (/^\d+P$/i.test(normalizedType)) {
         return normalizedType.toUpperCase();
+      }
+      if (normalizedTypeLower === "parking") {
+        return "P";
       }
       return normalizedType.charAt(0) || "P";
   }
@@ -46,6 +63,10 @@ export const getAvailabilityBadgeLabel = (count) => {
   return `${formatAvailabilityCount(count)} OPEN`;
 };
 
+const DEFAULT_ZONE_PIN_BASE_DELTA = 0.005;
+const MIN_ZOOMED_OUT_ZONE_SCALE = 0.58;
+const ZOOMED_OUT_ZONE_SCALE_EXPONENT = 0.28;
+
 const ANDROID_MARKER_FREEZE_DELAY_MS = 180;
 const AVAILABILITY_NAVY = "#0B1F33";
 const AVAILABILITY_GOLD = "#F59E0B";
@@ -55,12 +76,55 @@ const ANDROID_MUTED_STROKE = "#D1D5DB";
 const ANDROID_MUTED_TEXT = "#6B7280";
 const ANDROID_SHADOW = "rgba(11, 31, 51, 0.16)";
 const ANDROID_SOFT_SURFACE = "#F3F4F6";
-const ANDROID_ZONE_FRAME_WIDTH = 74;
-const ANDROID_ZONE_FRAME_HEIGHT = 76;
-const ANDROID_COMPACT_FRAME_WIDTH = 52;
-const ANDROID_COMPACT_FRAME_HEIGHT = 62;
-const ANDROID_AVAILABILITY_FRAME_WIDTH = 86;
-const ANDROID_AVAILABILITY_FRAME_HEIGHT = 88;
+const ANDROID_ZONE_FRAME_WIDTH = 82;
+const ANDROID_ZONE_FRAME_HEIGHT = 84;
+const ANDROID_AVAILABILITY_FRAME_WIDTH = 92;
+const ANDROID_AVAILABILITY_FRAME_HEIGHT = 100;
+
+export const scaleZoomedMarkerValue = (value, zoomScale = 1) =>
+  Math.round(value * zoomScale * 10) / 10;
+
+export const getZoomedOutZoneScale = (region) => {
+  const latitudeDelta = Number(region?.latitudeDelta);
+  const longitudeDelta = Number(region?.longitudeDelta);
+  const maxDelta = Math.max(
+    Number.isFinite(latitudeDelta) ? latitudeDelta : 0,
+    Number.isFinite(longitudeDelta) ? longitudeDelta : 0,
+  );
+
+  if (!Number.isFinite(maxDelta) || maxDelta <= DEFAULT_ZONE_PIN_BASE_DELTA) {
+    return 1;
+  }
+
+  return Math.max(
+    MIN_ZOOMED_OUT_ZONE_SCALE,
+    Math.min(
+      1,
+      Math.pow(
+        DEFAULT_ZONE_PIN_BASE_DELTA / maxDelta,
+        ZOOMED_OUT_ZONE_SCALE_EXPONENT,
+      ),
+    ),
+  );
+};
+
+export const getAndroidZoneMarkerFrame = (
+  hasAvailability = false,
+  zoomScale = 1,
+) => ({
+  width: scaleZoomedMarkerValue(
+    hasAvailability
+      ? ANDROID_AVAILABILITY_FRAME_WIDTH
+      : ANDROID_ZONE_FRAME_WIDTH,
+    zoomScale,
+  ),
+  height: scaleZoomedMarkerValue(
+    hasAvailability
+      ? ANDROID_AVAILABILITY_FRAME_HEIGHT
+      : ANDROID_ZONE_FRAME_HEIGHT,
+    zoomScale,
+  ),
+});
 
 export const StableMapMarker = ({
   androidRefreshKey = "static",
@@ -105,7 +169,7 @@ export const StableMapMarker = ({
   );
 };
 
-export const AndroidZonePin = ({
+const AndroidZonePinComponent = ({
   label = "P",
   color = "#3B82F6",
   reportedCount = 0,
@@ -113,6 +177,7 @@ export const AndroidZonePin = ({
   hasAvailability = false,
   isSelected = false,
   isMuted = false,
+  zoomScale = 1,
 }) => {
   if (hasAvailability) {
     return (
@@ -122,115 +187,41 @@ export const AndroidZonePin = ({
         footerLabel={label}
         centerLabel={label}
         dimmed={isMuted}
+        zoomScale={zoomScale}
       />
     );
   }
 
   const isEmphasized = isSelected || !isMuted;
-  const strokeColor = isEmphasized ? color : ANDROID_MUTED_STROKE;
-  const badgeFill = isSelected
-    ? color
-    : isEmphasized
-      ? AVAILABILITY_NAVY
-      : ANDROID_SOFT_SURFACE;
-  const badgeTextColor = isSelected || isEmphasized ? "#FFFFFF" : ANDROID_MUTED_TEXT;
-  const circleFill = isSelected ? color : "#FFFFFF";
-  const centerTextColor = isSelected ? "#FFFFFF" : isEmphasized ? color : "#9CA3AF";
-  const resolvedCenterLabel = String(label || "P").slice(0, 3);
   const resolvedStatusLabel = String(statusLabel || "ZONE").slice(0, 6);
-  const shadowOpacity = isEmphasized ? 0.72 : 0.45;
 
   return (
-    <View
-      collapsable={false}
-      renderToHardwareTextureAndroid={false}
-      style={{
-        width: ANDROID_ZONE_FRAME_WIDTH,
-        minHeight: ANDROID_ZONE_FRAME_HEIGHT,
-        alignItems: "center",
-        justifyContent: "flex-start",
-        opacity: 1,
-      }}
-    >
-      <View
-        style={{
-          minWidth: 44,
-          paddingHorizontal: 8,
-          paddingVertical: 3,
-          borderRadius: 8,
-          backgroundColor: badgeFill,
-          borderWidth: 1.5,
-          borderColor: "#FFFFFF",
-          alignItems: "center",
-        }}
-      >
-        <Text
-          allowFontScaling={false}
-          style={{
-            color: badgeTextColor,
-            fontSize: 7,
-            fontWeight: "900",
-            letterSpacing: 0.25,
-          }}
-        >
-          {resolvedStatusLabel}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          width: 28,
-          height: 28,
-          marginTop: 4,
-          borderRadius: 14,
-          backgroundColor: circleFill,
-          borderWidth: 2,
-          borderColor: strokeColor,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: isEmphasized ? 1 : 0.72,
-        }}
-      >
-        <Text
-          allowFontScaling={false}
-          style={{
-            color: centerTextColor,
-            fontSize: 10,
-            fontWeight: "900",
-            letterSpacing: 0.15,
-          }}
-        >
-          {resolvedCenterLabel}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          width: 0,
-          height: 0,
-          marginTop: -1,
-          borderLeftWidth: 6,
-          borderRightWidth: 6,
-          borderTopWidth: 9,
-          borderLeftColor: "transparent",
-          borderRightColor: "transparent",
-          borderTopColor: strokeColor,
-        }}
-      />
-
-      <View
-        style={{
-          width: 14,
-          height: 4,
-          marginTop: 4,
-          borderRadius: 7,
-          opacity: shadowOpacity,
-          backgroundColor: ANDROID_SHADOW,
-        }}
-      />
-    </View>
+    <AndroidCompactPin
+      pinColor={color}
+      centerLabel={label}
+      badgeLabel={resolvedStatusLabel}
+      filled={isSelected}
+      dimmed={!isEmphasized}
+      muted={!isEmphasized}
+      zoomScale={zoomScale}
+    />
   );
 };
+
+const areAndroidZonePinPropsEqual = (previousProps, nextProps) =>
+  previousProps.label === nextProps.label &&
+  previousProps.color === nextProps.color &&
+  previousProps.reportedCount === nextProps.reportedCount &&
+  previousProps.statusLabel === nextProps.statusLabel &&
+  previousProps.hasAvailability === nextProps.hasAvailability &&
+  previousProps.isSelected === nextProps.isSelected &&
+  previousProps.isMuted === nextProps.isMuted &&
+  previousProps.zoomScale === nextProps.zoomScale;
+
+export const AndroidZonePin = memo(
+  AndroidZonePinComponent,
+  areAndroidZonePinPropsEqual,
+);
 
 const AndroidCompactPin = ({
   pinColor = "#3B82F6",
@@ -239,6 +230,7 @@ const AndroidCompactPin = ({
   filled = false,
   dimmed = false,
   muted = false,
+  zoomScale = 1,
 }) => {
   const strokeColor = muted ? ANDROID_MUTED_STROKE : pinColor;
   const circleFill = filled ? pinColor : "#FFFFFF";
@@ -255,34 +247,43 @@ const AndroidCompactPin = ({
   const badgeTextColor = muted ? ANDROID_MUTED_TEXT : "#FFFFFF";
   const resolvedBadgeLabel = String(badgeLabel || "ZONE").slice(0, 6);
   const resolvedCenterLabel = String(centerLabel || "P").slice(0, 3);
+  const scaledSize = (value) => scaleZoomedMarkerValue(value, zoomScale);
 
   return (
     <View
       collapsable={false}
       renderToHardwareTextureAndroid={false}
       style={{
-        width: ANDROID_COMPACT_FRAME_WIDTH,
-        height: ANDROID_COMPACT_FRAME_HEIGHT,
+        width: scaledSize(ANDROID_ZONE_FRAME_WIDTH),
+        height: scaledSize(ANDROID_ZONE_FRAME_HEIGHT),
         alignItems: "center",
         justifyContent: "flex-start",
+        paddingTop: scaledSize(4),
+        paddingBottom: scaledSize(4),
+        paddingHorizontal: scaledSize(6),
         opacity: dimmed ? 0.78 : 1,
       }}
     >
       <View
         style={{
-          minWidth: 34,
+          minWidth: scaledSize(42),
           alignItems: "center",
           backgroundColor: badgeFill,
-          paddingHorizontal: 6,
-          paddingVertical: 2,
-          borderRadius: 6,
-          borderWidth: 1,
+          paddingHorizontal: scaledSize(7),
+          paddingVertical: scaledSize(2),
+          borderRadius: scaledSize(6),
+          borderWidth: scaledSize(1),
           borderColor: "#FFFFFF",
         }}
       >
         <Text
           allowFontScaling={false}
-          style={{ color: badgeTextColor, fontSize: 7, fontWeight: "900", letterSpacing: 0.35 }}
+          style={{
+            color: badgeTextColor,
+            fontSize: scaledSize(7),
+            fontWeight: "900",
+            letterSpacing: scaledSize(0.35),
+          }}
         >
           {resolvedBadgeLabel}
         </Text>
@@ -290,12 +291,12 @@ const AndroidCompactPin = ({
 
       <View
         style={{
-          width: 24,
-          height: 24,
-          marginTop: 4,
-          borderRadius: 12,
+          width: scaledSize(28),
+          height: scaledSize(28),
+          marginTop: scaledSize(5),
+          borderRadius: scaledSize(14),
           backgroundColor: circleFill,
-          borderWidth: 2,
+          borderWidth: scaledSize(2),
           borderColor: strokeColor,
           justifyContent: "center",
           alignItems: "center",
@@ -303,7 +304,11 @@ const AndroidCompactPin = ({
       >
         <Text
           allowFontScaling={false}
-          style={{ color: centerTextColor, fontSize: 10, fontWeight: "900" }}
+          style={{
+            color: centerTextColor,
+            fontSize: scaledSize(10),
+            fontWeight: "900",
+          }}
         >
           {resolvedCenterLabel}
         </Text>
@@ -313,10 +318,10 @@ const AndroidCompactPin = ({
         style={{
           width: 0,
           height: 0,
-          marginTop: -1,
-          borderLeftWidth: 5,
-          borderRightWidth: 5,
-          borderTopWidth: 8,
+          marginTop: scaledSize(4),
+          borderLeftWidth: scaledSize(6),
+          borderRightWidth: scaledSize(6),
+          borderTopWidth: scaledSize(8),
           borderLeftColor: "transparent",
           borderRightColor: "transparent",
           borderTopColor: strokeColor,
@@ -325,10 +330,10 @@ const AndroidCompactPin = ({
 
       <View
         style={{
-          width: 10,
-          height: 3,
-          marginTop: 4,
-          borderRadius: 5,
+          width: scaledSize(12),
+          height: scaledSize(4),
+          marginTop: scaledSize(4),
+          borderRadius: scaledSize(6),
           backgroundColor: ANDROID_SHADOW,
           opacity: dimmed ? 0.5 : 0.72,
         }}
@@ -351,38 +356,47 @@ const AndroidAvailabilityPin = ({
   footerLabel,
   centerLabel,
   dimmed,
+  zoomScale = 1,
 }) => {
   const resolvedBadgeLabel = String(badgeLabel || "OPEN").slice(0, 8);
   const resolvedCenterLabel = String(centerLabel || "P").slice(0, 3);
   const resolvedFooterLabel = String(footerLabel || "P").slice(0, 3);
+  const scaledSize = (value) => scaleZoomedMarkerValue(value, zoomScale);
 
   return (
     <View
       collapsable={false}
       renderToHardwareTextureAndroid={false}
       style={{
-        width: ANDROID_AVAILABILITY_FRAME_WIDTH,
-        height: ANDROID_AVAILABILITY_FRAME_HEIGHT,
+        width: scaledSize(ANDROID_AVAILABILITY_FRAME_WIDTH),
+        height: scaledSize(ANDROID_AVAILABILITY_FRAME_HEIGHT),
         alignItems: "center",
         justifyContent: "flex-start",
+        paddingTop: scaledSize(4),
+        paddingBottom: scaledSize(4),
         opacity: dimmed ? 0.84 : 1,
       }}
     >
       <View
         style={{
-          minWidth: 58,
+          minWidth: scaledSize(62),
           alignItems: "center",
           backgroundColor: AVAILABILITY_NAVY,
-          paddingHorizontal: 9,
-          paddingVertical: 3,
-          borderRadius: 8,
-          borderWidth: 1.5,
+          paddingHorizontal: scaledSize(9),
+          paddingVertical: scaledSize(3),
+          borderRadius: scaledSize(8),
+          borderWidth: scaledSize(1.5),
           borderColor: "#FFFFFF",
         }}
       >
         <Text
           allowFontScaling={false}
-          style={{ color: "#FFFFFF", fontSize: 8, fontWeight: "900", letterSpacing: 0.5 }}
+          style={{
+            color: "#FFFFFF",
+            fontSize: scaledSize(8),
+            fontWeight: "900",
+            letterSpacing: scaledSize(0.5),
+          }}
         >
           {resolvedBadgeLabel}
         </Text>
@@ -390,12 +404,12 @@ const AndroidAvailabilityPin = ({
 
       <View
         style={{
-          width: 34,
-          height: 34,
-          marginTop: 5,
-          borderRadius: 17,
+          width: scaledSize(34),
+          height: scaledSize(34),
+          marginTop: scaledSize(6),
+          borderRadius: scaledSize(17),
           backgroundColor: pinColor,
-          borderWidth: 2,
+          borderWidth: scaledSize(2),
           borderColor: "#FFFFFF",
           justifyContent: "center",
           alignItems: "center",
@@ -403,7 +417,11 @@ const AndroidAvailabilityPin = ({
       >
         <Text
           allowFontScaling={false}
-          style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}
+          style={{
+            color: "#FFFFFF",
+            fontSize: scaledSize(13),
+            fontWeight: "900",
+          }}
         >
           {resolvedCenterLabel}
         </Text>
@@ -411,20 +429,24 @@ const AndroidAvailabilityPin = ({
 
       <View
         style={{
-          minWidth: 34,
-          marginTop: -5,
+          minWidth: scaledSize(34),
+          marginTop: scaledSize(5),
           alignItems: "center",
           backgroundColor: AVAILABILITY_GOLD,
-          paddingHorizontal: 7,
-          paddingVertical: 2,
-          borderRadius: 6,
-          borderWidth: 1.5,
+          paddingHorizontal: scaledSize(7),
+          paddingVertical: scaledSize(2),
+          borderRadius: scaledSize(6),
+          borderWidth: scaledSize(1.5),
           borderColor: "#FFFFFF",
         }}
       >
         <Text
           allowFontScaling={false}
-          style={{ color: AVAILABILITY_NAVY, fontSize: 8, fontWeight: "900" }}
+          style={{
+            color: AVAILABILITY_NAVY,
+            fontSize: scaledSize(8),
+            fontWeight: "900",
+          }}
         >
           {resolvedFooterLabel}
         </Text>
@@ -434,10 +456,10 @@ const AndroidAvailabilityPin = ({
         style={{
           width: 0,
           height: 0,
-          marginTop: -1,
-          borderLeftWidth: 6,
-          borderRightWidth: 6,
-          borderTopWidth: 10,
+          marginTop: scaledSize(5),
+          borderLeftWidth: scaledSize(6),
+          borderRightWidth: scaledSize(6),
+          borderTopWidth: scaledSize(10),
           borderLeftColor: "transparent",
           borderRightColor: "transparent",
           borderTopColor: pinColor,
@@ -446,10 +468,10 @@ const AndroidAvailabilityPin = ({
 
       <View
         style={{
-          width: 14,
-          height: 4,
-          marginTop: 4,
-          borderRadius: 7,
+          width: scaledSize(14),
+          height: scaledSize(4),
+          marginTop: scaledSize(4),
+          borderRadius: scaledSize(7),
           backgroundColor: ANDROID_SHADOW,
           opacity: 0.72,
         }}
@@ -464,6 +486,7 @@ export const AvailabilityBeaconPin = ({
   footerLabel = "P",
   centerLabel = "P",
   dimmed = false,
+  zoomScale = 1,
 }) => {
   if (Platform.OS === "android") {
     return (
@@ -473,30 +496,33 @@ export const AvailabilityBeaconPin = ({
         footerLabel={footerLabel}
         centerLabel={centerLabel}
         dimmed={dimmed}
+        zoomScale={zoomScale}
       />
     );
   }
+
+  const scaledPinSize = (value) => scalePinSize(value * zoomScale);
 
   return (
     <View
       collapsable={false}
       style={{
-        width: getPinFrameSize(scalePinSize(56), "width"),
-        height: getPinFrameSize(scalePinSize(66)),
+        width: getPinFrameSize(scaledPinSize(56), "width"),
+        height: getPinFrameSize(scaledPinSize(66)),
         alignItems: "center",
         justifyContent: "flex-start",
-        paddingBottom: getPinFrameSize(scalePinSize(6)),
+        paddingBottom: getPinFrameSize(scaledPinSize(6)),
         opacity: dimmed ? 0.84 : 1,
       }}
     >
       <View
         style={{
           position: "absolute",
-          top: scalePinSize(10),
-          width: scalePinSize(44),
-          height: scalePinSize(44),
-          borderRadius: scalePinSize(22),
-          borderWidth: scalePinSize(1.4),
+          top: scaledPinSize(10),
+          width: scaledPinSize(44),
+          height: scaledPinSize(44),
+          borderRadius: scaledPinSize(22),
+          borderWidth: scaledPinSize(1.4),
           borderColor: AVAILABILITY_RING,
           backgroundColor: "rgba(255, 255, 255, 0.18)",
         }}
@@ -505,32 +531,32 @@ export const AvailabilityBeaconPin = ({
       <View
         style={{
           position: "absolute",
-          top: scalePinSize(15),
-          width: scalePinSize(34),
-          height: scalePinSize(34),
-          borderRadius: scalePinSize(17),
+          top: scaledPinSize(15),
+          width: scaledPinSize(34),
+          height: scaledPinSize(34),
+          borderRadius: scaledPinSize(17),
           backgroundColor: AVAILABILITY_HALO,
         }}
       />
 
       <View
         style={{
-          paddingHorizontal: scalePinSize(7),
-          paddingVertical: scalePinSize(2.8),
-          borderRadius: scalePinSize(10),
+          paddingHorizontal: scaledPinSize(7),
+          paddingVertical: scaledPinSize(2.8),
+          borderRadius: scaledPinSize(10),
           backgroundColor: AVAILABILITY_NAVY,
-          borderWidth: scalePinSize(1.2),
+          borderWidth: scaledPinSize(1.2),
           borderColor: "rgba(255, 255, 255, 0.92)",
-          minWidth: scalePinSize(30),
+          minWidth: scaledPinSize(30),
           alignItems: "center",
         }}
       >
         <Text
           allowFontScaling={false}
           style={{
-            fontSize: scalePinSize(5.9),
+            fontSize: scaledPinSize(5.9),
             fontWeight: "900",
-            letterSpacing: 0.4,
+            letterSpacing: scaledPinSize(0.4),
             color: "#FFFFFF",
           }}
         >
@@ -540,12 +566,12 @@ export const AvailabilityBeaconPin = ({
 
       <View
         style={{
-          width: scalePinSize(30),
-          height: scalePinSize(30),
-          borderRadius: scalePinSize(15),
-          marginTop: scalePinSize(7),
+          width: scaledPinSize(30),
+          height: scaledPinSize(30),
+          borderRadius: scaledPinSize(15),
+          marginTop: scaledPinSize(7),
           backgroundColor: pinColor,
-          borderWidth: scalePinSize(2),
+          borderWidth: scaledPinSize(2),
           borderColor: "#FFFFFF",
           justifyContent: "center",
           alignItems: "center",
@@ -559,11 +585,11 @@ export const AvailabilityBeaconPin = ({
         <View
           style={{
             position: "absolute",
-            top: scalePinSize(4),
-            left: scalePinSize(6),
-            width: scalePinSize(9),
-            height: scalePinSize(5),
-            borderRadius: scalePinSize(4),
+            top: scaledPinSize(4),
+            left: scaledPinSize(6),
+            width: scaledPinSize(9),
+            height: scaledPinSize(5),
+            borderRadius: scaledPinSize(4),
             backgroundColor: "rgba(255, 255, 255, 0.24)",
             transform: [{ rotate: "-18deg" }],
           }}
@@ -572,7 +598,7 @@ export const AvailabilityBeaconPin = ({
         <Text
           allowFontScaling={false}
           style={{
-            fontSize: scalePinSize(12.5),
+            fontSize: scaledPinSize(12.5),
             fontWeight: "900",
             color: "#FFFFFF",
           }}
@@ -583,23 +609,23 @@ export const AvailabilityBeaconPin = ({
 
       <View
         style={{
-          marginTop: -scalePinSize(4),
-          paddingHorizontal: scalePinSize(6),
-          paddingVertical: scalePinSize(2.8),
-          borderRadius: scalePinSize(8),
+          marginTop: -scaledPinSize(4),
+          paddingHorizontal: scaledPinSize(6),
+          paddingVertical: scaledPinSize(2.8),
+          borderRadius: scaledPinSize(8),
           backgroundColor: AVAILABILITY_GOLD,
-          borderWidth: scalePinSize(1.1),
+          borderWidth: scaledPinSize(1.1),
           borderColor: "#FFFFFF",
-          minWidth: scalePinSize(28),
+          minWidth: scaledPinSize(28),
           alignItems: "center",
         }}
       >
         <Text
           allowFontScaling={false}
           style={{
-            fontSize: scalePinSize(6.4),
+            fontSize: scaledPinSize(6.4),
             fontWeight: "900",
-            letterSpacing: 0.25,
+            letterSpacing: scaledPinSize(0.25),
             color: AVAILABILITY_NAVY,
           }}
         >
@@ -612,23 +638,23 @@ export const AvailabilityBeaconPin = ({
           width: 0,
           height: 0,
           borderStyle: "solid",
-          borderLeftWidth: scalePinSize(4.2),
-          borderRightWidth: scalePinSize(4.2),
-          borderTopWidth: scalePinSize(6.5),
+          borderLeftWidth: scaledPinSize(4.2),
+          borderRightWidth: scaledPinSize(4.2),
+          borderTopWidth: scaledPinSize(6.5),
           borderLeftColor: "transparent",
           borderRightColor: "transparent",
           borderTopColor: pinColor,
-          marginTop: -scalePinSize(1),
+          marginTop: -scaledPinSize(1),
         }}
       />
 
       <View
         style={{
-          width: scalePinSize(10),
-          height: scalePinSize(2.8),
-          borderRadius: scalePinSize(5),
+          width: scaledPinSize(10),
+          height: scaledPinSize(2.8),
+          borderRadius: scaledPinSize(5),
           backgroundColor: "rgba(11, 31, 51, 0.18)",
-          marginTop: scalePinSize(1),
+          marginTop: scaledPinSize(1),
         }}
       />
     </View>

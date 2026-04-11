@@ -28,8 +28,24 @@ export const ensureActivityLogSchema = () => {
       `;
 
       await sql`
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_user_activity_logs_unique_event
-        ON user_activity_logs (user_id, report_id, activity_type);
+        ALTER TABLE user_activity_logs
+        ADD COLUMN IF NOT EXISTS event_key TEXT;
+      `;
+
+      await sql`
+        DROP INDEX IF EXISTS idx_user_activity_logs_unique_event;
+      `;
+
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_user_activity_logs_unique_legacy_event
+        ON user_activity_logs (user_id, report_id, activity_type)
+        WHERE event_key IS NULL;
+      `;
+
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_user_activity_logs_unique_event_key
+        ON user_activity_logs (user_id, event_key)
+        WHERE event_key IS NOT NULL;
       `;
     })().catch((error) => {
       activityLogSchemaPromise = null;
@@ -52,6 +68,7 @@ export const logUserActivity = async ({
   zoneName = null,
   spotStatus = null,
   occurredAt = null,
+  eventKey = null,
 }) => {
   await ensureActivityLogSchema();
   const resolvedOccurredAt = occurredAt || new Date().toISOString();
@@ -68,7 +85,8 @@ export const logUserActivity = async ({
       zone_type,
       zone_name,
       spot_status,
-      occurred_at
+      occurred_at,
+      event_key
     )
     VALUES (
       ${userId},
@@ -81,8 +99,9 @@ export const logUserActivity = async ({
       ${zoneType},
       ${zoneName},
       ${spotStatus},
-      ${resolvedOccurredAt}
+      ${resolvedOccurredAt},
+      ${eventKey}
     )
-    ON CONFLICT (user_id, report_id, activity_type) DO NOTHING;
+    ON CONFLICT DO NOTHING;
   `;
 };

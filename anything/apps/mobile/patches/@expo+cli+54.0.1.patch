@@ -1,3 +1,59 @@
+diff --git a/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js b/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js
+index 4c42029..5c02b59 100644
+--- a/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js
++++ b/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js
+@@ -139,12 +139,15 @@ class AsyncNgrok {
+         // NOTE(EvanBacon): If the user doesn't have ADB installed,
+         // then skip attempting to reverse the port.
+         if ((0, _adbReverse.hasAdbReverseAsync)()) {
+-            // Ensure ADB reverse is running.
+-            if (!await (0, _adbReverse.startAdbReverseAsync)([
+-                this.port
+-            ])) {
+-                // TODO: Better error message.
+-                throw new _errors.CommandError('NGROK_ADB', `Cannot start tunnel URL because \`adb reverse\` failed for the connected Android device(s).`);
++            try {
++                // Ensure ADB reverse is running.
++                if (!await (0, _adbReverse.startAdbReverseAsync)([
++                    this.port
++                ])) {
++                    _log.warn(`Skipping \`adb reverse\` setup for the tunnel because Android device reverse-port setup failed. Tunnel startup will continue.`);
++                }
++            } catch (error) {
++                _log.warn(`Skipping \`adb reverse\` setup for the tunnel because Android device reverse-port setup failed. Tunnel startup will continue.`);
+             }
+         }
+         this.serverUrl = await this._connectToNgrokAsync({
+diff --git a/node_modules/@expo/cli/build/src/start/server/BundlerDevServer.js b/node_modules/@expo/cli/build/src/start/server/BundlerDevServer.js
+index c0ebf7e..93e673c 100644
+--- a/node_modules/@expo/cli/build/src/start/server/BundlerDevServer.js
++++ b/node_modules/@expo/cli/build/src/start/server/BundlerDevServer.js
+@@ -189,8 +189,23 @@ class BundlerDevServer {
+         if (!port) return null;
+         debug('[tunnel] connect to port: ' + port);
+         this.tunnel = (0, _env.envIsWebcontainer)() ? new _AsyncWsTunnel.AsyncWsTunnel(this.projectRoot, port) : new _AsyncNgrok.AsyncNgrok(this.projectRoot, port);
+-        await this.tunnel.startAsync();
+-        return this.tunnel;
++        try {
++            await this.tunnel.startAsync();
++            return this.tunnel;
++        } catch (error) {
++            var _this_urlCreator, _this_urlCreator_defaults;
++            const errorMessage = error instanceof Error ? error.message : String(error);
++            _log.warn(`Tunnel startup failed, continuing with LAN URL instead. ${errorMessage}`);
++            await this.tunnel.stopAsync().catch((stopError)=>{
++                _log.error(`Error stopping failed tunnel:`);
++                _log.exception(stopError);
++            });
++            this.tunnel = null;
++            if (((_this_urlCreator = this.urlCreator) == null ? void 0 : (_this_urlCreator_defaults = _this_urlCreator.defaults) == null ? void 0 : _this_urlCreator_defaults.hostType) === 'tunnel') {
++                this.urlCreator.defaults.hostType = 'lan';
++            }
++            return null;
++        }
+     }
+     async startDevSessionAsync() {
+         // This is used to make Expo Go open the project in either Expo Go, or the web browser.
 diff --git a/node_modules/@expo/cli/build/src/start/server/middleware/ExpoGoManifestHandlerMiddleware.js b/node_modules/@expo/cli/build/src/start/server/middleware/ExpoGoManifestHandlerMiddleware.js
 index b5cba1b..2cbb2a5 100644
 --- a/node_modules/@expo/cli/build/src/start/server/middleware/ExpoGoManifestHandlerMiddleware.js

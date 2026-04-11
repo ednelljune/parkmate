@@ -6,8 +6,19 @@ const localReportListeners = new Set();
 let localReportsVersion = 0;
 let pruneTimeoutId = null;
 const REPORT_TTL_MS = 3 * 60 * 1000;
+const LOCAL_REPORT_SYNC_GRACE_MS = 20 * 1000;
 
 const normalizeReportId = (value) => String(value);
+const normalizeLocalReport = (report) => {
+  if (!report) return report;
+
+  return {
+    ...report,
+    __local_persisted_at:
+      report.__local_persisted_at || new Date().toISOString(),
+  };
+};
+
 const getEffectiveExpiresAtMs = (report) => {
   const createdAtMs = Date.parse(report?.created_at ?? "");
   const expiresAtMs = Date.parse(report?.expires_at ?? "");
@@ -81,14 +92,15 @@ const scheduleInactiveLocalReportPrune = () => {
 
 export const addLocalReport = (report) => {
   if (!report || !report.id || !isReportActive(report)) return;
+  const normalizedReport = normalizeLocalReport(report);
   const reportId = normalizeReportId(report.id);
   const exists = localReports.find((r) => normalizeReportId(r.id) === reportId);
   if (exists) return;
-  localReports.unshift(report);
+  localReports.unshift(normalizedReport);
   console.log("[reports.local] Added local report", {
-    reportId: report.id,
-    latitude: report.latitude,
-    longitude: report.longitude,
+    reportId: normalizedReport.id,
+    latitude: normalizedReport.latitude,
+    longitude: normalizedReport.longitude,
     totalLocalReports: localReports.length,
   });
   emitLocalReportChange();
@@ -97,13 +109,14 @@ export const addLocalReport = (report) => {
 export const upsertLocalReport = (report) => {
   if (!report || !report.id) return;
 
+  const normalizedReport = normalizeLocalReport(report);
   const reportId = normalizeReportId(report.id);
   const nextReports = localReports.filter(
     (existingReport) => normalizeReportId(existingReport.id) !== reportId,
   );
 
-  if (isReportActive(report)) {
-    nextReports.unshift(report);
+  if (isReportActive(normalizedReport)) {
+    nextReports.unshift(normalizedReport);
   }
 
   localReports.splice(0, localReports.length, ...nextReports);
@@ -128,6 +141,21 @@ export const getNearbyLocalReports = (location, radiusMeters) => {
     });
     return distance !== null && distance <= radiusMeters;
   });
+};
+
+export const isLocalReportWithinSyncGrace = (
+  report,
+  nowMs = Date.now(),
+  graceMs = LOCAL_REPORT_SYNC_GRACE_MS,
+) => {
+  if (!report) return false;
+
+  const persistedAtMs = Date.parse(report.__local_persisted_at ?? "");
+  if (!Number.isFinite(persistedAtMs)) {
+    return false;
+  }
+
+  return nowMs - persistedAtMs <= graceMs;
 };
 
 export const removeLocalReport = (reportId) => {

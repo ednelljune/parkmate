@@ -80,6 +80,7 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+def googleMapsApiKey = System.getenv("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY")?.trim()
 
 def sentryAuthToken = System.getenv("SENTRY_AUTH_TOKEN")?.trim()
 def sentryGradleFile = new File(
@@ -91,6 +92,10 @@ if (sentryAuthToken) {
     apply from: sentryGradleFile
 } else {
     logger.lifecycle("SENTRY_AUTH_TOKEN is not set; skipping Sentry Gradle source map upload.")
+}
+
+if (System.getenv("EAS_BUILD") == "true" && !googleMapsApiKey) {
+    throw new GradleException("Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY for Android native build.")
 }
 
 android {
@@ -106,6 +111,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        manifestPlaceholders = [googleMapsApiKey: googleMapsApiKey ?: ""]
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

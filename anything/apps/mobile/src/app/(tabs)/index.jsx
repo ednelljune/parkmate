@@ -358,6 +358,7 @@ function ParkMateContent() {
     getDirections,
     clearRoute,
   } = useDirections(location, focusMapRegion);
+  const zoneAvailabilityAggregationEnabled = Platform.OS === "android";
   const reportAvailabilityMaps = useMemo(() => {
     const countsByZoneId = new Map();
     const countsByZoneIdentity = new Map();
@@ -394,7 +395,9 @@ function ParkMateContent() {
   }, [reports]);
   const getZoneAvailabilityCount = useCallback(
     (zone) => {
-      if (!zone) return 0;
+      if (!zoneAvailabilityAggregationEnabled || !zone) {
+        return 0;
+      }
 
       const zoneIdKey = zone.id != null ? String(zone.id) : null;
       if (zoneIdKey && reportAvailabilityMaps.countsByZoneId.has(zoneIdKey)) {
@@ -407,7 +410,7 @@ function ParkMateContent() {
       );
       return reportAvailabilityMaps.countsByZoneIdentity.get(zoneIdentity) || 0;
     },
-    [reportAvailabilityMaps],
+    [reportAvailabilityMaps, zoneAvailabilityAggregationEnabled],
   );
 
   const stopInAppNavigation = useCallback(() => {
@@ -721,6 +724,13 @@ function ParkMateContent() {
     [overlayMapRegion?.latitudeDelta, overlayMapRegion?.longitudeDelta],
   );
   const visibleZoneCoverage = useMemo(() => {
+    if (!zoneAvailabilityAggregationEnabled) {
+      return {
+        zoneIds: new Set(),
+        zoneIdentities: new Set(),
+      };
+    }
+
     const zoneIds = new Set();
     const zoneIdentities = new Set();
 
@@ -739,7 +749,7 @@ function ParkMateContent() {
     });
 
     return { zoneIds, zoneIdentities };
-  }, [visibleCouncilParkings, visibleZoneMarkers]);
+  }, [visibleCouncilParkings, visibleZoneMarkers, zoneAvailabilityAggregationEnabled]);
   const reportsWithoutZoneAvailabilityMarker = useMemo(
     () =>
       reports.filter((report) => {

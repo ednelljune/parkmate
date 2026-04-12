@@ -75,6 +75,9 @@ const PARKING_TYPE_ORDER = [
 const DEFAULT_MAP_DELTA = 0.005;
 const FOLLOW_ANIMATION_DISTANCE_METERS = 12;
 const FOLLOW_ANIMATION_INTERVAL_MS = 2500;
+const ACTIVE_NAVIGATION_REROUTE_DISTANCE_METERS = 20;
+const ACTIVE_NAVIGATION_REROUTE_INTERVAL_MS = 8000;
+const ACTIVE_NAVIGATION_ARRIVAL_METERS = 25;
 const MAP_PROVIDER = Platform.OS === "android" ? PROVIDER_GOOGLE : undefined;
 const MAP_GOOGLE_RENDERER = Platform.OS === "android" ? "LEGACY" : undefined;
 const MAP_RADIUS_PIN_PADDING_METERS = 12;
@@ -143,6 +146,23 @@ const sanitizeSpotForSelection = (spot) => {
   };
 };
 
+const createNavigationTarget = (target) => {
+  if (!target) return null;
+
+  const latitude = normalizeCoordinate(target.latitude ?? target.center_lat);
+  const longitude = normalizeCoordinate(target.longitude ?? target.center_lng);
+
+  if (latitude === null || longitude === null) {
+    return null;
+  }
+
+  return {
+    ...target,
+    latitude,
+    longitude,
+  };
+};
+
 const getRadiusViewRegion = (center, radiusMeters) => {
   if (!center || !Number.isFinite(Number(radiusMeters)) || Number(radiusMeters) <= 0) {
     return null;
@@ -189,6 +209,11 @@ function ParkMateContent() {
     coordinate: null,
     timestamp: 0,
   });
+  const lastNavigationRefreshRef = useRef({
+    coordinate: null,
+    timestamp: 0,
+    targetKey: null,
+  });
   const lastAutoFramedReportCountRef = useRef(null);
   const lastAutoNavigationRequestRef = useRef(null);
   const navigation = useNavigation();
@@ -199,6 +224,7 @@ function ParkMateContent() {
   const [selectedZoneOption, setSelectedZoneOption] = useState(null);
   const [spotQuantity, setSpotQuantity] = useState(1);
   const [selectedZone, setSelectedZone] = useState(null);
+  const [activeNavigationTarget, setActiveNavigationTarget] = useState(null);
   const [pendingZoneReportSpot, setPendingZoneReportSpot] = useState(null);
   const [lastKnownReportZoneState, setLastKnownReportZoneState] = useState({
     options: [],
@@ -384,16 +410,21 @@ function ParkMateContent() {
     [reportAvailabilityMaps],
   );
 
+  const stopInAppNavigation = useCallback(() => {
+    setActiveNavigationTarget(null);
+    lastNavigationRefreshRef.current = {
+      coordinate: null,
+      timestamp: 0,
+      targetKey: null,
+    };
+    clearRoute();
+  }, [clearRoute]);
+
   const startInAppNavigation = useCallback(
     (target, errorMessage = "Destination not available for navigation.") => {
-      const latitude = normalizeCoordinate(
-        target?.latitude ?? target?.center_lat,
-      );
-      const longitude = normalizeCoordinate(
-        target?.longitude ?? target?.center_lng,
-      );
+      const nextTarget = createNavigationTarget(target);
 
-      if (latitude === null || longitude === null) {
+      if (!nextTarget) {
         Alert.alert("Navigation Error", errorMessage);
         return false;
       }
@@ -403,13 +434,23 @@ function ParkMateContent() {
         return false;
       }
 
-      setIsFollowingLiveLocation(false);
+      const navigationTargetKey = String(
+        nextTarget.id ||
+          `${nextTarget.latitude.toFixed(6)},${nextTarget.longitude.toFixed(6)}`,
+      );
+
+      setIsFollowingLiveLocation(true);
+      setActiveNavigationTarget(nextTarget);
+      lastNavigationRefreshRef.current = {
+        coordinate: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+        timestamp: Date.now(),
+        targetKey: navigationTargetKey,
+      };
       clearRoute();
-      getDirections({
-        ...target,
-        latitude,
-        longitude,
-      });
+      getDirections(nextTarget, { fitToRoute: true });
       return true;
     },
     [clearRoute, getDirections, location],
@@ -823,7 +864,7 @@ function ParkMateContent() {
         data.report.zone_type || data.zone?.zone_type || data.report.parking_type,
     };
 
-    clearRoute();
+    stopInAppNavigation();
     setPendingZoneReportSpot(null);
     setSelectedSpot(null);
 
@@ -844,7 +885,7 @@ function ParkMateContent() {
     location,
     (claimResult) => {
       setSelectedSpot(null);
-      clearRoute();
+      stopInAppNavigation();
 
       if (!isFocused) {
         return;
@@ -884,12 +925,12 @@ function ParkMateContent() {
 
   const reportFalseMutation = useReportFalseSpot(() => {
     setSelectedSpot(null);
-    clearRoute();
+    stopInAppNavigation();
   });
 
   const deleteReportMutation = useDeleteReportSpot(() => {
     setSelectedSpot(null);
-    clearRoute();
+    stopInAppNavigation();
     Alert.alert("Success", "Your parking spot report has been deleted");
   });
 
@@ -901,6 +942,68 @@ function ParkMateContent() {
 
     deleteReportMutation.mutate(spotToDelete.id);
   }, [deleteReportMutation]);
+
+  useEffect(() => {
+    if (!activeNavigationTarget || !location) {
+      return;
+    }
+
+    const currentCoordinate = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    };
+    const distanceToTarget = getDistanceMeters(
+      currentCoordinate,
+      activeNavigationTarget,
+    );
+
+    if (
+      distanceToTarget !== null &&
+      distanceToTarget <= ACTIVE_NAVIGATION_ARRIVAL_METERS
+    ) {
+      stopInAppNavigation();
+      Alert.alert("Arrived", "You have reached your destination.");
+      return;
+    }
+
+    const targetKey = String(
+      activeNavigationTarget.id ||
+        `${activeNavigationTarget.latitude.toFixed(6)},${activeNavigationTarget.longitude.toFixed(6)}`,
+    );
+    const previousRefresh = lastNavigationRefreshRef.current;
+    const movedDistance = previousRefresh.coordinate
+      ? getDistanceMeters(previousRefresh.coordinate, currentCoordinate)
+      : null;
+    const now = Date.now();
+    const targetChanged = previousRefresh.targetKey !== targetKey;
+    const routeMissingLongEnough =
+      routeCoordinates.length === 0 &&
+      now - previousRefresh.timestamp >= 1500;
+    const shouldReroute =
+      targetChanged ||
+      routeMissingLongEnough ||
+      movedDistance === null ||
+      movedDistance >= ACTIVE_NAVIGATION_REROUTE_DISTANCE_METERS ||
+      now - previousRefresh.timestamp >= ACTIVE_NAVIGATION_REROUTE_INTERVAL_MS;
+
+    if (!shouldReroute) {
+      return;
+    }
+
+    lastNavigationRefreshRef.current = {
+      coordinate: currentCoordinate,
+      timestamp: now,
+      targetKey,
+    };
+
+    getDirections(activeNavigationTarget, { fitToRoute: false });
+  }, [
+    activeNavigationTarget,
+    getDirections,
+    location,
+    routeCoordinates.length,
+    stopInAppNavigation,
+  ]);
 
   // Follow the user's live location while preserving the current zoom level.
   useEffect(() => {
@@ -1270,9 +1373,9 @@ function ParkMateContent() {
       logSpotSelection("marker.press", spot);
       setIsFollowingLiveLocation(false);
       setSelectedSpot(spot);
-      clearRoute();
+      stopInAppNavigation();
     },
-    [clearRoute, logSpotSelection],
+    [logSpotSelection, stopInAppNavigation],
   );
 
   const handleZoneDirections = useCallback(
@@ -1347,7 +1450,7 @@ function ParkMateContent() {
       const longitude = normalizeCoordinate(sanitizedSpot.longitude);
 
       setIsFollowingLiveLocation(false);
-      clearRoute();
+      stopInAppNavigation();
 
       if (Platform.OS === "ios" && selectedZone) {
         console.log(
@@ -1374,7 +1477,7 @@ function ParkMateContent() {
         );
       }
     },
-    [clearRoute, focusMapRegion, logSpotSelection, selectedZone],
+    [focusMapRegion, logSpotSelection, selectedZone, stopInAppNavigation],
   );
 
   useEffect(() => {
@@ -1435,7 +1538,7 @@ function ParkMateContent() {
           text: "Claim",
           onPress: () => {
             setSelectedSpot(null);
-            clearRoute();
+            stopInAppNavigation();
             claimMutation.mutate({
               reportId: targetSpot.id,
               parkingType: targetSpot.parking_type || targetSpot.zone_type,
@@ -1446,7 +1549,7 @@ function ParkMateContent() {
         },
       ],
     );
-  }, [selectedSpot, location, clearRoute, claimMutation]);
+  }, [selectedSpot, location, stopInAppNavigation, claimMutation]);
 
   const handleReportFalseSpot = useCallback((spotToReport) => {
     const targetSpot = spotToReport || selectedSpot;
@@ -1462,20 +1565,20 @@ function ParkMateContent() {
           style: "destructive",
           onPress: () => {
             setSelectedSpot(null);
-            clearRoute();
+            stopInAppNavigation();
             reportFalseMutation.mutate(targetSpot.id);
           },
         },
       ],
     );
-  }, [selectedSpot, clearRoute, reportFalseMutation]);
+  }, [selectedSpot, stopInAppNavigation, reportFalseMutation]);
 
   const handleRecenter = useCallback(() => {
     if (location) {
       focusUserRadiusView(500);
-      clearRoute();
+      stopInAppNavigation();
     }
-  }, [clearRoute, focusUserRadiusView, location]);
+  }, [focusUserRadiusView, location, stopInAppNavigation]);
 
   const brandingHeaderOffset = 0;
   const brandingHeaderHeight = 88;
@@ -1688,7 +1791,7 @@ function ParkMateContent() {
             </View>
 
             <TouchableOpacity
-              onPress={clearRoute}
+              onPress={stopInAppNavigation}
               style={{
                 paddingHorizontal: 10,
                 paddingVertical: 8,
@@ -1744,7 +1847,7 @@ function ParkMateContent() {
         insets={insets}
         onClose={() => {
           setSelectedSpot(null);
-          clearRoute();
+          stopInAppNavigation();
         }}
         onClaimSpot={handleClaimSpot}
         onReportFalse={handleReportFalseSpot}
@@ -1759,7 +1862,7 @@ function ParkMateContent() {
         onClose={() => {
           setPendingZoneReportSpot(null);
           setSelectedZone(null);
-          clearRoute();
+          stopInAppNavigation();
         }}
         onGetDirections={handleZoneDirections}
         onSelectReport={handleZoneReportPress}

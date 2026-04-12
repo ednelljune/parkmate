@@ -257,46 +257,46 @@ const loadLegacyActivities = async (userId, limit) =>
 
 const loadPersistedActivities = async (userId, limit) =>
   sql`
+    WITH false_report_summary AS (
+      SELECT
+        fr.report_id,
+        COUNT(*)::int AS false_report_count
+      FROM false_reports fr
+      GROUP BY fr.report_id
+    )
     SELECT
-      CONCAT(activity_type, '-', COALESCE(event_key, report_id::text, id::text)) AS id,
-      activity_type,
-      report_id,
-      spot_status,
-      parking_type,
-      quantity,
-      occurred_at,
-      longitude,
-      latitude,
-      zone_type,
-      zone_name,
-      event_key,
+      CONCAT(ual.activity_type, '-', COALESCE(ual.event_key, ual.report_id::text, ual.id::text)) AS id,
+      ual.activity_type,
+      ual.report_id,
+      ual.spot_status,
+      ual.parking_type,
+      ual.quantity,
+      ual.occurred_at,
+      ual.longitude,
+      ual.latitude,
+      ual.zone_type,
+      ual.zone_name,
+      ual.event_key,
       CASE
-        WHEN activity_type = 'false_reported' THEN (
-          SELECT COUNT(*)::int
-          FROM false_reports fr
-          WHERE fr.report_id = user_activity_logs.report_id
-        )
+        WHEN ual.activity_type = 'false_reported' THEN frs.false_report_count
         ELSE NULL
       END AS false_report_count,
       ${FALSE_REPORT_TRUST_THRESHOLD}::int AS trust_score_threshold,
       CASE
-        WHEN activity_type = 'false_reported' THEN (
-          SELECT COUNT(*)::int >= ${FALSE_REPORT_TRUST_THRESHOLD}
-          FROM false_reports fr
-          WHERE fr.report_id = user_activity_logs.report_id
-        )
+        WHEN ual.activity_type = 'false_reported' THEN COALESCE(frs.false_report_count, 0) >= ${FALSE_REPORT_TRUST_THRESHOLD}
         ELSE false
       END AS trust_score_affected,
       CASE
-        WHEN activity_type IN ('report_claimed', 'expired') THEN true
-        WHEN activity_type = 'false_reported' AND event_key IS NOT NULL THEN true
+        WHEN ual.activity_type IN ('report_claimed', 'expired') THEN true
+        WHEN ual.activity_type = 'false_reported' AND ual.event_key IS NOT NULL THEN true
         ELSE false
       END AS is_system_update
-    FROM user_activity_logs
-    WHERE user_id = ${userId}
-    AND activity_type IN ('reported', 'claimed', 'false_reported', 'report_claimed', 'expired')
-    AND LOWER(COALESCE(zone_type, parking_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
-    ORDER BY occurred_at DESC
+    FROM user_activity_logs ual
+    LEFT JOIN false_report_summary frs ON frs.report_id = ual.report_id
+    WHERE ual.user_id = ${userId}
+    AND ual.activity_type IN ('reported', 'claimed', 'false_reported', 'report_claimed', 'expired')
+    AND LOWER(COALESCE(ual.zone_type, ual.parking_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
+    ORDER BY ual.occurred_at DESC
     LIMIT ${limit}
   `;
 
@@ -366,14 +366,17 @@ export async function GET(request) {
     }
 
     let legacyActivities = [];
-    try {
-      legacyActivities = await withTimeout(
-        loadLegacyActivities(userId, limit),
-        LEGACY_ACTIVITY_TIMEOUT_MS,
-        `Legacy activity feed query exceeded ${LEGACY_ACTIVITY_TIMEOUT_MS}ms`,
-      );
-    } catch (legacyActivitiesError) {
-      console.warn("Skipping legacy activity feed query:", legacyActivitiesError);
+    const remainingLegacyLimit = Math.max(limit - persistedActivities.length, 0);
+    if (remainingLegacyLimit > 0) {
+      try {
+        legacyActivities = await withTimeout(
+          loadLegacyActivities(userId, remainingLegacyLimit),
+          LEGACY_ACTIVITY_TIMEOUT_MS,
+          `Legacy activity feed query exceeded ${LEGACY_ACTIVITY_TIMEOUT_MS}ms`,
+        );
+      } catch (legacyActivitiesError) {
+        console.warn("Skipping legacy activity feed query:", legacyActivitiesError);
+      }
     }
 
     const activities = mergeActivities(persistedActivities, legacyActivities, limit);

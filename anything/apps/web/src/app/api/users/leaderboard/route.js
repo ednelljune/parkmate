@@ -10,21 +10,29 @@ export async function GET(request) {
     const offset = Math.max(0, Number.parseInt(searchParams.get('offset') || '0', 10));
 
     const users = await sql`
+      WITH report_counts AS (
+        SELECT user_id, COUNT(*)::int AS total_reports
+        FROM live_reports
+        GROUP BY user_id
+      ),
+      claim_counts AS (
+        SELECT user_id, COUNT(*)::int AS total_claims
+        FROM user_activity_logs
+        WHERE activity_type = 'claimed'
+        GROUP BY user_id
+      )
       SELECT
-        id,
-        full_name,
-        contribution_score,
-        trust_score,
-        (SELECT COUNT(*) FROM live_reports WHERE user_id = users.id) AS total_reports,
-        (
-          SELECT COUNT(*)
-          FROM user_activity_logs
-          WHERE user_id = users.id
-            AND activity_type = 'claimed'
-        ) AS total_claims,
-        created_at
-      FROM users
-      ORDER BY trust_score DESC, contribution_score DESC, created_at ASC
+        u.id,
+        u.full_name,
+        u.contribution_score,
+        u.trust_score,
+        COALESCE(rc.total_reports, 0) AS total_reports,
+        COALESCE(cc.total_claims, 0) AS total_claims,
+        u.created_at
+      FROM users u
+      LEFT JOIN report_counts rc ON rc.user_id = u.id
+      LEFT JOIN claim_counts cc ON cc.user_id = u.id
+      ORDER BY u.trust_score DESC, u.contribution_score DESC, u.created_at ASC
       LIMIT ${limit}
       OFFSET ${offset};
     `;

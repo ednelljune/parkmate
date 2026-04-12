@@ -146,6 +146,7 @@ export default function TimerScreen() {
   const params = useLocalSearchParams();
   const autoStartTimeoutRef = useRef(null);
   const hasHydratedTimerRef = useRef(false);
+  const lastHandledAutoStartKeyRef = useRef(null);
 
   const { data: user } = useUser();
   const userId = user?.id;
@@ -414,10 +415,18 @@ export default function TimerScreen() {
 
   useEffect(() => {
     if (params.autoStart !== "true" || !params.zoneType || !ZONE_DURATIONS[params.zoneType]) {
+      lastHandledAutoStartKeyRef.current = null;
       return;
     }
 
     const zoneType = params.zoneType;
+    const autoStartKey = `${params.autoStart}:${zoneType}`;
+
+    if (lastHandledAutoStartKeyRef.current === autoStartKey) {
+      return;
+    }
+
+    lastHandledAutoStartKeyRef.current = autoStartKey;
     const duration = ZONE_DURATIONS[zoneType] * 60;
 
     setSelectedZone(zoneType);
@@ -431,7 +440,6 @@ export default function TimerScreen() {
       const notificationsScheduled = await scheduleTimerNotifications(duration);
       await saveTimerState(zoneType, duration, true, now);
       setHasReminder(notificationsScheduled);
-      router.setParams({ autoStart: undefined, zoneType: undefined });
     }, 450);
 
     return () => {
@@ -439,7 +447,7 @@ export default function TimerScreen() {
         clearTimeout(autoStartTimeoutRef.current);
       }
     };
-  }, [params.autoStart, params.zoneType, router, saveTimerState, scheduleTimerNotifications]);
+  }, [params.autoStart, params.zoneType, saveTimerState, scheduleTimerNotifications]);
 
   useEffect(() => {
     let interval;

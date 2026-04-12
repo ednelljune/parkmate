@@ -60,7 +60,7 @@ const WEB_ALIASES = {
 const NATIVE_ALIASES = {
   "./Libraries/Components/TextInput/TextInput": path.resolve(
     __dirname,
-    "./polyfills/native/texinput.native.jsx",
+    "./node_modules/react-native/Libraries/Components/TextInput/TextInput.js",
   ),
 };
 const SHARED_ALIASES = {
@@ -178,13 +178,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       return context.resolveRequest(context, moduleName, platform);
     }
 
-    if (NATIVE_ALIASES[moduleName] && !moduleName.startsWith("./polyfills/")) {
+    if (NATIVE_ALIASES[moduleName]) {
       return context.resolveRequest(
         context,
         NATIVE_ALIASES[moduleName],
         platform,
       );
     }
+
     return context.resolveRequest(context, moduleName, platform);
   } catch (error) {
     return handleResolveRequestError({ error, context, platform, moduleName });

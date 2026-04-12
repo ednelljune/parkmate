@@ -28,7 +28,7 @@ const buildSystemUpdateMessage = (item) => {
   const trustLabel =
     falseReportCount >= FALSE_REPORT_TRUST_THRESHOLD
       ? " Trust score impact has already been applied."
-      : ` Trust score impact starts after ${FALSE_REPORT_TRUST_THRESHOLD} false reports on the same spot.`;
+      : ` Trust score impact starts after ${FALSE_REPORT_TRUST_THRESHOLD} users flag the same spot.`;
 
   return `${quantityLabel} in ${zoneName} was flagged as false by ${falseReportCount} ${reporterLabel}.${trustLabel}`;
 };

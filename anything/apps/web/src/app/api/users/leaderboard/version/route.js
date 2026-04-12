@@ -13,25 +13,29 @@ export async function GET(request) {
 
     const rows = await sql(
       `
-      WITH leaderboard_rows AS (
+      WITH report_counts AS (
+        SELECT user_id, COUNT(*)::int AS total_reports
+        FROM live_reports
+        GROUP BY user_id
+      ),
+      claim_counts AS (
+        SELECT user_id, COUNT(*)::int AS total_claims
+        FROM user_activity_logs
+        WHERE activity_type = 'claimed'
+        GROUP BY user_id
+      ),
+      leaderboard_rows AS (
         SELECT
           u.id,
           COALESCE(u.full_name, '') AS full_name,
           COALESCE(u.contribution_score, 0) AS contribution_score,
           COALESCE(u.trust_score, 0) AS trust_score,
-          (
-            SELECT COUNT(*)::int
-            FROM live_reports lr
-            WHERE lr.user_id = u.id
-          ) AS total_reports,
-          (
-            SELECT COUNT(*)::int
-            FROM user_activity_logs ual
-            WHERE ual.user_id = u.id
-              AND ual.activity_type = 'claimed'
-          ) AS total_claims,
+          COALESCE(rc.total_reports, 0) AS total_reports,
+          COALESCE(cc.total_claims, 0) AS total_claims,
           u.created_at
         FROM users u
+        LEFT JOIN report_counts rc ON rc.user_id = u.id
+        LEFT JOIN claim_counts cc ON cc.user_id = u.id
         ORDER BY u.trust_score DESC, u.contribution_score DESC, u.created_at ASC, u.id ASC
         LIMIT $1
       )

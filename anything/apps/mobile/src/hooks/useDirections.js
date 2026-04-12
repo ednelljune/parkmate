@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Alert } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 import { decodePolyline } from "@/utils/polylineDecoder";
 
 export const useDirections = (location, safeAnimateToRegion) => {
@@ -7,20 +7,40 @@ export const useDirections = (location, safeAnimateToRegion) => {
   const [routeDistance, setRouteDistance] = useState(null);
   const [routeDuration, setRouteDuration] = useState(null);
 
+  const openExternalNavigation = useCallback(async (target) => {
+    if (!target || !location) {
+      Alert.alert("Error", "Location not available");
+      return;
+    }
+
+    const origin = `${location.latitude},${location.longitude}`;
+    const destination = `${target.latitude},${target.longitude}`;
+    const url =
+      Platform.OS === "ios"
+        ? `http://maps.apple.com/?saddr=${origin}&daddr=${destination}&dirflg=d`
+        : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+
+    const canOpen = await Linking.canOpenURL(url);
+    if (!canOpen) {
+      Alert.alert("Navigation Error", "Could not open external navigation.");
+      return;
+    }
+
+    await Linking.openURL(url);
+  }, [location]);
+
   const getDirections = useCallback(
-    async (target) => {
+    async (target, options = {}) => {
       if (!target || !location) {
         Alert.alert("Error", "Location not available");
         return;
       }
 
       try {
+        const shouldFitToRoute = options.fitToRoute !== false;
         const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
         if (!apiKey) {
-          Alert.alert(
-            "Navigation Unavailable",
-            "In-app navigation is not configured yet on this build.",
-          );
+          await openExternalNavigation(target);
           return;
         }
 
@@ -43,7 +63,7 @@ export const useDirections = (location, safeAnimateToRegion) => {
           setRouteDuration(route.legs[0].duration.text);
 
           // Fit map to show entire route
-          if (safeAnimateToRegion && decoded.length > 0) {
+          if (shouldFitToRoute && safeAnimateToRegion && decoded.length > 0) {
             const lats = decoded.map((coord) => coord.latitude);
             const lngs = decoded.map((coord) => coord.longitude);
 
@@ -68,18 +88,21 @@ export const useDirections = (location, safeAnimateToRegion) => {
             );
           }
         } else {
-          Alert.alert(
-            "Navigation Error",
-            data?.error_message ||
-              "Could not find a route to this location",
-          );
+          if (data?.status === "REQUEST_DENIED") {
+            await openExternalNavigation(target);
+            return;
+          }
+
+          Alert.alert("Navigation Error", data?.error_message || "Could not find a route to this location");
         }
       } catch (error) {
         console.error("Error getting directions:", error);
-        Alert.alert("Error", "Could not get directions. Please try again.");
+        await openExternalNavigation(target).catch(() => {
+          Alert.alert("Error", "Could not get directions. Please try again.");
+        });
       }
     },
-    [location, safeAnimateToRegion],
+    [location, openExternalNavigation, safeAnimateToRegion],
   );
 
   const clearRoute = useCallback(() => {

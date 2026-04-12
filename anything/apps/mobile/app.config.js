@@ -5,6 +5,8 @@ const { expo: appJson } = require("./app.json");
 const GOOGLE_SERVICES_FILE = "./google-services.json";
 const DEFAULT_BACKEND_URL = "https://parkmate-api.onrender.com";
 const DEFAULT_BACKEND_HOST = "parkmate-api.onrender.com";
+const DEFAULT_SUPABASE_URL = "https://tkjqredjgkijcrrfewbj.supabase.co";
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_j6U_1ahMlhXTEMj49uhYXQ_WkxFIlq5";
 
 const getExpoPublicEnvironment = () =>
   Object.fromEntries(
@@ -22,6 +24,12 @@ module.exports = () => {
     expoPublicEnvironment.EXPO_PUBLIC_BASE_URL ||
     expoPublicEnvironment.EXPO_PUBLIC_APP_URL ||
     DEFAULT_BACKEND_URL;
+  const supabaseUrl =
+    expoPublicEnvironment.EXPO_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const supabasePublishableKey =
+    expoPublicEnvironment.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    expoPublicEnvironment.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+    DEFAULT_SUPABASE_PUBLISHABLE_KEY;
   const googleMapsApiKey = expoPublicEnvironment.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
   const existingExtra =
     appJson.extra && typeof appJson.extra === "object" ? appJson.extra : {};
@@ -69,6 +77,8 @@ module.exports = () => {
         EXPO_PUBLIC_BASE_URL: backendUrl,
         EXPO_PUBLIC_APP_URL: backendUrl,
         EXPO_PUBLIC_HOST: expoPublicEnvironment.EXPO_PUBLIC_HOST || DEFAULT_BACKEND_HOST,
+        EXPO_PUBLIC_SUPABASE_URL: supabaseUrl,
+        EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey,
         EXPO_PUBLIC_ANDROID_FCM_CONFIGURED: String(androidFcmConfigured),
       },
     },

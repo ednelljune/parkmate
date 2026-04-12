@@ -257,13 +257,6 @@ export async function POST(request) {
         `;
         spotRemoved = true;
       }
-    } else if (isOutsideZone) {
-      await sql`
-        UPDATE live_reports
-        SET status = 'claimed'
-        WHERE id = ${reportId};
-      `;
-      spotRemoved = true;
     }
 
     if (originalReporterId) {

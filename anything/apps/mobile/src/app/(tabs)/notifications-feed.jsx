@@ -1061,8 +1061,9 @@ export default function NotificationsScreen() {
       : readActionMode === "unread"
         ? selectedReadNotifications
         : [];
+  const deleteTargets = hasSelection ? selectedNotifications : notifications;
   const readDisabled = readTargets.length === 0;
-  const deleteDisabled = selectedNotifications.length === 0;
+  const deleteDisabled = deleteTargets.length === 0;
   const readTargetIds = React.useMemo(
     () => readTargets.map((item) => String(item?.id || "")).filter(Boolean),
     [readTargets],
@@ -1146,30 +1147,33 @@ export default function NotificationsScreen() {
     setActionBusy(true);
 
     try {
-      await deleteAllActivityNotifications(selectedNotifications);
+      await deleteAllActivityNotifications(deleteTargets);
       setSelectedIds([]);
+      setIsEditing(false);
     } catch {
       Alert.alert("Unable to delete activity", "Please try again.");
     } finally {
       setActionBusy(false);
     }
-  }, [selectedNotifications]);
+  }, [deleteTargets]);
 
   const handleDeleteSelected = React.useCallback(() => {
-    if (selectedNotifications.length === 0) {
+    if (deleteTargets.length === 0) {
       return;
     }
 
     Alert.alert(
-      "Delete selected activity?",
-      "This will remove the selected activity items from your list.",
+      hasSelection ? "Delete selected activity?" : "Delete all activity?",
+      hasSelection
+        ? "This will remove the selected activity items from your list."
+        : "This will remove all activity items from your list.",
       [
         {
           text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Delete",
+          text: hasSelection ? "Delete" : "Delete All",
           style: "destructive",
           onPress: () => {
             handleDeleteSelectedConfirmed().catch(() => {});
@@ -1177,7 +1181,7 @@ export default function NotificationsScreen() {
         },
       ],
     );
-  }, [handleDeleteSelectedConfirmed, selectedNotifications.length]);
+  }, [deleteTargets.length, handleDeleteSelectedConfirmed, hasSelection]);
   const renderActivityRow = React.useCallback(
     ({ item }) => (
       <ActivityRow

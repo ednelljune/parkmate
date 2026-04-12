@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -172,6 +172,7 @@ export default function NotificationsScreen() {
   const { location, errorMsg, status } = useLocation();
   const [selectedTab, setSelectedTab] = useState("all");
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const isCompactAndroid = Platform.OS === "android" && windowWidth <= 420;
   const reportsVersionEnabled = Boolean(location);
 
@@ -197,6 +198,15 @@ export default function NotificationsScreen() {
     ALERT_RADIUS_METERS,
     reportsVersionEnabled,
   );
+  const handleRefresh = useCallback(async () => {
+    setIsManualRefreshing(true);
+
+    try {
+      await refetch();
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [refetch]);
   const nearbyZones = useParkingZones(location, ALERT_RADIUS_METERS);
   const detectedZonePins = useMemo(
     () =>
@@ -421,7 +431,7 @@ export default function NotificationsScreen() {
           },
         ]}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+          <RefreshControl refreshing={isManualRefreshing} onRefresh={handleRefresh} />
         }
       >
         <LinearGradient

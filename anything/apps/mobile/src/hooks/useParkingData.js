@@ -18,7 +18,7 @@ import {
 import { ACTIVITY_NOTIFICATIONS_QUERY_KEY } from "@/hooks/useActivityNotifications";
 import { ACTIVITY_MAILBOX_QUERY_KEY } from "@/hooks/useActivityMailbox";
 
-const CLAIM_SPOT_MAX_DISTANCE_METERS = 75;
+const CLAIM_SPOT_MAX_DISTANCE_METERS = 5;
 const REPORT_TTL_MS = 3 * 60 * 1000;
 const DEFAULT_NEARBY_REPORTS_STALE_TIME_MS = 15000;
 const DEFAULT_NEARBY_REPORTS_REFETCH_INTERVAL_MS = 15000;
@@ -732,7 +732,7 @@ export const useReportSpot = (location, onSuccess) => {
   };
 
   return useMutation({
-    mutationFn: async ({ coords, parkingType, quantity, zoneId }) => {
+    mutationFn: async ({ coords, userCoords, parkingType, quantity, zoneId }) => {
       const session = useAuthStore.getState().session;
 
       if (!user?.id) {
@@ -743,26 +743,30 @@ export const useReportSpot = (location, onSuccess) => {
         throw new Error("Please sign in to report parking spots");
       }
 
-        console.log("[report.create] Reporting spot", {
-          userId: user.id,
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          parkingType,
-          quantity,
-          zoneId,
-          apiBaseUrl: baseUrl || "relative fetch",
-          reportSpotUrl,
-          hasSession: !!session,
-          hasAccessToken: !!session?.access_token,
-        });
+      console.log("[report.create] Reporting spot", {
+        userId: user.id,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        userLatitude: userCoords?.latitude ?? null,
+        userLongitude: userCoords?.longitude ?? null,
+        parkingType,
+        quantity,
+        zoneId,
+        apiBaseUrl: baseUrl || "relative fetch",
+        reportSpotUrl,
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+      });
 
       try {
-          const response = await fetch(resolvedReportRequestUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              latitude: coords.latitude,
-              longitude: coords.longitude,
+        const response = await fetch(resolvedReportRequestUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            userLatitude: userCoords?.latitude ?? coords.latitude,
+            userLongitude: userCoords?.longitude ?? coords.longitude,
             parkingType: parkingType || "1P",
             quantity: quantity || 1,
             zoneId: zoneId || null,
@@ -772,13 +776,13 @@ export const useReportSpot = (location, onSuccess) => {
         const responseText = await response.text().catch(() => "");
         const responseJson = safeJsonParse(responseText);
 
-          console.log("[report.create] Report response received", {
-            status: response.status,
-            ok: response.ok,
-            requestUrl: resolvedReportRequestUrl,
-            resolvedBackendUrl: reportSpotUrl,
-            body: responseJson || responseText || null,
-          });
+        console.log("[report.create] Report response received", {
+          status: response.status,
+          ok: response.ok,
+          requestUrl: resolvedReportRequestUrl,
+          resolvedBackendUrl: reportSpotUrl,
+          body: responseJson || responseText || null,
+        });
 
         if (!response.ok) {
           let errorMessage = `Server error: ${response.status}`;
@@ -798,11 +802,11 @@ export const useReportSpot = (location, onSuccess) => {
         console.log("[report.create] Report success payload", data);
         return data;
       } catch (networkError) {
-          console.error("[report.create] Report request failed", {
-            message: networkError?.message || String(networkError),
-            apiBaseUrl: baseUrl || null,
-            reportSpotUrl,
-          });
+        console.error("[report.create] Report request failed", {
+          message: networkError?.message || String(networkError),
+          apiBaseUrl: baseUrl || null,
+          reportSpotUrl,
+        });
         throw networkError;
       }
     },
@@ -938,7 +942,9 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
         : null;
 
       if (!currentLocation) {
-        throw new Error("Current location is required to claim a parking spot");
+        throw new Error(
+          "Current location is required to confirm you are within 5m of the reported spot",
+        );
       }
 
       if (
@@ -946,7 +952,7 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
         claimDistanceMeters > CLAIM_SPOT_MAX_DISTANCE_METERS
       ) {
         throw new Error(
-          `Move closer to the reported spot before claiming it. You must be within ${CLAIM_SPOT_MAX_DISTANCE_METERS}m.`,
+          `Move closer to the reported spot coordinates before claiming it. You must be within ${CLAIM_SPOT_MAX_DISTANCE_METERS}m.`,
         );
       }
 
@@ -1051,9 +1057,16 @@ export const useReportFalseSpot = (onSuccess) => {
   const reportFalseUrl = resolveBackendUrl("/api/reports/report-false");
 
   return useMutation({
-    mutationFn: async (reportId) => {
+    mutationFn: async (reportInput) => {
       if (!user?.id) throw new Error("User not authenticated");
+      const reportId =
+        reportInput && typeof reportInput === "object"
+          ? reportInput.id ?? reportInput.reportId
+          : reportInput;
+      const normalizedReportInput =
+        reportInput && typeof reportInput === "object" ? normalizeReport(reportInput) : null;
       const reportSnapshot = findReportSnapshot(queryClient, reportId);
+      const resolvedReportSnapshot = reportSnapshot || normalizedReportInput;
 
       console.log("[report.false] Submitting false-report request", {
         reportId,
@@ -1093,7 +1106,7 @@ export const useReportFalseSpot = (onSuccess) => {
         requestUrl: reportFalseUrl || "/api/reports/report-false",
         body: result,
       });
-      return { ...result, reportId, reportSnapshot };
+      return { ...result, reportId, reportSnapshot: resolvedReportSnapshot };
     },
     onSuccess: ({
       reportId,

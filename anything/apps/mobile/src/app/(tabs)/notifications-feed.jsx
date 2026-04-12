@@ -2,6 +2,7 @@ import React from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
   Modal,
   Platform,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   BellRing,
@@ -28,10 +30,16 @@ import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useActivityNotifications } from "@/hooks/useActivityNotifications";
+import { useActivityMailbox } from "@/hooks/useActivityMailbox";
 import { formatTimeAgo } from "@/utils/formatters";
 import { BRAND_PALETTE } from "@/theme/brandColors";
 import { useAuthStore } from "@/utils/auth/store";
+import useUser from "@/utils/auth/useUser";
 import { deriveSystemUpdateItems } from "@/utils/systemUpdates";
+import {
+  deleteSystemUpdateItems,
+  hydrateDeletedSystemUpdateIds,
+} from "@/utils/systemUpdateNotificationState";
 import {
   getActivityLastViewedAt,
   getActivityReadStateVersion,
@@ -589,20 +597,36 @@ const ActivityRow = React.memo(function ActivityRow({
   );
 });
 
-const MailboxItemRow = React.memo(function MailboxItemRow({ item }) {
-  const meta = MAILBOX_META[item.mailbox_type] || MAILBOX_META.false_reported;
+const MailboxItemRow = React.memo(function MailboxItemRow({
+  item,
+  isEditing = false,
+  isSelected = false,
+  onToggleSelect,
+}) {
+  const resolvedItem = item || {};
+  const meta = MAILBOX_META[resolvedItem.mailbox_type] || MAILBOX_META.false_reported;
   const Icon = meta.icon;
-  const quantityLabel = getQuantityLabel(item);
-  const falseReportCount = Math.max(0, Number(item?.false_report_count) || 0);
-  const claimPoints = Math.max(0, Number(item?.claim_points_awarded) || 0);
+  const quantityLabel = getQuantityLabel(resolvedItem);
+  const falseReportCount = Math.max(0, Number(resolvedItem?.false_report_count) || 0);
+  const claimPoints = Math.max(0, Number(resolvedItem?.claim_points_awarded) || 0);
 
   return (
-    <View
+    <Pressable
+      accessibilityRole={isEditing ? "checkbox" : "button"}
+      accessibilityState={isEditing ? { checked: isSelected } : undefined}
+      disabled={!isEditing}
+      onPress={() => {
+        if (isEditing) {
+          onToggleSelect?.(resolvedItem);
+        }
+      }}
       style={[
         styles.mailboxItemCard,
+        isEditing && styles.feedCardEditing,
+        isSelected && styles.feedCardSelected,
         {
           backgroundColor: meta.panel,
-          borderColor: meta.border,
+          borderColor: isSelected ? meta.accent : meta.border,
         },
       ]}
     >
@@ -627,61 +651,84 @@ const MailboxItemRow = React.memo(function MailboxItemRow({ item }) {
                 {meta.label}
               </Text>
             </View>
-            <Text style={styles.mailboxItemTitle}>{getMailboxSummary(item)}</Text>
+            <Text style={styles.mailboxItemTitle}>{getMailboxSummary(resolvedItem)}</Text>
           </View>
         </View>
 
         <View style={styles.mailboxItemTimeWrap}>
           <Clock3 size={13} color={BRAND_PALETTE.muted} />
-          <Text style={styles.activityTime}>{formatTimeAgo(item.sent_at)}</Text>
+          <Text style={styles.activityTime}>{formatTimeAgo(resolvedItem.sent_at)}</Text>
+          {isEditing ? (
+            <View
+              style={[
+                styles.selectionCheckbox,
+                isSelected && styles.selectionCheckboxSelected,
+              ]}
+            >
+              {isSelected ? (
+                <CheckCircle2 size={16} color="#FFFFFF" />
+              ) : (
+                <Circle size={16} color={BRAND_PALETTE.muted} />
+              )}
+            </View>
+          ) : null}
         </View>
       </View>
 
-      <Text style={styles.mailboxItemDetail}>{getMailboxDetail(item)}</Text>
+      <Text style={styles.mailboxItemDetail}>{getMailboxDetail(resolvedItem)}</Text>
 
       <View style={styles.mailboxPillRow}>
         <View style={styles.metaPill}>
           <Text style={styles.metaPillText}>{quantityLabel}</Text>
         </View>
         <View style={styles.metaPill}>
-          <Text style={styles.metaPillText}>{item.zone_name || "Reported spot"}</Text>
+          <Text style={styles.metaPillText}>{resolvedItem.zone_name || "Reported spot"}</Text>
         </View>
-        {item.mailbox_type === "claimed" && claimPoints > 0 ? (
+        {resolvedItem.mailbox_type === "claimed" && claimPoints > 0 ? (
           <View style={[styles.metaPill, styles.mailboxAccentPill]}>
             <Text style={styles.mailboxAccentPillText}>+{claimPoints} pts</Text>
           </View>
         ) : null}
-        {item.mailbox_type === "expired" ? (
+        {resolvedItem.mailbox_type === "expired" ? (
           <View style={[styles.metaPill, styles.mailboxNeutralPill]}>
             <Text style={styles.mailboxNeutralPillText}>No claim landed</Text>
           </View>
         ) : null}
-        {item.mailbox_type === "false_reported" ? (
+        {resolvedItem.mailbox_type === "false_reported" ? (
           <View style={[styles.metaPill, styles.mailboxWarningPill]}>
             <Text style={styles.mailboxWarningPillText}>
               {falseReportCount} false {falseReportCount === 1 ? "report" : "reports"}
             </Text>
           </View>
         ) : null}
-        {item.mailbox_type === "false_reported" && item.trust_score_affected ? (
+        {resolvedItem.mailbox_type === "false_reported" && resolvedItem.trust_score_affected ? (
           <View style={[styles.metaPill, styles.mailboxWarningPillStrong]}>
             <Text style={styles.mailboxWarningPillStrongText}>Trust impacted</Text>
           </View>
         ) : null}
       </View>
-    </View>
+
+    </Pressable>
   );
 });
 
 function MailboxModal({
   visible,
   onClose,
-  items,
-  summary,
+  items = [],
+  summary = null,
   loading,
   onRefresh,
   insets,
+  isEditing = false,
+  onStartEditing,
+  onCancelEditing,
+  onDeleteSelected,
+  onToggleSelect,
+  selectedIdSet = new Set(),
+  deleteDisabled = false,
 }) {
+  const resolvedItems = Array.isArray(items) ? items : [];
   return (
     <Modal
       visible={visible}
@@ -708,9 +755,33 @@ function MailboxModal({
                 Claims, expiries, and false reports for your spots are grouped here.
               </Text>
             </View>
-            <Pressable onPress={onClose} style={styles.mailboxCloseButton}>
-              <X size={18} color={BRAND_PALETTE.deepNavy} />
-            </Pressable>
+            <View style={styles.mailboxModalHeaderActions}>
+              {isEditing ? (
+                <HeaderIconButton
+                  icon={Trash2}
+                  onPress={onDeleteSelected}
+                  disabled={deleteDisabled}
+                  destructive
+                />
+              ) : (
+                <HeaderTextButton
+                  label="Edit"
+                  onPress={onStartEditing}
+                  disabled={resolvedItems.length === 0}
+                />
+              )}
+              {isEditing ? (
+                <HeaderTextButton
+                  label="Cancel"
+                  onPress={onCancelEditing}
+                  disabled={false}
+                />
+              ) : (
+                <Pressable onPress={onClose} style={styles.mailboxCloseButton}>
+                  <X size={18} color={BRAND_PALETTE.deepNavy} />
+                </Pressable>
+              )}
+            </View>
           </View>
 
           <View style={styles.mailboxSummaryRow}>
@@ -728,7 +799,7 @@ function MailboxModal({
             </View>
           </View>
 
-          {loading && items.length === 0 ? (
+          {loading && resolvedItems.length === 0 ? (
             <View style={styles.mailboxStateWrap}>
               <ActivityIndicator size="large" color={BRAND_PALETTE.accentBold} />
               <Text style={styles.mailboxStateTitle}>Loading updates</Text>
@@ -736,7 +807,7 @@ function MailboxModal({
                 Pulling the latest status changes from your reported spots.
               </Text>
             </View>
-          ) : items.length === 0 ? (
+          ) : resolvedItems.length === 0 ? (
             <View style={styles.mailboxStateWrap}>
               <BellRing size={28} color={BRAND_PALETTE.accentBold} />
               <Text style={styles.mailboxStateTitle}>No system updates yet</Text>
@@ -747,9 +818,16 @@ function MailboxModal({
             </View>
           ) : (
             <FlatList
-              data={items}
+              data={resolvedItems}
               keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => <MailboxItemRow item={item} />}
+              renderItem={({ item }) => (
+                <MailboxItemRow
+                  item={item}
+                  isEditing={isEditing}
+                  isSelected={selectedIdSet?.has?.(String(item.id)) || false}
+                  onToggleSelect={onToggleSelect}
+                />
+              )}
               contentContainerStyle={styles.mailboxListContent}
               ItemSeparatorComponent={() => <View style={styles.mailboxListSeparator} />}
               showsVerticalScrollIndicator={false}
@@ -869,30 +947,31 @@ const ListHeader = React.memo(function ListHeader({
           <Text style={styles.sectionTitle}>Timeline</Text>
           <View style={styles.headerActionsRow}>
             {isEditing ? (
-              <>
-                <HeaderIconButton
-                  icon={Eye}
-                  onPress={onMarkSelectedRead}
-                  disabled={readDisabled || actionBusy}
-                />
-                <HeaderIconButton
-                  icon={Trash2}
-                  onPress={onDeleteSelected}
-                  disabled={deleteDisabled || actionBusy}
-                  destructive
-                />
-              </>
+              <HeaderIconButton
+                icon={Trash2}
+                onPress={onDeleteSelected}
+                disabled={deleteDisabled || actionBusy}
+                destructive
+              />
+            ) : (
+              <HeaderTextButton
+                label="Edit"
+                onPress={onStartEditing}
+                disabled={actionBusy}
+              />
+            )}
+            {isEditing ? (
+              <HeaderTextButton
+                label="Cancel"
+                onPress={onCancelEditing}
+                disabled={actionBusy}
+              />
             ) : null}
-            <HeaderTextButton
-              label={isEditing ? "Cancel" : "Edit"}
-              onPress={isEditing ? onCancelEditing : onStartEditing}
-              disabled={actionBusy}
-            />
           </View>
         </View>
         <Text style={styles.sectionSubtitle}>
           {isEditing
-            ? "Select activity items, then use the icons beside cancel."
+            ? "Select activity items, then use delete on the left or cancel on the right."
             : "Newest activity first. Swipe any item to manage it."}
         </Text>
       </View>
@@ -967,10 +1046,17 @@ function EmptyState() {
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuthStore();
+  const { data: user } = useUser();
   const [isEditing, setIsEditing] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState([]);
   const [actionBusy, setActionBusy] = React.useState(false);
   const [isMailboxVisible, setIsMailboxVisible] = React.useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = React.useState(false);
+  const [deletedSystemUpdateIds, setDeletedSystemUpdateIds] = React.useState(new Set());
+  const [isMailboxEditing, setIsMailboxEditing] = React.useState(false);
+  const [selectedMailboxIds, setSelectedMailboxIds] = React.useState([]);
+  const lastLifecycleRefreshAtRef = React.useRef(0);
+  const lifecycleRefreshInFlightRef = React.useRef(false);
   const activityReadStateVersion = React.useSyncExternalStore(
     subscribeToActivityReadState,
     getActivityReadStateVersion,
@@ -986,6 +1072,18 @@ export default function NotificationsScreen() {
     isRefetching,
     refetchActivityVersion,
   } = useActivityNotifications(100, Boolean(session?.access_token), {
+    refetchIntervalMs: false,
+    refetchOnMount: false,
+    staleTimeMs: Infinity,
+    watchActivityVersion: false,
+  });
+  const {
+    data: mailboxItems = [],
+    summary: mailboxSummary,
+    refetch: refetchMailbox,
+    isLoading: isMailboxLoading,
+    isRefetching: isMailboxRefetching,
+  } = useActivityMailbox(50, Boolean(session?.access_token), {
     refetchIntervalMs: false,
     refetchOnMount: false,
     staleTimeMs: Infinity,
@@ -1009,12 +1107,83 @@ export default function NotificationsScreen() {
     hydrateActivityReadState().catch(() => {});
   }, []);
 
-  const handleRefresh = React.useCallback(async () => {
-    await Promise.allSettled([
-      refetch(),
-      refetchActivityVersion?.(),
-    ]);
-  }, [refetch, refetchActivityVersion]);
+  const refreshActivityFeeds = React.useCallback(
+    async ({ showSpinner = false, source = "manual" } = {}) => {
+      const now = Date.now();
+      const isLifecycleRefresh = source !== "manual";
+
+      if (isLifecycleRefresh) {
+        if (lifecycleRefreshInFlightRef.current) {
+          return;
+        }
+
+        if (now - lastLifecycleRefreshAtRef.current < 5000) {
+          return;
+        }
+
+        lifecycleRefreshInFlightRef.current = true;
+        lastLifecycleRefreshAtRef.current = now;
+      }
+
+      if (showSpinner) {
+        setIsManualRefreshing(true);
+      }
+
+      try {
+        await Promise.allSettled([
+          refetch(),
+          refetchActivityVersion?.(),
+          refetchMailbox?.(),
+        ]);
+      } finally {
+        if (showSpinner) {
+          setIsManualRefreshing(false);
+        }
+
+        if (isLifecycleRefresh) {
+          lifecycleRefreshInFlightRef.current = false;
+        }
+      }
+    },
+    [refetch, refetchActivityVersion, refetchMailbox],
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshActivityFeeds({ source: "focus" }).catch(() => {});
+    }, [refreshActivityFeeds]),
+  );
+
+  React.useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        refreshActivityFeeds({ source: "app-active" }).catch(() => {});
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [refreshActivityFeeds]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    hydrateDeletedSystemUpdateIds(user?.id).then((ids) => {
+      if (!cancelled) {
+        setDeletedSystemUpdateIds(ids);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const handleRefresh = React.useCallback(
+    async () => refreshActivityFeeds({ showSpinner: true, source: "manual" }),
+    [refreshActivityFeeds],
+  );
 
   const viewedAt = React.useMemo(
     () => getActivityLastViewedAt(),
@@ -1068,15 +1237,27 @@ export default function NotificationsScreen() {
     () => readTargets.map((item) => String(item?.id || "")).filter(Boolean),
     [readTargets],
   );
-  const systemUpdateItems = React.useMemo(
+  const derivedSystemUpdateItems = React.useMemo(
     () => deriveSystemUpdateItems(allNotifications),
     [allNotifications],
+  );
+  const rawSystemUpdateItems = mailboxItems.length > 0 ? mailboxItems : derivedSystemUpdateItems;
+  const systemUpdateItems = React.useMemo(
+    () =>
+      rawSystemUpdateItems.filter(
+        (item) => !deletedSystemUpdateIds.has(String(item?.id || "")),
+      ),
+    [deletedSystemUpdateIds, rawSystemUpdateItems],
   );
   const systemUpdateSummary = React.useMemo(
     () => getMailboxStats(systemUpdateItems, null),
     [systemUpdateItems],
   );
-  const systemUpdatesLoading = (isLoading || isRefetching) && systemUpdateItems.length === 0;
+  const systemUpdatesLoading =
+    ((isMailboxLoading || isMailboxRefetching) && systemUpdateItems.length === 0) ||
+    ((!mailboxItems.length && !mailboxSummary) &&
+      (isLoading || isRefetching) &&
+      systemUpdateItems.length === 0);
 
   React.useEffect(() => {
     const visibleIds = new Set(notifications.map((item) => String(item.id)));
@@ -1086,6 +1267,15 @@ export default function NotificationsScreen() {
       setIsEditing(false);
     }
   }, [notifications]);
+
+  React.useEffect(() => {
+    const visibleMailboxIds = new Set(systemUpdateItems.map((item) => String(item.id)));
+    setSelectedMailboxIds((current) => current.filter((id) => visibleMailboxIds.has(id)));
+
+    if (systemUpdateItems.length === 0) {
+      setIsMailboxEditing(false);
+    }
+  }, [systemUpdateItems]);
 
   const handleStartEditing = React.useCallback(() => {
     if (notifications.length === 0) {
@@ -1182,6 +1372,77 @@ export default function NotificationsScreen() {
       ],
     );
   }, [deleteTargets.length, handleDeleteSelectedConfirmed, hasSelection]);
+
+  const selectedMailboxItems = React.useMemo(() => {
+    if (selectedMailboxIds.length === 0) {
+      return [];
+    }
+
+    const selectedMailboxIdSet = new Set(selectedMailboxIds);
+    return systemUpdateItems.filter((item) => selectedMailboxIdSet.has(String(item.id)));
+  }, [selectedMailboxIds, systemUpdateItems]);
+  const selectedMailboxIdSet = React.useMemo(
+    () => new Set(selectedMailboxIds),
+    [selectedMailboxIds],
+  );
+  const mailboxDeleteTargets = selectedMailboxItems;
+  const mailboxDeleteDisabled = mailboxDeleteTargets.length === 0;
+
+  const handleStartMailboxEditing = React.useCallback(() => {
+    if (systemUpdateItems.length === 0) {
+      return;
+    }
+
+    setSelectedMailboxIds(systemUpdateItems.map((item) => String(item?.id || "")).filter(Boolean));
+    setIsMailboxEditing(true);
+  }, [systemUpdateItems]);
+
+  const handleCancelMailboxEditing = React.useCallback(() => {
+    setSelectedMailboxIds([]);
+    setIsMailboxEditing(false);
+  }, []);
+
+  const handleToggleMailboxSelect = React.useCallback((item) => {
+    const itemId = String(item?.id || "");
+    if (!itemId) {
+      return;
+    }
+
+    setSelectedMailboxIds((current) =>
+      current.includes(itemId)
+        ? current.filter((id) => id !== itemId)
+        : [...current, itemId],
+    );
+  }, []);
+
+  const handleDeleteMailboxSelectedConfirmed = React.useCallback(async () => {
+    const nextIds = await deleteSystemUpdateItems(user?.id, mailboxDeleteTargets);
+    setDeletedSystemUpdateIds(nextIds);
+    setSelectedMailboxIds([]);
+    setIsMailboxEditing(false);
+  }, [mailboxDeleteTargets, user?.id]);
+
+  const handleDeleteMailboxSelected = React.useCallback(() => {
+    if (mailboxDeleteTargets.length === 0) {
+      return;
+    }
+
+    Alert.alert(
+      "Delete selected updates?",
+      "This will remove the selected system updates from your list.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            handleDeleteMailboxSelectedConfirmed().catch(() => {});
+          },
+        },
+      ],
+    );
+  }, [handleDeleteMailboxSelectedConfirmed, mailboxDeleteTargets.length]);
+
   const renderActivityRow = React.useCallback(
     ({ item }) => (
       <ActivityRow
@@ -1225,6 +1486,13 @@ export default function NotificationsScreen() {
         loading={systemUpdatesLoading}
         onRefresh={handleRefresh}
         insets={insets}
+        isEditing={isMailboxEditing}
+        onStartEditing={handleStartMailboxEditing}
+        onCancelEditing={handleCancelMailboxEditing}
+        onDeleteSelected={handleDeleteMailboxSelected}
+        onToggleSelect={handleToggleMailboxSelect}
+        selectedIdSet={selectedMailboxIdSet}
+        deleteDisabled={mailboxDeleteDisabled}
       />
       <FlatList
         data={notifications}
@@ -1237,7 +1505,7 @@ export default function NotificationsScreen() {
         ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
         refreshControl={
           <RefreshControl
-            refreshing={isRefetching || systemUpdatesLoading}
+            refreshing={isManualRefreshing}
             onRefresh={handleRefresh}
             tintColor={BRAND_PALETTE.accentBold}
           />
@@ -1382,10 +1650,10 @@ const styles = StyleSheet.create({
   },
   mailboxCard: {
     flex: 0.9,
-    borderRadius: 18,
+    borderRadius: 16,
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
     borderWidth: 1,
     borderColor: "rgba(245, 158, 11, 0.22)",
     justifyContent: "space-between",
@@ -1394,43 +1662,43 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.985 }],
   },
   mailboxStatAccent: {
-    width: 24,
-    height: 4,
+    width: 20,
+    height: 3,
     borderRadius: 999,
     backgroundColor: BRAND_PALETTE.gold,
-    marginBottom: 6,
+    marginBottom: 5,
   },
   mailboxCompactHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
   },
   mailboxCompactEyebrow: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "800",
     color: BRAND_PALETTE.gold,
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   mailboxCompactValue: {
-    marginTop: 4,
-    fontSize: 22,
-    lineHeight: 25,
+    marginTop: 3,
+    fontSize: 19,
+    lineHeight: 22,
     fontWeight: "900",
     color: BRAND_PALETTE.deepNavy,
   },
   mailboxCompactLabel: {
     marginTop: 2,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
     color: BRAND_PALETTE.muted,
   },
   mailboxCompactFooter: {
-    marginTop: 6,
+    marginTop: 5,
   },
   mailboxCompactHelper: {
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 9,
+    lineHeight: 12,
     color: BRAND_PALETTE.accentBold,
     fontWeight: "800",
   },
@@ -1749,6 +2017,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
+  mailboxModalHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
   mailboxModalHeaderCopy: {
     flex: 1,
   },
@@ -1782,6 +2056,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#D9E6F2",
+  },
+  mailboxItemActions: {
+    marginTop: 12,
+    alignItems: "flex-end",
   },
   mailboxSummaryRow: {
     flexDirection: "row",
@@ -1839,58 +2117,58 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   mailboxItemCard: {
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: 13,
-    paddingVertical: 13,
+    paddingHorizontal: 11,
+    paddingVertical: 11,
   },
   mailboxItemHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 8,
   },
   mailboxItemLead: {
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 8,
   },
   mailboxItemIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
   },
   mailboxItemHeaderText: {
     flex: 1,
-    gap: 6,
+    gap: 4,
   },
   mailboxItemTitle: {
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: "900",
     color: BRAND_PALETTE.deepNavy,
   },
   mailboxItemTimeWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 4,
     marginTop: 2,
   },
   mailboxItemDetail: {
-    marginTop: 10,
-    fontSize: 13,
-    lineHeight: 19,
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 17,
     color: BRAND_PALETTE.muted,
   },
   mailboxPillRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
-    marginTop: 12,
+    marginTop: 10,
   },
   mailboxAccentPill: {
     backgroundColor: "#DCFCE7",

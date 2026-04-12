@@ -3,7 +3,7 @@ import { requireAuthenticatedUser } from '@/app/api/utils/supabase-auth';
 import { logUserActivity } from '@/app/api/utils/activity-log';
 import { getEffectiveReportExpiresAtSql } from '@/app/api/utils/report-ttl';
 
-const CLAIM_SPOT_MAX_DISTANCE_METERS = 75;
+const CLAIM_SPOT_MAX_DISTANCE_METERS = 5;
 
 const isExpoPushToken = (value) =>
   typeof value === 'string' &&
@@ -125,7 +125,8 @@ export async function POST(request) {
       return Response.json(
         {
           success: false,
-          message: 'Your current location is required to claim a parking spot.',
+          message:
+            'Your current location is required to confirm you are within 5m of the reported spot.',
         },
         { status: 400 }
       );
@@ -176,7 +177,7 @@ export async function POST(request) {
         const actualDistanceClause =
           roundedDistance == null ? '' : ` You are about ${roundedDistance}m away.`;
         const error = new Error(
-          `Move closer to the reported spot before claiming it. You must be within ${CLAIM_SPOT_MAX_DISTANCE_METERS}m.${actualDistanceClause}`
+          `Move closer to the reported spot coordinates before claiming it. You must be within ${CLAIM_SPOT_MAX_DISTANCE_METERS}m.${actualDistanceClause}`
         );
         error.status = 403;
         throw error;

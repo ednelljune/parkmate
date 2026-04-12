@@ -39,14 +39,14 @@ function styleToBarColor(
 }
 
 export const StatusBar = React.forwardRef<any, StatusBarProps>(
-  function StatusBar({ style = "auto", ...props }, ref) {
+  function StatusBar({ style = "auto", ...props }, _ref) {
     const colorScheme = useColorScheme();
 
     useEffect(() => {
       postColorToParent(styleToBarColor(style, colorScheme));
     }, [style, colorScheme]);
 
-    return <ExpoStatusBar ref={ref} style={style} {...props} />;
+    return <ExpoStatusBar style={style} {...props} />;
   }
 );
 

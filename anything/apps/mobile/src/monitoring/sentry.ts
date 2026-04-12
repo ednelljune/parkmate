@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react-native';
+import { Platform } from 'react-native';
 
 const FALLBACK_SENTRY_DSN =
   'https://efebc23fa5840e75457156ed629b0407@o4511164241149952.ingest.us.sentry.io/4511164243509248';
@@ -11,6 +12,7 @@ const IS_DEVELOPMENT_RUNTIME =
 
 let hasInitializedSentry = false;
 let hasAttachedGlobalHandler = false;
+const IS_NATIVE_SENTRY_ENABLED = Platform.OS !== 'ios';
 
 type CaptureContext = {
   componentStack?: string;
@@ -120,8 +122,9 @@ export function ensureSentryInitialized(): void {
     return;
   }
 
-  const shouldEnableReplay = !IS_DEVELOPMENT_RUNTIME && !isExpoGoRuntime();
-  const integrations = [Sentry.feedbackIntegration()];
+  const shouldEnableReplay =
+    !IS_DEVELOPMENT_RUNTIME && !isExpoGoRuntime() && Platform.OS === 'android';
+  const integrations = [Sentry.feedbackIntegration()] as unknown[];
 
   if (shouldEnableReplay) {
     integrations.unshift(Sentry.mobileReplayIntegration());
@@ -133,13 +136,13 @@ export function ensureSentryInitialized(): void {
     debug: false,
     environment: SENTRY_ENVIRONMENT,
     sendDefaultPii: true,
-    enableNative: true,
-    enableNativeCrashHandling: true,
+    enableNative: IS_NATIVE_SENTRY_ENABLED,
+    enableNativeCrashHandling: IS_NATIVE_SENTRY_ENABLED,
     enableLogs: !IS_DEVELOPMENT_RUNTIME,
     attachStacktrace: true,
     replaysSessionSampleRate: shouldEnableReplay ? 0.1 : 0,
     replaysOnErrorSampleRate: shouldEnableReplay ? 1 : 0,
-    integrations,
+    integrations: integrations as never,
   });
 
   hasInitializedSentry = true;

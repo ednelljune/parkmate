@@ -2,10 +2,12 @@ import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import fetch from "@/__create/fetch";
 import { resolveBackendUrl } from "@/utils/backend";
+import { sortUsersByTrust } from "@/utils/trustBadges";
 
 export const LEADERBOARD_QUERY_KEY = ["leaderboard"];
 export const LEADERBOARD_VERSION_QUERY_KEY = ["leaderboard_version"];
 
+const LEADERBOARD_REQUEST_TIMEOUT_MS = 15000;
 const LEADERBOARD_VERSION_TIMEOUT_MS = 8000;
 const LEADERBOARD_VERSION_REFETCH_INTERVAL_MS = 10000;
 
@@ -48,6 +50,67 @@ const fetchLeaderboardVersion = async (leaderboardVersionUrl) => {
       clearTimeout(timeoutId);
     }
   }
+};
+
+const fetchLeaderboardResponse = async (leaderboardUrl) => {
+  let timeoutId;
+
+  try {
+    const response = await Promise.race([
+      fetch(leaderboardUrl),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(
+            new Error(
+              `Leaderboard request timed out after ${Math.round(LEADERBOARD_REQUEST_TIMEOUT_MS / 1000)}s`,
+            ),
+          );
+        }, LEADERBOARD_REQUEST_TIMEOUT_MS);
+      }),
+    ]);
+
+    return response;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
+
+export const fetchLeaderboardQuery = async (limit = 50) => {
+  const leaderboardUrl = resolveBackendUrl(`/api/users/leaderboard?limit=${limit}`);
+
+  if (!leaderboardUrl) {
+    throw new Error("Leaderboard backend URL is not configured");
+  }
+
+  const response = await fetchLeaderboardResponse(leaderboardUrl);
+  const responseText = await response.text();
+  let result = {};
+
+  try {
+    result = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    throw new Error(
+      `Leaderboard returned invalid JSON: ${responseText.slice(0, 120) || "empty response"}`,
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(result?.error || "Failed to fetch leaderboard");
+  }
+
+  return sortUsersByTrust(result?.users);
+};
+
+export const fetchLeaderboardVersionQuery = async (limit = 50) => {
+  const leaderboardVersionUrl = resolveBackendUrl(`/api/users/leaderboard/version?limit=${limit}`);
+
+  if (!leaderboardVersionUrl) {
+    throw new Error("Leaderboard update backend URL is not configured");
+  }
+
+  return fetchLeaderboardVersion(leaderboardVersionUrl);
 };
 
 export const useLeaderboardVersion = (limit = 50, enabled = true) => {

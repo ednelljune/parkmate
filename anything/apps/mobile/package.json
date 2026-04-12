@@ -3,6 +3,11 @@
   "main": "index",
   "version": "1.0.0",
   "scripts": {
+    "start": "sh ./scripts/expo-node20.sh start",
+    "start:tunnel": "sh ./scripts/expo-node20.sh start --clear --dev-client --host tunnel",
+    "start:lan": "sh ./scripts/expo-node20.sh start --clear --dev-client --host lan",
+    "ios": "sh ./scripts/expo-node20.sh run:ios",
+    "android": "sh ./scripts/expo-node20.sh run:android",
     "dev:remote": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-remote-dev.ps1",
     "dev:remote:localtunnel": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-remote-dev.ps1 -TunnelProvider localtunnel",
     "dev:remote:help": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-remote-dev.ps1 -PrintOnly",
@@ -11,7 +16,7 @@
     "dev:go:localtunnel": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-expo-go.ps1 -TunnelProvider localtunnel",
     "dev:go:help": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-expo-go.ps1 -PrintOnly",
     "dev:go:help:localtunnel": "powershell -ExecutionPolicy Bypass -File ..\\..\\scripts\\start-mobile-expo-go.ps1 -TunnelProvider localtunnel -PrintOnly",
-    "dev:go:lan": "npx expo start --go --lan --clear",
+    "dev:go:lan": "sh ./scripts/expo-node20.sh start --go --lan --clear",
     "eas:build:android:development": "npx eas build --platform android --profile development",
     "eas:build:android:preview": "npx eas build --platform android --profile preview",
     "eas:build:android:production": "npx eas build --platform android --profile production",
@@ -126,6 +131,9 @@
     "preset": "jest-expo"
   },
   "packageManager": "npm@10.9.3",
+  "engines": {
+    "node": ">=20.19.0 <21"
+  },
   "private": true,
   "overrides": {
     "@react-navigation/bottom-tabs": "^7.4.0",

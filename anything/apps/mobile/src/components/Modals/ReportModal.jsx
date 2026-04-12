@@ -79,7 +79,7 @@ export const ReportModal = ({
             </Text>
             <Text style={{ fontSize: 12, color: "#6B7280", marginBottom: 8 }}>
               {hasAvailableParkingTypes
-                ? "Choose the nearby parking zone and type detected inside your radius."
+                ? "Choose the mapped parking zone you are currently inside before reporting a spot."
                 : `No parking zones were detected within ${detectionRadius}m of your location.`}
             </Text>
 
@@ -134,7 +134,7 @@ export const ReportModal = ({
                   }}
                 >
                   <Text style={{ fontSize: 13, color: "#4B5563" }}>
-                    Move closer to a mapped parking zone before reporting a spot.
+                    Move into a mapped parking zone before reporting a spot. Your current location must be inside the zone boundary.
                   </Text>
                 </View>
               )}

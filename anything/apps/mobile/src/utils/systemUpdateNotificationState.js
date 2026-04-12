@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const getStorageKey = (userId) => `systemUpdates:notifiedIds:${String(userId || "")}`;
+const getDeletedStorageKey = (userId) => `systemUpdates:deletedIds:${String(userId || "")}`;
 const MAX_STORED_IDS = 250;
 
 const normalizeIds = (items = []) =>
@@ -65,3 +66,47 @@ export const markSystemUpdatesNotified = async (userId, items = []) => {
 
 export const primeSystemUpdatesNotified = async (userId, items = []) =>
   markSystemUpdatesNotified(userId, items);
+
+export const hydrateDeletedSystemUpdateIds = async (userId) => {
+  if (!userId) {
+    return new Set();
+  }
+
+  try {
+    const storedValue = await AsyncStorage.getItem(getDeletedStorageKey(userId));
+    if (!storedValue) {
+      return new Set();
+    }
+
+    const parsedIds = JSON.parse(storedValue);
+    const normalizedIds = Array.isArray(parsedIds) ? parsedIds.map(String).filter(Boolean) : [];
+    return new Set(normalizedIds);
+  } catch {
+    return new Set();
+  }
+};
+
+export const deleteSystemUpdateItems = async (userId, items = []) => {
+  if (!userId) {
+    return new Set();
+  }
+
+  const nextIds = normalizeIds(items);
+  if (nextIds.length === 0) {
+    return hydrateDeletedSystemUpdateIds(userId);
+  }
+
+  const currentIds = await hydrateDeletedSystemUpdateIds(userId);
+  const mergedIds = [...new Set([...nextIds, ...currentIds])].slice(0, MAX_STORED_IDS);
+
+  try {
+    await AsyncStorage.setItem(
+      getDeletedStorageKey(userId),
+      JSON.stringify(mergedIds),
+    );
+  } catch {
+    // Ignore persistence failures; caller still gets the merged in-memory set.
+  }
+
+  return new Set(mergedIds);
+};

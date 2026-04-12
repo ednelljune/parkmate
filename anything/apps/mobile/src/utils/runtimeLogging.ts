@@ -14,7 +14,8 @@ export const getRuntimeEnvironment = () => {
 };
 
 export const isDeveloperLoggingEnabled = () => {
-  return __DEV__ || getRuntimeEnvironment() === 'development';
+  // Never allow console logging in release builds, even if an env flag is misconfigured.
+  return __DEV__;
 };
 
 let hasInstalledConsolePrivacyGate = false;

@@ -164,6 +164,7 @@ export async function GET(request) {
         INNER JOIN false_report_summary frs ON frs.report_id = lr.id
         LEFT JOIN parking_zones pz ON pz.id = lr.zone_id
         WHERE lr.user_id = $1
+          AND frs.false_report_count >= $3
       )
       SELECT *
       FROM system_updates_feed

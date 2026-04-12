@@ -72,6 +72,16 @@ const fetchActivityNotifications = async (activityFeedUrl) => {
   }
 };
 
+export const fetchActivityNotificationsQuery = async (limit = 100) => {
+  const activityFeedUrl = resolveBackendUrl(`/api/notifications/activity?limit=${limit}`);
+
+  if (!activityFeedUrl) {
+    throw new Error("Activity feed backend URL is not configured");
+  }
+
+  return fetchActivityNotifications(activityFeedUrl);
+};
+
 const normalizeActivityItem = (item) => {
   const id = String(item?.id || "").trim();
   if (!id) {
@@ -109,8 +119,9 @@ export const useActivityNotifications = (
     refetchIntervalMs = false,
     refetchOnMount = false,
     staleTimeMs = Infinity,
+    watchActivityVersion = true,
   } = options;
-  const activityVersionQuery = useActivityBackendVersion(enabled);
+  const activityVersionQuery = useActivityBackendVersion(enabled && watchActivityVersion);
   const localReportsVersion = useSyncExternalStore(
     subscribeToLocalReports,
     getLocalReportsVersion,
@@ -210,7 +221,9 @@ export const useUnreadActivityCount = (limit = 100, enabled = true) => {
     getActivityReadStateVersion,
     getActivityReadStateVersion,
   );
-  const activityQuery = useActivityNotifications(limit, enabled);
+  const activityQuery = useActivityNotifications(limit, enabled, {
+    watchActivityVersion: true,
+  });
 
   useEffect(() => {
     hydrateActivityReadState().catch(() => {});

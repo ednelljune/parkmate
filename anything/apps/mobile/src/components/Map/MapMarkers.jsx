@@ -299,15 +299,28 @@ export const UserLocationMarker = ({ location }) => {
 };
 
 export const ParkingSpotMarkers = ({ reports, onMarkerPress }) => {
+  const validReports = useMemo(
+    () =>
+      reports.filter((report) => {
+        const latitude = normalizeCoordinate(report?.latitude);
+        const longitude = normalizeCoordinate(report?.longitude);
+        const hasValidId = report?.id != null && String(report.id).trim().length > 0;
+
+        if (!hasValidId || latitude === null || longitude === null) {
+          console.warn("Skipping parking marker with invalid report payload:", report);
+          return false;
+        }
+
+        return true;
+      }),
+    [reports],
+  );
+
   return (
     <>
-      {reports.map((report) => {
+      {validReports.map((report) => {
         const latitude = normalizeCoordinate(report.latitude);
         const longitude = normalizeCoordinate(report.longitude);
-        if (latitude === null || longitude === null) {
-          console.warn("Skipping parking marker with invalid coordinates:", report);
-          return null;
-        }
 
         const isAvailable = report.status === "available";
         const pinColor = isAvailable ? "#10B981" : "#EF4444";
@@ -503,7 +516,19 @@ export const ParkingZoneMarkers = React.memo(
     selectedZone,
     zoomScale = 1,
   }) => {
-    if (!zones || zones.length === 0) {
+    const validZones = useMemo(
+      () =>
+        (zones || []).filter((zone) => {
+          const latitude = normalizeCoordinate(zone?.latitude);
+          const longitude = normalizeCoordinate(zone?.longitude);
+          const hasValidId = zone?.id != null && String(zone.id).trim().length > 0;
+
+          return hasValidId && latitude !== null && longitude !== null;
+        }),
+      [zones],
+    );
+
+    if (validZones.length === 0) {
       return null;
     }
 
@@ -512,7 +537,7 @@ export const ParkingZoneMarkers = React.memo(
 
     return (
       <>
-        {zones.map((zone) => {
+        {validZones.map((zone) => {
           return (
             <NativeCouncilZoneMarker
               key={`council-zone-${zone.id}`}

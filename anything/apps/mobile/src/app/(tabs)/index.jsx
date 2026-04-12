@@ -48,11 +48,13 @@ import { getDistanceMeters } from "@/utils/geo";
 import {
   getDetectedZonePins,
   MAX_DETECTED_API_ZONE_PINS,
+  MAX_DETECTED_COUNCIL_ZONE_PINS,
 } from "@/utils/parkingZonePins";
 import {
   getApiZoneCenter,
   getApiZoneEffectiveDistanceMeters,
 } from "@/utils/zoneAlerts";
+import { mergeDistinctZones } from "@/utils/zoneDeduplication";
 import { PARKING_ALERT_RADIUS_METERS } from "@/constants/detectionRadius";
 import { BRAND_PALETTE } from "@/theme/brandColors";
 
@@ -358,7 +360,7 @@ function ParkMateContent() {
     getDirections,
     clearRoute,
   } = useDirections(location, focusMapRegion);
-  const zoneAvailabilityAggregationEnabled = Platform.OS === "android";
+  const zoneAvailabilityAggregationEnabled = true;
   const reportAvailabilityMaps = useMemo(() => {
     const countsByZoneId = new Map();
     const countsByZoneIdentity = new Map();
@@ -459,24 +461,38 @@ function ParkMateContent() {
     [clearRoute, getDirections, location],
   );
 
-  const detectedZonePins = useMemo(
-    () =>
-      getDetectedZonePins({
-        apiZones: nearbyZones,
-        location,
-        radiusMeters: detectionRadius,
-        focusCoordinate,
-        prioritizeApiZone: getZoneAvailabilityCount,
-        prioritizeCouncilZone: getZoneAvailabilityCount,
-      }),
-    [
-      detectionRadius,
-      focusCoordinate,
-      getZoneAvailabilityCount,
+  const detectedZonePins = useMemo(() => {
+    const baselineDetectedZonePins = getDetectedZonePins({
+      apiZones: nearbyZones,
       location,
-      nearbyZones,
-    ],
-  );
+      radiusMeters: detectionRadius,
+    });
+    const prioritizedDetectedZonePins = getDetectedZonePins({
+      apiZones: nearbyZones,
+      location,
+      radiusMeters: detectionRadius,
+      focusCoordinate,
+      prioritizeApiZone: getZoneAvailabilityCount,
+      prioritizeCouncilZone: getZoneAvailabilityCount,
+    });
+
+    return {
+      apiZones: mergeDistinctZones(
+        baselineDetectedZonePins.apiZones,
+        prioritizedDetectedZonePins.apiZones,
+      ).slice(0, MAX_DETECTED_API_ZONE_PINS),
+      councilZones: mergeDistinctZones(
+        baselineDetectedZonePins.councilZones,
+        prioritizedDetectedZonePins.councilZones,
+      ).slice(0, MAX_DETECTED_COUNCIL_ZONE_PINS),
+    };
+  }, [
+    detectionRadius,
+    focusCoordinate,
+    getZoneAvailabilityCount,
+    location,
+    nearbyZones,
+  ]);
   const displayedDetectionRadius = useMemo(() => {
     if (!location) {
       return detectionRadius;
@@ -573,8 +589,10 @@ function ParkMateContent() {
         const parkingType = String(zone?.zone_type || "").trim();
         const zoneName = String(zone?.name || zone?.zone_name || "").trim();
         const zoneId = zone?.id;
+        const latitude = normalizeCoordinate(zone?.center_lat ?? zone?.latitude);
+        const longitude = normalizeCoordinate(zone?.center_lng ?? zone?.longitude);
 
-        if (!parkingType || !zoneName || zoneId == null) {
+        if (!parkingType || !zoneName || zoneId == null || latitude === null || longitude === null) {
           return null;
         }
 
@@ -583,16 +601,29 @@ function ParkMateContent() {
           zoneName,
           parkingType,
           distanceMeters: Number(zone?.distance_meters) || 0,
+          latitude,
+          longitude,
         };
       })
       .filter(Boolean);
 
-    if (options.length === 0 && currentZone?.id != null && currentZone?.zone_type) {
+    const currentZoneLatitude = normalizeCoordinate(currentZone?.center_lat ?? currentZone?.latitude);
+    const currentZoneLongitude = normalizeCoordinate(currentZone?.center_lng ?? currentZone?.longitude);
+
+    if (
+      options.length === 0 &&
+      currentZone?.id != null &&
+      currentZone?.zone_type &&
+      currentZoneLatitude !== null &&
+      currentZoneLongitude !== null
+    ) {
       options.push({
         zoneId: String(currentZone.id),
         zoneName: String(currentZone.name || "Current parking zone").trim(),
         parkingType: String(currentZone.zone_type).trim(),
         distanceMeters: 0,
+        latitude: currentZoneLatitude,
+        longitude: currentZoneLongitude,
       });
     }
 
@@ -1273,7 +1304,7 @@ function ParkMateContent() {
     if (!preferredZoneOption) {
       Alert.alert(
         "No Parking Zone Nearby",
-        `You can only report a spot when a mapped parking zone is detected within ${detectionRadius}m of your location.`,
+        "You can only report a spot when your current location is inside a mapped parking zone.",
       );
       return;
     }
@@ -1309,14 +1340,24 @@ function ParkMateContent() {
     if (!zoneOptionToReport) {
       Alert.alert(
         "No Parking Zone Nearby",
-        `You can only report a spot when a mapped parking zone is detected within ${detectionRadius}m of your location.`,
+        "You can only report a spot when your current location is inside a mapped parking zone.",
       );
       return;
     }
 
+    const reportCoordinates =
+      zoneOptionToReport.latitude != null && zoneOptionToReport.longitude != null
+        ? {
+            latitude: zoneOptionToReport.latitude,
+            longitude: zoneOptionToReport.longitude,
+          }
+        : location;
+
     console.log("[report.ui] Confirm report tapped", {
-      latitude: location.latitude,
-      longitude: location.longitude,
+      userLatitude: location.latitude,
+      userLongitude: location.longitude,
+      reportLatitude: reportCoordinates.latitude,
+      reportLongitude: reportCoordinates.longitude,
       selectedZoneId: zoneOptionToReport.zoneId || null,
       selectedParkingType: zoneOptionToReport.parkingType || null,
       spotQuantity,
@@ -1325,7 +1366,7 @@ function ParkMateContent() {
 
     Alert.alert(
       "Confirm Parking Spot Report",
-      `Report ${spotQuantity} ${zoneOptionToReport.parkingType || "parking"} spot${spotQuantity > 1 ? "s" : ""} for ${zoneOptionToReport.zoneName || "this nearby zone"}?`,
+      `Report ${spotQuantity} ${zoneOptionToReport.parkingType || "parking"} spot${spotQuantity > 1 ? "s" : ""} for ${zoneOptionToReport.zoneName || "this nearby zone"}? Your current location must be inside that mapped parking zone.`,
       [
         {
           text: "Cancel",
@@ -1336,14 +1377,17 @@ function ParkMateContent() {
           onPress: () => {
             setShowReportModal(false);
             console.log("[report.ui] Sending report mutation", {
-              latitude: location.latitude,
-              longitude: location.longitude,
+              userLatitude: location.latitude,
+              userLongitude: location.longitude,
+              reportLatitude: reportCoordinates.latitude,
+              reportLongitude: reportCoordinates.longitude,
               selectedZoneId: zoneOptionToReport.zoneId || null,
               selectedParkingType: zoneOptionToReport.parkingType || null,
               spotQuantity,
             });
             reportMutation.mutate({
-              coords: location,
+              coords: reportCoordinates,
+              userCoords: location,
               parkingType: zoneOptionToReport.parkingType,
               quantity: spotQuantity,
               zoneId: zoneOptionToReport.zoneId,
@@ -1541,7 +1585,7 @@ function ParkMateContent() {
 
     Alert.alert(
       "Claim This Spot?",
-      "Are you at this parking spot? Claiming will remove it from the map for others.",
+      "Are you at this parking spot? Your current location must be confirmed within 5m of the reported spot coordinates before the claim will succeed. Claiming will remove it from the map for others.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -1576,7 +1620,7 @@ function ParkMateContent() {
           onPress: () => {
             setSelectedSpot(null);
             stopInAppNavigation();
-            reportFalseMutation.mutate(targetSpot.id);
+            reportFalseMutation.mutate(targetSpot);
           },
         },
       ],

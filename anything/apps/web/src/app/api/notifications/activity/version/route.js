@@ -5,6 +5,7 @@ import { ensureFalseReportsSchema } from "@/app/api/utils/false-reports";
 import { getEffectiveReportExpiresAtSql } from "@/app/api/utils/report-ttl";
 
 const EXCLUDED_ZONE_TYPE = "meter";
+const FALSE_REPORT_TRUST_THRESHOLD = 3;
 
 export async function GET(request) {
   try {
@@ -101,6 +102,11 @@ export async function GET(request) {
         INNER JOIN false_report_summary frs ON frs.report_id = lr.id
         LEFT JOIN parking_zones pz ON pz.id = lr.zone_id
         WHERE lr.user_id = $1
+          AND (
+            SELECT COUNT(*)::int
+            FROM false_reports fr_count
+            WHERE fr_count.report_id = lr.id
+          ) >= ${FALSE_REPORT_TRUST_THRESHOLD}
           AND LOWER(COALESCE(pz.zone_type, lr.parking_type, '')) NOT LIKE '%' || $2 || '%'
       ),
       deduped_activity_version_events AS (

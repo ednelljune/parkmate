@@ -216,12 +216,27 @@ export const ZoneMarkers = React.memo(
     getAvailabilityCount,
     zoomScale = 1,
   }) => {
+    const validZones = useMemo(
+      () =>
+        (zones || []).filter((zone) => {
+          const latitude = Number(zone?.center_lat);
+          const longitude = Number(zone?.center_lng);
+          const hasValidId = zone?.id != null && String(zone.id).trim().length > 0;
+
+          return hasValidId && Number.isFinite(latitude) && Number.isFinite(longitude);
+        }),
+      [zones],
+    );
     const selectedZoneId =
       selectedZone?.id != null ? String(selectedZone.id) : null;
 
+    if (validZones.length === 0) {
+      return null;
+    }
+
     return (
       <>
-        {zones.map((zone) => {
+        {validZones.map((zone) => {
           return (
             <NativeZoneMarker
               key={`zone-marker-${zone.id}`}

@@ -7,8 +7,12 @@ import {
 } from "@/app/api/utils/report-ttl";
 
 const EXCLUDED_ZONE_TYPE = "meter";
-
 let reportIdempotencySchemaPromise = null;
+
+const normalizeCoordinate = (value) => {
+  const parsed = typeof value === "number" ? value : Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 function getDisplayNameFallback(user) {
   const metadataName =
@@ -71,9 +75,23 @@ export async function POST(request) {
 
     await ensureReportIdempotencySchema();
 
-    const { latitude, longitude, parkingType, quantity, clientReportId, zoneId } =
-      await request.json();
+    const {
+      latitude,
+      longitude,
+      userLatitude,
+      userLongitude,
+      parkingType,
+      quantity,
+      clientReportId,
+      zoneId,
+    } = await request.json();
     const userId = auth.user.id;
+    const normalizedLatitude = normalizeCoordinate(latitude);
+    const normalizedLongitude = normalizeCoordinate(longitude);
+    const normalizedUserLatitude =
+      normalizeCoordinate(userLatitude) ?? normalizedLatitude;
+    const normalizedUserLongitude =
+      normalizeCoordinate(userLongitude) ?? normalizedLongitude;
     const normalizedParkingType =
       typeof parkingType === "string" && parkingType.trim()
         ? parkingType.trim()
@@ -105,8 +123,10 @@ export async function POST(request) {
 
     console.log("[report.create] Parsed request body", {
       userId,
-      latitude,
-      longitude,
+      latitude: normalizedLatitude,
+      longitude: normalizedLongitude,
+      userLatitude: normalizedUserLatitude,
+      userLongitude: normalizedUserLongitude,
       parkingType,
       effectiveParkingType,
       quantity,
@@ -114,14 +134,30 @@ export async function POST(request) {
       zoneId: normalizedZoneId,
     });
 
-    if (latitude == null || longitude == null) {
+    if (normalizedLatitude === null || normalizedLongitude === null) {
       console.warn("[report.create] Missing coordinates", {
         userId,
-        latitude,
-        longitude,
+        latitude: normalizedLatitude,
+        longitude: normalizedLongitude,
       });
       return Response.json(
         { success: false, message: "latitude and longitude are required." },
+        { status: 400 },
+      );
+    }
+
+    if (normalizedUserLatitude === null || normalizedUserLongitude === null) {
+      console.warn("[report.create] Missing user coordinates", {
+        userId,
+        userLatitude: normalizedUserLatitude,
+        userLongitude: normalizedUserLongitude,
+      });
+      return Response.json(
+        {
+          success: false,
+          message:
+            "Your current location is required to confirm you are inside a mapped parking zone before reporting a spot.",
+        },
         { status: 400 },
       );
     }
@@ -177,10 +213,9 @@ export async function POST(request) {
         FROM parking_zones
       WHERE id = ${normalizedZoneId}
         AND LOWER(COALESCE(zone_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
-          AND ST_DWithin(
-            boundary::geography,
-            ST_SetSRID(ST_Point(${longitude}, ${latitude}), 4326)::geography,
-            300
+          AND ST_Covers(
+            boundary,
+            ST_SetSRID(ST_Point(${normalizedUserLongitude}, ${normalizedUserLatitude}), 4326)
           )
         LIMIT 1;
       `;
@@ -191,8 +226,11 @@ export async function POST(request) {
       const zoneResults = await sql`
         SELECT id, name, zone_type
         FROM parking_zones
-        WHERE ST_Contains(boundary, ST_SetSRID(ST_Point(${longitude}, ${latitude}), 4326))
-          AND LOWER(COALESCE(zone_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
+        WHERE LOWER(COALESCE(zone_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
+          AND ST_Covers(
+            boundary,
+            ST_SetSRID(ST_Point(${normalizedUserLongitude}, ${normalizedUserLatitude}), 4326)
+          )
         LIMIT 1;
       `;
       zone = zoneResults[0] || null;
@@ -204,6 +242,17 @@ export async function POST(request) {
       zoneName: zone?.name || null,
       zoneType: zone?.zone_type || null,
     });
+
+    if (!zone) {
+      return Response.json(
+        {
+          success: false,
+          message:
+            "You can only report a spot when your current location is inside a mapped parking zone.",
+        },
+        { status: 403 },
+      );
+    }
 
     const expiresAt = new Date(Date.now() + REPORT_TTL_MS);
     const reportResults = await sql`
@@ -219,7 +268,7 @@ export async function POST(request) {
       )
       VALUES (
         ${userId},
-        ST_SetSRID(ST_Point(${longitude}, ${latitude}), 4326),
+        ST_SetSRID(ST_Point(${normalizedLongitude}, ${normalizedLatitude}), 4326),
         ${zone?.id || null},
         ${expiresAt},
         ${"available"},
@@ -264,8 +313,8 @@ export async function POST(request) {
         activityType: "reported",
         parkingType: effectiveParkingType,
         quantity: normalizedQuantity,
-        longitude,
-        latitude,
+        longitude: normalizedLongitude,
+        latitude: normalizedLatitude,
         zoneType: zone?.zone_type || effectiveParkingType,
         zoneName: zone?.name || "Reported spot",
         spotStatus: "available",
@@ -285,8 +334,8 @@ export async function POST(request) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             reportId: newReport.id,
-            latitude,
-            longitude,
+            latitude: normalizedLatitude,
+            longitude: normalizedLongitude,
             radiusMeters: 1000,
           }),
         });
@@ -308,8 +357,8 @@ export async function POST(request) {
       success: true,
       report: applyEffectiveReportExpiry({
         ...newReport,
-        latitude,
-        longitude,
+        latitude: normalizedLatitude,
+        longitude: normalizedLongitude,
       }),
       zone,
       pointsAwarded: pointsToAward,

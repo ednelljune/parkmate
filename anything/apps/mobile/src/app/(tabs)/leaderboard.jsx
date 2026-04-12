@@ -17,8 +17,8 @@ import {
 } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 
-import fetch from "@/__create/fetch";
 import {
+  fetchLeaderboardQuery,
   LEADERBOARD_QUERY_KEY,
   useLeaderboardVersion,
 } from "@/hooks/useLeaderboardVersion";
@@ -26,7 +26,6 @@ import { BRAND_PALETTE } from "@/theme/brandColors";
 import {
   getTrustBadgeMeta,
   normalizeTrustScore,
-  sortUsersByTrust,
 } from "@/utils/trustBadges";
 import { resolveBackendUrl } from "@/utils/backend";
 
@@ -54,7 +53,6 @@ const PODIUM_META = {
   },
 };
 
-const LEADERBOARD_REQUEST_TIMEOUT_MS = 15000;
 const INITIAL_LOAD_TIMEOUT_MS = 20000;
 
 const formatNumber = (value) => {
@@ -96,31 +94,6 @@ const getSummaryStats = (users) => {
     averageTrust: Math.round(totals.trust / users.length),
     totalReports: totals.reports,
   };
-};
-
-const fetchLeaderboardResponse = async (leaderboardUrl) => {
-  let timeoutId;
-
-  try {
-    const response = await Promise.race([
-      fetch(leaderboardUrl),
-      new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(
-            new Error(
-              `Leaderboard request timed out after ${Math.round(LEADERBOARD_REQUEST_TIMEOUT_MS / 1000)}s`,
-            ),
-          );
-        }, LEADERBOARD_REQUEST_TIMEOUT_MS);
-      }),
-    ]);
-
-    return response;
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
 };
 
 function SummaryChip({ label, value, accent }) {
@@ -364,29 +337,7 @@ export default function LeaderboardScreen() {
 
   const { data, error, isError, isPending, refetch, isRefetching } = useQuery({
     queryKey: [...LEADERBOARD_QUERY_KEY, leaderboardLimit],
-    queryFn: async () => {
-      if (!leaderboardUrl) {
-        throw new Error("Leaderboard backend URL is not configured");
-      }
-
-      const response = await fetchLeaderboardResponse(leaderboardUrl);
-      const responseText = await response.text();
-      let result = {};
-
-      try {
-        result = responseText ? JSON.parse(responseText) : {};
-      } catch {
-        throw new Error(
-          `Leaderboard returned invalid JSON: ${responseText.slice(0, 120) || "empty response"}`,
-        );
-      }
-
-      if (!response.ok) {
-        throw new Error(result?.error || "Failed to fetch leaderboard");
-      }
-
-      return sortUsersByTrust(result?.users);
-    },
+    queryFn: () => fetchLeaderboardQuery(leaderboardLimit),
     staleTime: Infinity,
     refetchInterval: false,
     refetchOnMount: false,

@@ -136,6 +136,29 @@ export const StableMapMarker = ({
   const [shouldTrackViewChanges, setShouldTrackViewChanges] = useState(
     Platform.OS === "android",
   );
+  const coordinate = markerProps?.coordinate;
+  const latitude = Number(coordinate?.latitude);
+  const longitude = Number(coordinate?.longitude);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  const normalizedMarkerProps = {
+    ...markerProps,
+    coordinate: {
+      latitude,
+      longitude,
+    },
+  };
+
+  if (markerProps?.title != null) {
+    normalizedMarkerProps.title = String(markerProps.title);
+  }
+
+  if (markerProps?.description != null) {
+    normalizedMarkerProps.description = String(markerProps.description);
+  }
 
   useEffect(() => {
     if (Platform.OS !== "android") {
@@ -152,7 +175,7 @@ export const StableMapMarker = ({
 
   return (
     <Marker
-      {...markerProps}
+      {...normalizedMarkerProps}
       tracksViewChanges={
         Platform.OS === "android"
           ? (tracksViewChanges ?? shouldTrackViewChanges)

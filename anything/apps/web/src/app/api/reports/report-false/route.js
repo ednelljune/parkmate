@@ -259,7 +259,7 @@ export async function POST(request) {
       }
     }
 
-    if (originalReporterId) {
+    if (originalReporterId && shouldAffectTrustScore) {
       await logUserActivity({
         userId: originalReporterId,
         reportId,

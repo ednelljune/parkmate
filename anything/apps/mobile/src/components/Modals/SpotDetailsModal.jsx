@@ -243,6 +243,25 @@ export const SpotDetailsModal = ({
                   </TouchableOpacity>
                 ) : (
                   <>
+                    <View
+                      style={{
+                        backgroundColor: "#F3F4F6",
+                        borderRadius: 12,
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#374151",
+                          fontSize: 13,
+                          lineHeight: 19,
+                        }}
+                      >
+                        Claiming is only allowed when your current location is confirmed within 5m of this reported spot's coordinates.
+                      </Text>
+                    </View>
+
                     <TouchableOpacity
                       style={{
                         flexDirection: "row",

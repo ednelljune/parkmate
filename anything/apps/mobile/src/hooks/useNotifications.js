@@ -33,6 +33,17 @@ export const useNotifications = (onNotificationResponse) => {
   const notificationResponseHandlerRef = useRef(onNotificationResponse);
   const lastHandledNotificationResponseIdRef = useRef(null);
 
+  const refreshNotificationDrivenQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["nearby_reports"] });
+    queryClient.invalidateQueries({ queryKey: ["parking_zones"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications_count"] });
+    queryClient.invalidateQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY });
+
+    queryClient.refetchQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY, type: "active" }).catch(() => {});
+    queryClient.refetchQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY, type: "active" }).catch(() => {});
+  };
+
   useEffect(() => {
     notificationResponseHandlerRef.current = onNotificationResponse;
   }, [onNotificationResponse]);
@@ -48,11 +59,7 @@ export const useNotifications = (onNotificationResponse) => {
 
     lastHandledNotificationResponseIdRef.current = responseIdentifier;
 
-    queryClient.invalidateQueries({ queryKey: ["nearby_reports"] });
-    queryClient.invalidateQueries({ queryKey: ["parking_zones"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications_count"] });
-    queryClient.invalidateQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY });
-    queryClient.invalidateQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY });
+    refreshNotificationDrivenQueries();
 
     addSentryBreadcrumb({
       category: "notifications.response",
@@ -442,11 +449,7 @@ export const useNotifications = (onNotificationResponse) => {
 
       notificationSubscription = Notifications.addNotificationReceivedListener(
         (notification) => {
-          queryClient.invalidateQueries({ queryKey: ["nearby_reports"] });
-          queryClient.invalidateQueries({ queryKey: ["parking_zones"] });
-          queryClient.invalidateQueries({ queryKey: ["notifications_count"] });
-          queryClient.invalidateQueries({ queryKey: ACTIVITY_NOTIFICATIONS_QUERY_KEY });
-          queryClient.invalidateQueries({ queryKey: ACTIVITY_MAILBOX_QUERY_KEY });
+          refreshNotificationDrivenQueries();
 
           addSentryBreadcrumb({
             category: "notifications.received",

@@ -98,6 +98,20 @@ const fetchActivityMailbox = async (mailboxUrls) => {
   throw lastError || new Error("Failed to fetch system updates");
 };
 
+export const fetchActivityMailboxQuery = async (limit = 50) => {
+  const mailboxUrl = resolveBackendUrl(`/api/notifications/mailbox?limit=${limit}`);
+  const legacyMailboxUrl = resolveBackendUrl(`/api/notifications/system-updates?limit=${limit}`);
+  const mailboxUrls = [mailboxUrl, legacyMailboxUrl].filter(
+    (value, index, values) => Boolean(value) && values.indexOf(value) === index,
+  );
+
+  if (!mailboxUrls.length) {
+    throw new Error("System updates backend URL is not configured");
+  }
+
+  return fetchActivityMailbox(mailboxUrls);
+};
+
 const normalizeMailboxItem = (item) => {
   const id = String(item?.id || "").trim();
   if (!id) {

@@ -1,4 +1,22 @@
-import { serializeError } from 'serialize-error';
+const serializeError = (error) => {
+  if (!error || typeof error !== 'object') {
+    return { message: String(error) };
+  }
+
+  const serialized = {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+  };
+
+  for (const [key, value] of Object.entries(error)) {
+    if (!(key in serialized)) {
+      serialized[key] = value;
+    }
+  }
+
+  return serialized;
+};
 
 export const reportErrorToRemote = async ({ error }) => {
   if (

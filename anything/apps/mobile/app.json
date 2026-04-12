@@ -6,7 +6,8 @@
     "version": "1.0.0",
     "autolinking": {
       "exclude": [
-        "expo-speech-recognition"
+        "expo-speech-recognition",
+        "@sentry/react-native"
       ]
     },
     "orientation": "portrait",
@@ -49,14 +50,6 @@
         }
       ],
       [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "react-native",
-          "organization": "personal-bun"
-        }
-      ],
-      [
         "expo-splash-screen",
         {
           "image": "./assets/images/parkmate-logo.png",
@@ -68,11 +61,7 @@
       "expo-audio",
       [
         "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static"
-          }
-        }
+        {}
       ],
       [
         "expo-video",

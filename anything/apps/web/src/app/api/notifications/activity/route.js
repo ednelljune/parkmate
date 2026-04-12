@@ -205,6 +205,7 @@ const loadLegacyActivities = async (userId, limit) =>
       INNER JOIN false_report_summary frs ON frs.report_id = lr.id
       LEFT JOIN parking_zones pz ON pz.id = lr.zone_id
       WHERE lr.user_id = ${userId}
+        AND frs.false_report_count >= ${FALSE_REPORT_TRUST_THRESHOLD}
         AND NOT EXISTS (
           SELECT 1
           FROM user_activity_logs ual

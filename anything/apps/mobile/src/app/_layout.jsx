@@ -1,6 +1,7 @@
 import { useAuth } from '@/utils/auth/useAuth';
 import { AnimatedParkMateLogo } from '@/components/AnimatedParkMateLogo';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { StartupPrefetch } from '@/hooks/useStartupPrefetch';
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -63,29 +64,28 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, [handleBootSceneComplete, hasCompletedBootScene]);
 
-  if (!isReady || !hasCompletedBootScene) {
-    return (
-      <View onLayout={hideNativeSplash} style={styles.loadingScreen}>
-        <View style={styles.backdropOrbLarge} />
-        <View style={styles.backdropOrbSmall} />
-        <View style={styles.loadingCard}>
-          <AnimatedParkMateLogo
-            size={224}
-            style={styles.logoImage}
-            playOnce={shouldPlayColdStartBranding}
-            onAnimationComplete={handleBootSceneComplete}
-          />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView onLayout={hideNativeSplash} style={{ flex: 1 }}>
-        <StatusBar style="dark" animated />
-        <Slot />
-      </GestureHandlerRootView>
+      <StartupPrefetch />
+      {!isReady || !hasCompletedBootScene ? (
+        <View onLayout={hideNativeSplash} style={styles.loadingScreen}>
+          <View style={styles.backdropOrbLarge} />
+          <View style={styles.backdropOrbSmall} />
+          <View style={styles.loadingCard}>
+            <AnimatedParkMateLogo
+              size={224}
+              style={styles.logoImage}
+              playOnce={shouldPlayColdStartBranding}
+              onAnimationComplete={handleBootSceneComplete}
+            />
+          </View>
+        </View>
+      ) : (
+        <GestureHandlerRootView onLayout={hideNativeSplash} style={{ flex: 1 }}>
+          <StatusBar style="dark" animated />
+          <Slot />
+        </GestureHandlerRootView>
+      )}
     </QueryClientProvider>
   );
 }

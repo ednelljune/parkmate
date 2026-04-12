@@ -1,0 +1,61 @@
+{
+  "name": "react-native-keyboard-controller",
+  "version": "1.20.7",
+  "summary": "Keyboard manager which works in identical way on both iOS and Android",
+  "homepage": "https://kirillzyusko.github.io/react-native-keyboard-controller/",
+  "license": "MIT",
+  "authors": "Kiryl Ziusko <zyusko.kirik@gmail.com> (https://github.com/kirillzyusko)",
+  "platforms": {
+    "ios": "11.0"
+  },
+  "source": {
+    "git": "https://github.com/kirillzyusko/react-native-keyboard-controller.git",
+    "tag": "1.20.7"
+  },
+  "source_files": "ios/**/*.{h,m,mm,swift}",
+  "exclude_files": "ios/KeyboardControllerNative/**/*",
+  "public_header_files": "ios/**/*.h",
+  "pod_target_xcconfig": {
+    "OTHER_SWIFT_FLAGS": "$(inherited) -DKEYBOARD_CONTROLLER_NEW_ARCH_ENABLED -DRCT_NEW_ARCH_ENABLED",
+    "HEADER_SEARCH_PATHS": "\"$(PODS_ROOT)/Headers/Private/Yoga\"",
+    "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
+    "OTHER_CPLUSPLUSFLAGS": "$(inherited) -DRCT_NEW_ARCH_ENABLED=1 "
+  },
+  "compiler_flags": "-DRCT_NEW_ARCH_ENABLED=1",
+  "dependencies": {
+    "React-Core": [],
+    "React-RCTFabric": [],
+    "ReactCodegen": [],
+    "RCTRequired": [],
+    "RCTTypeSafety": [],
+    "ReactCommon/turbomodule/bridging": [],
+    "ReactCommon/turbomodule/core": [],
+    "React-NativeModulesApple": [],
+    "Yoga": [],
+    "React-Fabric": [],
+    "React-graphics": [],
+    "React-utils": [],
+    "React-featureflags": [],
+    "React-debug": [],
+    "React-ImageManager": [],
+    "React-rendererdebug": [],
+    "React-jsi": [],
+    "React-renderercss": [],
+    "hermes-engine": [],
+    "ReactNativeDependencies": [],
+    "React-Core-prebuilt": []
+  },
+  "subspecs": [
+    {
+      "name": "common",
+      "source_files": [
+        "common/cpp/**/*.{cpp,h}"
+      ],
+      "header_dir": "react/renderer/components/RNKC",
+      "private_header_files": "common/cpp/**/*.{h}",
+      "pod_target_xcconfig": {
+        "HEADER_SEARCH_PATHS": "\"$(PODS_TARGET_SRCROOT)/common/cpp\""
+      }
+    }
+  ]
+}

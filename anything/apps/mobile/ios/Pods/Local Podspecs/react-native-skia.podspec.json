@@ -1,0 +1,87 @@
+{
+  "name": "react-native-skia",
+  "version": "2.2.12",
+  "summary": "High-performance React Native Graphics using Skia",
+  "description": "@shopify/react-native-skia",
+  "homepage": "https://github.com/shopify/react-native-skia",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE.md"
+  },
+  "authors": {
+    "Christian Falch": "christian.falch@gmail.com",
+    "William Candillon": "wcandillon@gmail.com"
+  },
+  "platforms": {
+    "ios": "14.0",
+    "tvos": "13.0",
+    "osx": "11"
+  },
+  "source": {
+    "git": "https://github.com/shopify/react-native-skia/react-native-skia.git",
+    "tag": "2.2.12"
+  },
+  "requires_arc": true,
+  "pod_target_xcconfig": {
+    "GCC_PREPROCESSOR_DEFINITIONS": "$(inherited) SK_METAL=1 SK_GANESH=1 SK_IMAGE_READ_PIXELS_DISABLE_LEGACY_API=1 SK_DISABLE_LEGACY_SHAPER_FACTORY=1",
+    "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
+    "DEFINES_MODULE": "YES",
+    "HEADER_SEARCH_PATHS": "\"$(PODS_TARGET_SRCROOT)/cpp/\"/** \"$(PODS_ROOT)/Headers/Private/Yoga\"",
+    "OTHER_CPLUSPLUSFLAGS": "$(inherited) -DRCT_NEW_ARCH_ENABLED=1 ",
+    "OTHER_SWIFT_FLAGS": "$(inherited) -DRCT_NEW_ARCH_ENABLED"
+  },
+  "frameworks": [
+    "MetalKit",
+    "AVFoundation",
+    "AVKit",
+    "CoreMedia"
+  ],
+  "vendored_frameworks": [
+    "libs/apple/libskia.xcframework",
+    "libs/apple/libsvg.xcframework",
+    "libs/apple/libskshaper.xcframework",
+    "libs/apple/libskparagraph.xcframework",
+    "libs/apple/libskunicode_core.xcframework",
+    "libs/apple/libskunicode_libgrapheme.xcframework",
+    "libs/apple/libskottie.xcframework",
+    "libs/apple/libsksg.xcframework",
+    "libs/apple/libpathops.xcframework"
+  ],
+  "source_files": [
+    "apple/**/*.{h,c,cc,cpp,m,mm,swift}",
+    "cpp/**/*.{h,cpp}"
+  ],
+  "exclude_files": [
+    "cpp/rnskia/RNDawnContext.h",
+    "cpp/rnskia/RNDawnUtils.h",
+    "cpp/rnskia/RNDawnWindowContext.h",
+    "cpp/rnskia/RNDawnWindowContext.cpp",
+    "cpp/rnskia/RNImageProvider.h"
+  ],
+  "compiler_flags": "-DRCT_NEW_ARCH_ENABLED=1",
+  "dependencies": {
+    "React-Core": [],
+    "React-RCTFabric": [],
+    "ReactCodegen": [],
+    "RCTRequired": [],
+    "RCTTypeSafety": [],
+    "ReactCommon/turbomodule/bridging": [],
+    "ReactCommon/turbomodule/core": [],
+    "React-NativeModulesApple": [],
+    "Yoga": [],
+    "React-Fabric": [],
+    "React-graphics": [],
+    "React-utils": [],
+    "React-featureflags": [],
+    "React-debug": [],
+    "React-ImageManager": [],
+    "React-rendererdebug": [],
+    "React-jsi": [],
+    "React-renderercss": [],
+    "hermes-engine": [],
+    "ReactNativeDependencies": [],
+    "React-Core-prebuilt": [],
+    "React": [],
+    "React-callinvoker": []
+  }
+}

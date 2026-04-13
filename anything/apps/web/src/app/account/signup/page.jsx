@@ -1,5 +1,4 @@
-'use client';
-
+import React from 'react';
 import { useState } from 'react';
 import useAuth from '@/utils/useAuth';
 import logo from '@/__create/parkmate-logo.png';

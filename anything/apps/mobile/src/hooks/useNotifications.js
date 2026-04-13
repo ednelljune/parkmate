@@ -91,7 +91,6 @@ export const useNotifications = (onNotificationResponse) => {
             }),
           },
         });
-        throw error;
       }
     }
   };

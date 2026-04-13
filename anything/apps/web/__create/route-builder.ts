@@ -6,9 +6,6 @@ const API_BASENAME = '/api';
 const api = new Hono();
 const httpMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const;
 const routeImporters = import.meta.glob<RouteModule>('../src/app/api/**/route.js');
-const eagerRouteModules = import.meta.glob<RouteModule>('../src/app/api/**/route.js', {
-  eager: true,
-});
 
 type RouteHandler = (
   request: Request,
@@ -110,7 +107,7 @@ function registerLoadedRoutes(routeModules: Record<string, RouteModule>) {
   }
 }
 
-async function registerDevRoutes() {
+async function registerRoutes() {
   const loadedRoutes: Record<string, RouteModule> = {};
 
   for (const routeFile of getSortedRouteFiles(Object.keys(routeImporters))) {
@@ -130,8 +127,8 @@ async function registerDevRoutes() {
 }
 
 let routesReady: Promise<void> = import.meta.env.DEV
-  ? registerDevRoutes()
-  : Promise.resolve(registerLoadedRoutes(eagerRouteModules));
+  ? registerRoutes()
+  : registerRoutes();
 
 if (import.meta.env.DEV) {
   import.meta.glob('../src/app/api/**/route.js', {
@@ -140,7 +137,7 @@ if (import.meta.env.DEV) {
 
   if (import.meta.hot) {
     import.meta.hot.accept(() => {
-      routesReady = registerDevRoutes().catch((error) => {
+      routesReady = registerRoutes().catch((error) => {
         console.error('Error reloading routes:', error);
       });
     });

@@ -348,7 +348,6 @@ function AuthenticatedTabLayout() {
           }),
         },
       });
-      throw error;
     }
   });
 

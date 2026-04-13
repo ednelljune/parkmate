@@ -26,7 +26,7 @@ export interface HierarchicalLayoutOptions {
 const DEFAULT_PAGE_PATTERN = /\/page\.(jsx?)$/;
 const DEFAULT_LAYOUT_FILES = ['layout.jsx'];
 const DEFAULT_PARAM_PATTERN = /\[(\.{3})?([^\]]+)\]/g;
-const NO_LAYOUT_QUERY = '?noLayout.jsx';
+const NO_LAYOUT_QUERY = '?noLayout';
 
 export function layoutWrapperPlugin(userOpts: HierarchicalLayoutOptions = {}): Plugin {
   const opts: Required<HierarchicalLayoutOptions> = {
@@ -35,15 +35,9 @@ export function layoutWrapperPlugin(userOpts: HierarchicalLayoutOptions = {}): P
     srcRoots: userOpts.srcRoots ?? [path.join(__dirname, '../src')],
   };
 
-  let root = '';
-
   return {
     name: 'vite-react-hierarchical-layouts',
     enforce: 'pre',
-
-    configResolved(c) {
-      root = normalizePath(c.root);
-    },
 
     /* ——— turn any   src/foo/bar/page.tsx   into a wrapper ——— */
     async transform(code, id) {
@@ -51,7 +45,11 @@ export function layoutWrapperPlugin(userOpts: HierarchicalLayoutOptions = {}): P
         opts.pagePattern.test(id) &&
         !id.includes(NO_LAYOUT_QUERY) // avoid wrapping the already wrapped page
       ) {
-        return buildWrapper.call(this, id);
+        return await transformWithEsbuild(buildWrapper.call(this, id), id, {
+          loader: 'jsx',
+          jsx: 'automatic',
+          sourcemap: true,
+        });
       }
       return null;
     },
@@ -120,16 +118,14 @@ export function layoutWrapperPlugin(userOpts: HierarchicalLayoutOptions = {}): P
     const hasSpreadParams = /\[\.{3}[^\]]+\]/.test(normalizePath(pagePath));
 
     /* ---------- imports ---------- */
-    const imports: string[] = [];
-    const opening: string[] = [];
-    const closing: string[] = [];
+    const imports: string[] = [`import React from 'react';`];
+    const wrappers: string[] = [];
 
     layouts.forEach(({ absFile, hasExport }, i) => {
       const varName = `Layout${i}`;
       imports.push(`import ${varName} from ${JSON.stringify(absFile)};`);
       if (hasExport) {
-        opening.push(`<${varName}>`);
-        closing.unshift(`</${varName}>`);
+        wrappers.push(varName);
       }
     });
 
@@ -143,34 +139,38 @@ export function layoutWrapperPlugin(userOpts: HierarchicalLayoutOptions = {}): P
     }
 
     /* ---------- module body ---------- */
+    const pageProps =
+      routeParams.length > 0
+        ? `{
+    ...props,
+    ${routeParams
+      .map((param) =>
+        pagePath.includes(`[...${param}]`)
+          ? `${param}: location.pathname
+        .split('/')
+        .slice(
+          location.pathname
+            .split('/')
+            .findIndex(Boolean) + 1
+        )`
+          : `${param}: params.${param}`
+      )
+      .join(',\n    ')}
+  }`
+        : 'props';
+
+    const wrappedElement = wrappers.reduceRight(
+      (child, layoutName) => `React.createElement(${layoutName}, null, ${child})`,
+      `React.createElement(Page, ${pageProps})`
+    );
+
     return `
 ${imports.join('\n')}
 
 export default function WrappedPage(props) {
   ${routeParams.length > 0 ? 'const params = useParams();' : ''}
   ${hasSpreadParams ? 'const location = useLocation();' : ''}
-  return (
-    ${opening.join('\n    ')}
-      <Page {...props}${
-        routeParams.length > 0
-          ? routeParams
-              .map((param) =>
-                pagePath.includes(`[...${param}]`)
-                  ? // collect the rest of the path for spread params
-                    `${param}={location.pathname
-                      .split('/')
-                      .slice(
-                        location.pathname
-                          .split('/')
-                          .findIndex(Boolean) + 1
-                      )}`
-                  : `${param}={params.${param}}`
-              )
-              .join(' ')
-          : ''
-      } />
-    ${closing.join('\n    ')}
-  );
+  return ${wrappedElement};
 }
 `;
   }

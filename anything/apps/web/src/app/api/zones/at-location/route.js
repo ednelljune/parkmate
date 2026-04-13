@@ -21,7 +21,7 @@ export async function POST(request) {
         capacity_spaces,
         rules_description
       FROM parking_zones
-      WHERE ST_Contains(boundary, ST_SetSRID(ST_Point(${longitude}, ${latitude}), 4326))
+      WHERE ST_Covers(boundary, ST_SetSRID(ST_Point(${longitude}, ${latitude}), 4326))
         AND LOWER(COALESCE(zone_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
       LIMIT 1;
     `;

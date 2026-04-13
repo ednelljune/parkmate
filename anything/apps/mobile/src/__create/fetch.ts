@@ -5,6 +5,10 @@ import {
   getDevFallbackBaseUrl,
   getResolvedBaseUrl,
 } from '../utils/backend';
+import {
+  createFirstPartyConnectivityError,
+  isLikelyNetworkError,
+} from '../utils/networkErrors';
 import { useAuthStore } from '../utils/auth/store';
 
 const originalFetch = fetch;
@@ -76,6 +80,26 @@ const isFirstPartyURL = (url: string) => {
 
 const isSecondPartyURL = (url: string) => {
   return url.startsWith('/_create/');
+};
+
+const normalizeFirstPartyFetchError = ({
+  error,
+  fallbackUrl,
+  requestUrl,
+}: {
+  error: unknown;
+  fallbackUrl?: string | null;
+  requestUrl: string;
+}) => {
+  if (!isLikelyNetworkError(error)) {
+    return error;
+  }
+
+  return createFirstPartyConnectivityError({
+    url: requestUrl,
+    fallbackUrl,
+    originalMessage: error instanceof Error ? error.message : String(error),
+  });
 };
 
 type Params = Parameters<typeof expoFetch>;
@@ -199,10 +223,22 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
         message: error instanceof Error ? error.message : String(error),
       });
 
-      return expoFetch(fallbackUrl, requestInit);
+      try {
+        return await expoFetch(fallbackUrl, requestInit);
+      } catch (fallbackError) {
+        throw normalizeFirstPartyFetchError({
+          error: fallbackError,
+          fallbackUrl,
+          requestUrl: fallbackUrl,
+        });
+      }
     }
 
-    throw error;
+    throw normalizeFirstPartyFetchError({
+      error,
+      fallbackUrl,
+      requestUrl: finalUrl,
+    });
   }
 };
 

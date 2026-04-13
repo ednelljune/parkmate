@@ -10,28 +10,6 @@ import { createHonoServer } from 'react-router-hono-server/node';
 import { serializeError } from 'serialize-error';
 import { getHTMLForErrorPage } from './get-html-for-error-page';
 import { API_BASENAME, api, routesReady } from './route-builder';
-import * as notificationsActivityRoute from '../src/app/api/notifications/activity/route.js';
-import * as notificationsActivityVersionRoute from '../src/app/api/notifications/activity/version/route.js';
-import * as notificationsCreateRoute from '../src/app/api/notifications/create/route.js';
-import * as notificationsListRoute from '../src/app/api/notifications/list/route.js';
-import * as notificationsMailboxRoute from '../src/app/api/notifications/mailbox/route.js';
-import * as notificationsMailboxVersionRoute from '../src/app/api/notifications/mailbox/version/route.js';
-import * as notificationsRegisterTokenRoute from '../src/app/api/notifications/register-token/route.js';
-import * as notificationsSendAlertRoute from '../src/app/api/notifications/send-alert/route.js';
-import * as notificationsSendPushRoute from '../src/app/api/notifications/send-push/route.js';
-import * as reportsClaimRoute from '../src/app/api/reports/claim/route.js';
-import * as reportsCreateRoute from '../src/app/api/reports/create/route.js';
-import * as reportsDeleteRoute from '../src/app/api/reports/delete/route.js';
-import * as reportsNearbyRoute from '../src/app/api/reports/nearby/route.js';
-import * as reportsNearbyVersionRoute from '../src/app/api/reports/nearby/version/route.js';
-import * as reportsReportFalseRoute from '../src/app/api/reports/report-false/route.js';
-import * as usersLeaderboardRoute from '../src/app/api/users/leaderboard/route.js';
-import * as usersLeaderboardVersionRoute from '../src/app/api/users/leaderboard/version/route.js';
-import * as usersProfileRoute from '../src/app/api/users/profile/route.js';
-import * as zonesAtLocationRoute from '../src/app/api/zones/at-location/route.js';
-import * as zonesImportVictoriaPublicRoute from '../src/app/api/zones/import-victoria-public/route.js';
-import * as zonesListRoute from '../src/app/api/zones/list/route.js';
-import * as zonesSeedSampleRoute from '../src/app/api/zones/seed-sample/route.js';
 
 const als = new AsyncLocalStorage<{ requestId: string }>();
 
@@ -49,20 +27,6 @@ for (const method of ['log', 'info', 'warn', 'error', 'debug'] as const) {
 }
 
 const app = new Hono();
-
-const mountRoute = (
-  method: 'get' | 'post' | 'put' | 'patch' | 'delete',
-  path: string,
-  handler?: ((request: Request, context?: { params: Record<string, string> }) => Promise<Response> | Response) | null
-) => {
-  if (!handler) {
-    return;
-  }
-
-  app[method](path, async (c) => {
-    return await handler(c.req.raw, { params: c.req.param() });
-  });
-};
 
 app.use('*', requestId());
 
@@ -126,34 +90,6 @@ app.all('/integrations/:path{.+}', async (c, next) => {
     },
   });
 });
-
-mountRoute('get', '/api/notifications/activity', notificationsActivityRoute.GET);
-mountRoute('get', '/api/notifications/activity/version', notificationsActivityVersionRoute.GET);
-mountRoute('post', '/api/notifications/create', notificationsCreateRoute.POST);
-mountRoute('post', '/api/notifications/list', notificationsListRoute.POST);
-mountRoute('get', '/api/notifications/mailbox', notificationsMailboxRoute.GET);
-mountRoute('get', '/api/notifications/mailbox/version', notificationsMailboxVersionRoute.GET);
-mountRoute('post', '/api/notifications/register-token', notificationsRegisterTokenRoute.POST);
-mountRoute('post', '/api/notifications/send-alert', notificationsSendAlertRoute.POST);
-mountRoute('post', '/api/notifications/send-push', notificationsSendPushRoute.POST);
-
-mountRoute('post', '/api/reports/claim', reportsClaimRoute.POST);
-mountRoute('post', '/api/reports/create', reportsCreateRoute.POST);
-mountRoute('post', '/api/reports/delete', reportsDeleteRoute.POST);
-mountRoute('post', '/api/reports/nearby', reportsNearbyRoute.POST);
-mountRoute('post', '/api/reports/nearby/version', reportsNearbyVersionRoute.POST);
-mountRoute('post', '/api/reports/report-false', reportsReportFalseRoute.POST);
-
-mountRoute('get', '/api/users/leaderboard', usersLeaderboardRoute.GET);
-mountRoute('get', '/api/users/leaderboard/version', usersLeaderboardVersionRoute.GET);
-mountRoute('get', '/api/users/profile', usersProfileRoute.GET);
-mountRoute('post', '/api/users/profile', usersProfileRoute.POST);
-
-mountRoute('post', '/api/zones/at-location', zonesAtLocationRoute.POST);
-mountRoute('get', '/api/zones/list', zonesListRoute.GET);
-mountRoute('post', '/api/zones/list', zonesListRoute.POST);
-mountRoute('post', '/api/zones/import-victoria-public', zonesImportVictoriaPublicRoute.POST);
-mountRoute('post', '/api/zones/seed-sample', zonesSeedSampleRoute.POST);
 
 app.route(API_BASENAME, api);
 

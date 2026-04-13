@@ -2,6 +2,7 @@ import { useAuth } from '@/utils/auth/useAuth';
 import { AnimatedParkMateLogo } from '@/components/AnimatedParkMateLogo';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StartupPrefetch } from '@/hooks/useStartupPrefetch';
+import { useKeepAwake } from 'expo-keep-awake';
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -30,6 +31,8 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  useKeepAwake();
+
   const { initiate, isReady } = useAuth();
   const [hasCompletedBootScene, setHasCompletedBootScene] = useState(hasCompletedColdStartBranding);
   const shouldPlayColdStartBranding = !hasCompletedColdStartBranding;

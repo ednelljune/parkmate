@@ -436,7 +436,7 @@ export const useParkingZones = (location, radiusMeters = 500) => {
           latitude: queryLocation.latitude,
           longitude: queryLocation.longitude,
           radiusMeters,
-          includeGeometry: false,
+          includeGeometry: true,
         }),
       });
 

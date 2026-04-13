@@ -15,10 +15,7 @@ export const ReportModal = ({
   onSetQuantity,
   onConfirm,
 }) => {
-  const nearbyZoneOptions = availableZoneOptions.filter(
-    (option) => option.distanceMeters <= detectionRadius,
-  );
-  const hasAvailableParkingTypes = nearbyZoneOptions.length > 0;
+  const hasAvailableParkingTypes = availableZoneOptions.length > 0;
 
   return (
     <Modal
@@ -85,7 +82,7 @@ export const ReportModal = ({
 
             <View style={{ gap: 6, marginBottom: 16 }}>
               {hasAvailableParkingTypes ? (
-                nearbyZoneOptions.map((option) => (
+                availableZoneOptions.map((option) => (
                   <TouchableOpacity
                     key={`${option.zoneId}-${option.parkingType}`}
                     style={{

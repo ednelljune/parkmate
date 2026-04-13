@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
 } from "react-native";
-import MapView, { Circle, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Circle, Polygon, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -94,6 +94,70 @@ const normalizeZoneIdentity = (name, type) => {
   return `${normalizedName}::${normalizedType}`;
 };
 
+const normalizeBoundaryCoordinate = (coordinate) => {
+  if (!Array.isArray(coordinate) || coordinate.length < 2) {
+    return null;
+  }
+
+  const longitude = normalizeCoordinate(coordinate[0]);
+  const latitude = normalizeCoordinate(coordinate[1]);
+
+  if (latitude === null || longitude === null) {
+    return null;
+  }
+
+  return { latitude, longitude };
+};
+
+const buildMapPolygonsFromBoundary = (boundaryGeojson) => {
+  if (!boundaryGeojson || typeof boundaryGeojson !== "object") {
+    return [];
+  }
+
+  const normalizeRing = (ring) =>
+    Array.isArray(ring)
+      ? ring.map(normalizeBoundaryCoordinate).filter(Boolean)
+      : [];
+
+  if (boundaryGeojson.type === "Polygon") {
+    const rings = Array.isArray(boundaryGeojson.coordinates)
+      ? boundaryGeojson.coordinates.map(normalizeRing).filter((ring) => ring.length >= 3)
+      : [];
+
+    if (rings.length === 0) {
+      return [];
+    }
+
+    return [
+      {
+        coordinates: rings[0],
+        holes: rings.slice(1).filter((ring) => ring.length >= 3),
+      },
+    ];
+  }
+
+  if (boundaryGeojson.type === "MultiPolygon") {
+    return (Array.isArray(boundaryGeojson.coordinates) ? boundaryGeojson.coordinates : [])
+      .map((polygon) => {
+        const rings = Array.isArray(polygon)
+          ? polygon.map(normalizeRing).filter((ring) => ring.length >= 3)
+          : [];
+
+        if (rings.length === 0) {
+          return null;
+        }
+
+        return {
+          coordinates: rings[0],
+          holes: rings.slice(1).filter((ring) => ring.length >= 3),
+        };
+      })
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 const sanitizeZoneForSelection = (zone) => {
   if (!zone) return null;
 
@@ -107,6 +171,10 @@ const sanitizeZoneForSelection = (zone) => {
     capacity_spaces:
       zone.capacity_spaces ?? zone.capacitySpaces ?? zone.capacity ?? null,
     rules_description: String(zone.rules_description || zone.rules || "").trim(),
+    boundary_geojson:
+      zone.boundary_geojson && typeof zone.boundary_geojson === "object"
+        ? zone.boundary_geojson
+        : null,
     center_lat: latitude,
     center_lng: longitude,
   };
@@ -749,6 +817,10 @@ function ParkMateContent() {
   const zonePinZoomScale = useMemo(
     () => getZoomedOutZoneScale(mapRegion),
     [mapRegion?.latitudeDelta, mapRegion?.longitudeDelta],
+  );
+  const selectedZonePolygons = useMemo(
+    () => buildMapPolygonsFromBoundary(selectedZone?.boundary_geojson),
+    [selectedZone?.boundary_geojson],
   );
   const overlayZonePinZoomScale = useMemo(
     () => getZoomedOutZoneScale(overlayMapRegion),
@@ -1688,6 +1760,18 @@ function ParkMateContent() {
               lineJoin="round"
             />
           )}
+
+          {selectedZonePolygons.map((polygon, index) => (
+            <Polygon
+              key={`selected-zone-polygon-${selectedZone?.id ?? "unknown"}-${index}`}
+              coordinates={polygon.coordinates}
+              holes={polygon.holes}
+              strokeColor="rgba(59, 130, 246, 0.95)"
+              fillColor="rgba(59, 130, 246, 0.16)"
+              strokeWidth={3}
+              tappable={false}
+            />
+          ))}
 
           <UserLocationMarker location={location} />
           {Platform.OS !== "android" && (

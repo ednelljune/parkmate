@@ -8,6 +8,7 @@ import {
   useLocation,
   useRouteError,
 } from 'react-router';
+import * as React from 'react';
 
 import { useButton } from '@react-aria/button';
 import {
@@ -37,6 +38,7 @@ export const links = () => [];
 
 if (globalThis.window && globalThis.window !== undefined) {
   globalThis.window.fetch = fetch;
+  globalThis.React = React;
 }
 
 const LoadFontsSSR = import.meta.env.SSR ? LoadFonts : null;

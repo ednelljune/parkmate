@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { Platform } from 'react-native';
+import { isIgnoredSentryNetworkError } from '../utils/networkErrors';
 
 const FALLBACK_SENTRY_DSN =
   'https://efebc23fa5840e75457156ed629b0407@o4511164241149952.ingest.us.sentry.io/4511164243509248';
@@ -140,6 +141,15 @@ export function ensureSentryInitialized(): void {
     enableNativeCrashHandling: IS_NATIVE_SENTRY_ENABLED,
     enableLogs: !IS_DEVELOPMENT_RUNTIME,
     attachStacktrace: true,
+    beforeSend(event, hint) {
+      const originalException = hint.originalException ?? hint.syntheticException;
+
+      if (isIgnoredSentryNetworkError(originalException)) {
+        return null;
+      }
+
+      return event;
+    },
     replaysSessionSampleRate: shouldEnableReplay ? 0.1 : 0,
     replaysOnErrorSampleRate: shouldEnableReplay ? 1 : 0,
     integrations: integrations as never,

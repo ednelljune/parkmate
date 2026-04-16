@@ -2,6 +2,11 @@ import sql from "@/app/api/utils/sql";
 import { requireAuthenticatedUser } from "@/app/api/utils/supabase-auth";
 import { ensureActivityLogSchema } from "@/app/api/utils/activity-log";
 import { ensureFalseReportsSchema } from "@/app/api/utils/false-reports";
+import {
+  ensureHiddenNotificationsSchema,
+  getHiddenNotificationIds,
+  HIDDEN_NOTIFICATION_FEED_TYPES,
+} from "@/app/api/utils/hidden-notifications";
 import { getEffectiveReportExpiresAtSql } from "@/app/api/utils/report-ttl";
 
 const EXCLUDED_ZONE_TYPE = "meter";
@@ -37,6 +42,7 @@ export async function GET(request) {
   try {
     await ensureActivityLogSchema();
     await ensureFalseReportsSchema();
+    await ensureHiddenNotificationsSchema();
 
     const auth = await requireAuthenticatedUser(request);
     if (auth.response) {
@@ -50,6 +56,10 @@ export async function GET(request) {
       : 50;
     const userId = auth.user.id;
     const effectiveExpiresAtSql = getEffectiveReportExpiresAtSql("lr");
+    const hiddenIds = await getHiddenNotificationIds({
+      userId,
+      feedType: HIDDEN_NOTIFICATION_FEED_TYPES.mailbox,
+    });
 
     const systemUpdateItems = await sql(
       `
@@ -175,12 +185,14 @@ export async function GET(request) {
       [userId, CLAIM_POINTS_AWARDED, FALSE_REPORT_TRUST_THRESHOLD, EXCLUDED_ZONE_TYPE, limit],
     );
 
-    const notifications = systemUpdateItems.map((item) => ({
-      ...item,
-      zone_name: item.zone_name || "Reported spot",
-      message: buildSystemUpdateMessage(item),
-      sent_at: item.occurred_at,
-    }));
+    const notifications = systemUpdateItems
+      .filter((item) => !hiddenIds.has(String(item?.id || "").trim()))
+      .map((item) => ({
+        ...item,
+        zone_name: item.zone_name || "Reported spot",
+        message: buildSystemUpdateMessage(item),
+        sent_at: item.occurred_at,
+      }));
 
     const summary = notifications.reduce(
       (accumulator, item) => {

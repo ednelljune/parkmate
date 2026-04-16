@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
+import fetch from "@/__create/fetch";
 import { getResolvedBaseUrl, resolveBackendUrl } from "@/utils/backend";
 import useUser from "@/utils/auth/useUser";
 import { useAuthStore } from "@/utils/auth/store";
@@ -100,7 +101,7 @@ const roundCoordinate = (value, precision = 4) => {
   return Number(normalizedValue.toFixed(precision));
 };
 
-const getQueryLocation = (location, precision = 4) => {
+export const getQueryLocation = (location, precision = 4) => {
   if (!location) return null;
 
   const latitude = roundCoordinate(location.latitude, precision);
@@ -113,11 +114,24 @@ const getQueryLocation = (location, precision = 4) => {
   return { latitude, longitude };
 };
 
-const getNearbyReportsQueryKey = (queryLocation, radiusMeters) => [
+export const getNearbyReportsQueryKey = (queryLocation, radiusMeters) => [
   ...NEARBY_REPORTS_QUERY_KEY,
   queryLocation?.latitude,
   queryLocation?.longitude,
   radiusMeters,
+];
+
+export const getParkingZonesQueryKey = (queryLocation, radiusMeters) => [
+  "parking_zones",
+  queryLocation?.latitude,
+  queryLocation?.longitude,
+  radiusMeters,
+];
+
+export const getCurrentZoneQueryKey = (queryLocation) => [
+  "current_zone",
+  queryLocation?.latitude,
+  queryLocation?.longitude,
 ];
 
 const readNearbyReportsVersionResponse = async (response) => {
@@ -134,6 +148,69 @@ const readNearbyReportsVersionResponse = async (response) => {
       `Nearby reports update check returned invalid JSON: ${responseText.slice(0, 120) || "empty response"}`,
     );
   }
+};
+
+export const fetchParkingZonesQuery = async (location, radiusMeters = 500) => {
+  const queryLocation = getQueryLocation(location);
+  if (!queryLocation) {
+    return { zones: [] };
+  }
+
+  const response = await fetch("/api/zones/list", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      latitude: queryLocation.latitude,
+      longitude: queryLocation.longitude,
+      radiusMeters,
+      includeGeometry: true,
+    }),
+  });
+
+  if (!response.ok) return { zones: [] };
+  return response.json();
+};
+
+export const fetchCurrentZoneQuery = async (location) => {
+  const queryLocation = getQueryLocation(location);
+  if (!queryLocation) {
+    return { zone: null };
+  }
+
+  const response = await fetch("/api/zones/at-location", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      latitude: queryLocation.latitude,
+      longitude: queryLocation.longitude,
+    }),
+  });
+
+  if (!response.ok) return { zone: null };
+  return response.json();
+};
+
+export const fetchNearbyReportsQuery = async (location, radiusMeters = 500) => {
+  const queryLocation = getQueryLocation(location);
+  if (!queryLocation) {
+    return { success: false, spots: [] };
+  }
+
+  const response = await fetch("/api/reports/nearby", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      latitude: queryLocation.latitude,
+      longitude: queryLocation.longitude,
+      radiusMeters,
+    }),
+  });
+
+  if (!response.ok) {
+    return { success: false, spots: [] };
+  }
+
+  return response.json();
 };
 
 const fetchNearbyReportsVersion = async (nearbyReportsVersionUrl, payload) => {
@@ -420,29 +497,8 @@ export const useVisibleParkingZones = (region, enabled = true) => {
 export const useParkingZones = (location, radiusMeters = 500) => {
   const queryLocation = useMemo(() => getQueryLocation(location), [location]);
   const { data: zonesData } = useQuery({
-    queryKey: [
-      "parking_zones",
-      queryLocation?.latitude,
-      queryLocation?.longitude,
-      radiusMeters,
-    ],
-    queryFn: async () => {
-      if (!queryLocation) return { zones: [] };
-
-      const response = await fetch("/api/zones/list", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          latitude: queryLocation.latitude,
-          longitude: queryLocation.longitude,
-          radiusMeters,
-          includeGeometry: false,
-        }),
-      });
-
-      if (!response.ok) return { zones: [] };
-      return response.json();
-    },
+    queryKey: getParkingZonesQueryKey(queryLocation, radiusMeters),
+    queryFn: async () => fetchParkingZonesQuery(queryLocation, radiusMeters),
     enabled: !!queryLocation,
     placeholderData: (previousData) => previousData,
     staleTime: 30000,
@@ -550,22 +606,8 @@ export const useNearbyReportsBackendVersion = (
 export const useCurrentZone = (location) => {
   const queryLocation = useMemo(() => getQueryLocation(location), [location]);
   const { data: currentZoneData } = useQuery({
-    queryKey: ["current_zone", queryLocation?.latitude, queryLocation?.longitude],
-    queryFn: async () => {
-      if (!queryLocation) return { zone: null };
-
-      const response = await fetch("/api/zones/at-location", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          latitude: queryLocation.latitude,
-          longitude: queryLocation.longitude,
-        }),
-      });
-
-      if (!response.ok) return { zone: null };
-      return response.json();
-    },
+    queryKey: getCurrentZoneQueryKey(queryLocation),
+    queryFn: async () => fetchCurrentZoneQuery(queryLocation),
     enabled: !!queryLocation,
     placeholderData: (previousData) => previousData,
     staleTime: 30000,
@@ -598,25 +640,7 @@ export const useNearbyReports = (location, radiusMeters = 500, options = {}) => 
 
   const queryResult = useQuery({
     queryKey: getNearbyReportsQueryKey(queryLocation, radiusMeters),
-    queryFn: async () => {
-      if (!queryLocation) return { success: false, spots: [] };
-
-      const response = await fetch("/api/reports/nearby", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          latitude: queryLocation.latitude,
-          longitude: queryLocation.longitude,
-          radiusMeters,
-        }),
-      });
-
-      if (!response.ok) {
-        return { success: false, spots: [] };
-      }
-
-      return response.json();
-    },
+    queryFn: async () => fetchNearbyReportsQuery(queryLocation, radiusMeters),
     enabled: !!queryLocation,
     placeholderData: (previousData) => previousData,
     staleTime:

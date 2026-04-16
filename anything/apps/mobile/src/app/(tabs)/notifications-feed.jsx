@@ -37,6 +37,10 @@ import { useAuthStore } from "@/utils/auth/store";
 import useUser from "@/utils/auth/useUser";
 import { deriveSystemUpdateItems } from "@/utils/systemUpdates";
 import {
+  deleteActivityNotificationsRemote,
+  deleteMailboxNotificationsRemote,
+} from "@/utils/notificationDeletion";
+import {
   deleteSystemUpdateItems,
   hydrateDeletedSystemUpdateIds,
 } from "@/utils/systemUpdateNotificationState";
@@ -124,6 +128,19 @@ const MAILBOX_META = {
     panel: "#FFFBF2",
     border: "rgba(245, 158, 11, 0.18)",
   },
+};
+
+const getDeleteErrorMessage = (error, fallbackMessage) => {
+  const message =
+    typeof error?.message === "string" && error.message.trim()
+      ? error.message.trim()
+      : "";
+
+  if (!message) {
+    return fallbackMessage;
+  }
+
+  return message;
 };
 
 const INITIAL_ACTIVITY_LOAD_TIMEOUT_MS = 20000;
@@ -399,6 +416,7 @@ const ActivityRow = React.memo(function ActivityRow({
   isEditing = false,
   isSelected = false,
   onToggleSelect,
+  onDeleteItem,
 }) {
   const meta = ACTIVITY_META[item.activity_type] || ACTIVITY_META.reported;
   const Icon = meta.icon;
@@ -428,13 +446,24 @@ const ActivityRow = React.memo(function ActivityRow({
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteActivityNotification(item).catch(() => {});
-            swipeableRef.current?.close();
+            try {
+              await onDeleteItem?.(item);
+              swipeableRef.current?.close();
+            } catch (error) {
+              console.warn("[activity.delete] Failed to delete single activity item", {
+                itemId: item?.id || null,
+                message: error?.message || String(error),
+              });
+              Alert.alert(
+                "Unable to delete activity",
+                getDeleteErrorMessage(error, "Please try again."),
+              );
+            }
           },
         },
       ],
     );
-  }, [item]);
+  }, [item, onDeleteItem]);
 
   const card = (
     <Pressable
@@ -1337,11 +1366,21 @@ export default function NotificationsScreen() {
     setActionBusy(true);
 
     try {
+      await deleteActivityNotificationsRemote(
+        deleteTargets.map((item) => String(item?.id || "")).filter(Boolean),
+      );
       await deleteAllActivityNotifications(deleteTargets);
       setSelectedIds([]);
       setIsEditing(false);
-    } catch {
-      Alert.alert("Unable to delete activity", "Please try again.");
+    } catch (error) {
+      console.warn("[activity.delete] Failed to delete selected activity items", {
+        itemIds: deleteTargets.map((item) => String(item?.id || "")).filter(Boolean),
+        message: error?.message || String(error),
+      });
+      Alert.alert(
+        "Unable to delete activity",
+        getDeleteErrorMessage(error, "Please try again."),
+      );
     } finally {
       setActionBusy(false);
     }
@@ -1416,11 +1455,33 @@ export default function NotificationsScreen() {
   }, []);
 
   const handleDeleteMailboxSelectedConfirmed = React.useCallback(async () => {
-    const nextIds = await deleteSystemUpdateItems(user?.id, mailboxDeleteTargets);
-    setDeletedSystemUpdateIds(nextIds);
-    setSelectedMailboxIds([]);
-    setIsMailboxEditing(false);
+    try {
+      await deleteMailboxNotificationsRemote(mailboxDeleteTargets);
+      const nextIds = await deleteSystemUpdateItems(user?.id, mailboxDeleteTargets);
+      setDeletedSystemUpdateIds(nextIds);
+      setSelectedMailboxIds([]);
+      setIsMailboxEditing(false);
+    } catch (error) {
+      console.warn("[mailbox.delete] Failed to delete system update items", {
+        itemIds: mailboxDeleteTargets.map((item) => String(item?.id || "")).filter(Boolean),
+        message: error?.message || String(error),
+      });
+      Alert.alert(
+        "Unable to delete system updates",
+        getDeleteErrorMessage(error, "Please try again."),
+      );
+    }
   }, [mailboxDeleteTargets, user?.id]);
+
+  const handleDeleteActivityItem = React.useCallback(async (item) => {
+    const itemId = String(item?.id || "");
+    if (!itemId) {
+      throw new Error("Activity notification id is required");
+    }
+
+    await deleteActivityNotificationsRemote([itemId]);
+    await deleteActivityNotification(item);
+  }, []);
 
   const handleDeleteMailboxSelected = React.useCallback(() => {
     if (mailboxDeleteTargets.length === 0) {
@@ -1451,9 +1512,10 @@ export default function NotificationsScreen() {
         isEditing={isEditing}
         isSelected={selectedIdSet.has(String(item.id))}
         onToggleSelect={handleToggleSelect}
+        onDeleteItem={handleDeleteActivityItem}
       />
     ),
-    [handleToggleSelect, isEditing, selectedIdSet, viewedAt],
+    [handleDeleteActivityItem, handleToggleSelect, isEditing, selectedIdSet, viewedAt],
   );
 
   if (isLoading && notifications.length === 0 && !initialLoadTimedOut) {

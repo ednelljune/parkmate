@@ -1,5 +1,5 @@
 diff --git a/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js b/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js
-index 4c42029..5c02b59 100644
+index 4c42029..d4cab6c 100644
 --- a/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js
 +++ b/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js
 @@ -139,12 +139,15 @@ class AsyncNgrok {
@@ -24,6 +24,53 @@ index 4c42029..5c02b59 100644
              }
          }
          this.serverUrl = await this._connectToNgrokAsync({
+@@ -181,12 +184,23 @@ class AsyncNgrok {
+     async connectToNgrokInternalAsync(instance, attempts = 0) {
+         try {
++            var _error_body_details;
+             // Global config path.
+             const configPath = _path().join((0, _UserSettings.getSettingsDirectory)(), 'ngrok.yml');
+             debug('Global config path:', configPath);
+-            const urlProps = await this._getConnectionPropsAsync();
++            const userDefinedAuthToken = process.env.NGROK_AUTHTOKEN || undefined;
++            const userDefinedConfigPath = process.env.NGROK_CONFIG || undefined;
++            const userDefinedRegion = process.env.NGROK_REGION || undefined;
++            const useCustomNgrokConfig = !!(userDefinedAuthToken || userDefinedConfigPath);
++            const urlProps = useCustomNgrokConfig ? _env.env.EXPO_TUNNEL_SUBDOMAIN ? {
++                subdomain: typeof _env.env.EXPO_TUNNEL_SUBDOMAIN === 'string' ? _env.env.EXPO_TUNNEL_SUBDOMAIN : await this._getProjectSubdomainAsync()
++            } : {} : await this._getConnectionPropsAsync();
++            if (useCustomNgrokConfig) {
++                _log.log('Using custom ngrok configuration for tunnel startup.');
++            }
+             const url = await instance.connect({
+                 ...urlProps,
+-                authtoken: NGROK_CONFIG.authToken,
+-                configPath,
++                authtoken: userDefinedAuthToken || NGROK_CONFIG.authToken,
++                configPath: userDefinedConfigPath || configPath,
+                 onStatusChange (status) {
+                     if (status === 'closed') {
+                         _log.error(_chalk().default.red('Tunnel connection has been closed. This is often related to intermittent connection issues between the dev server and ngrok. Restart the dev server to try connecting to ngrok again.') + _chalk().default.gray('\nCheck the Ngrok status page for outages: https://status.ngrok.com/'));
+@@ -194,13 +208,16 @@ class AsyncNgrok {
+                         _log.log('Tunnel connected.');
+                     }
+                 },
++                region: userDefinedRegion,
+                 port: this.port
+             });
+             return url;
+         } catch (error) {
+             const assertNgrok = ()=>{
+                 if ((0, _NgrokResolver.isNgrokClientError)(error)) {
+-                    var _error_body_details;
++                    const customConfigHint = !process.env.NGROK_AUTHTOKEN && (((_error_body_details = error.body.details) == null ? void 0 : _error_body_details.err) === 'remote gone away' || error.body.msg === 'failed to start tunnel') ? 'Set NGROK_AUTHTOKEN to route Expo tunnel traffic through your own ngrok account instead of Expo\\'s shared tunnel service.' : null;
+                     throw new _errors.CommandError('NGROK_CONNECT', [
+                         error.body.msg,
+                         (_error_body_details = error.body.details) == null ? void 0 : _error_body_details.err,
++                        customConfigHint,
+                         _chalk().default.gray('Check the Ngrok status page for outages: https://status.ngrok.com/')
+                     ].filter(Boolean).join('\n\n'));
+                 }
 diff --git a/node_modules/@expo/cli/build/src/start/server/BundlerDevServer.js b/node_modules/@expo/cli/build/src/start/server/BundlerDevServer.js
 index c0ebf7e..93e673c 100644
 --- a/node_modules/@expo/cli/build/src/start/server/BundlerDevServer.js

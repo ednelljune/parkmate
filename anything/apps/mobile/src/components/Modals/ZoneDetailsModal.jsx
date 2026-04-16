@@ -69,7 +69,7 @@ export const ZoneDetailsModal = ({
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
+          backgroundColor: "rgba(0,0,0,0.18)",
           justifyContent: "flex-end",
         }}
       >
@@ -78,19 +78,29 @@ export const ZoneDetailsModal = ({
             backgroundColor: "#FFF",
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
-            paddingTop: 20,
-            paddingBottom: insets.bottom + 20,
-            maxHeight: "80%",
+            paddingTop: 12,
+            paddingBottom: insets.bottom + 12,
+            maxHeight: "44%",
           }}
         >
+          <View
+            style={{
+              alignSelf: "center",
+              width: 40,
+              height: 4,
+              borderRadius: 999,
+              backgroundColor: "#D1D5DB",
+              marginBottom: 10,
+            }}
+          />
           {/* Header */}
           <View
             style={{
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center",
-              paddingHorizontal: 20,
-              marginBottom: 20,
+              paddingHorizontal: 16,
+              marginBottom: 10,
             }}
           >
             <View style={{ flex: 1 }}>
@@ -98,14 +108,14 @@ export const ZoneDetailsModal = ({
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 10,
-                  marginBottom: 4,
+                  gap: 8,
+                  marginBottom: 0,
                 }}
               >
                 <View
                   style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
                     borderRadius: 8,
                     backgroundColor: colors.fill,
                     borderWidth: 2,
@@ -117,7 +127,7 @@ export const ZoneDetailsModal = ({
                       fontSize: 14,
                       fontWeight: "bold",
                       color: colors.stroke,
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.2,
                     }}
                   >
                     {zone.zone_type}
@@ -125,7 +135,7 @@ export const ZoneDetailsModal = ({
                 </View>
                 <Text
                   style={{
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: "bold",
                     color: "#111827",
                     flex: 1,
@@ -139,9 +149,9 @@ export const ZoneDetailsModal = ({
             <TouchableOpacity
               onPress={onClose}
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
+                width: 34,
+                height: 34,
+                borderRadius: 17,
                 backgroundColor: "#F3F4F6",
                 justifyContent: "center",
                 alignItems: "center",
@@ -152,7 +162,8 @@ export const ZoneDetailsModal = ({
           </View>
 
           <ScrollView
-            style={{ paddingHorizontal: 20 }}
+            style={{ paddingHorizontal: 16 }}
+            contentContainerStyle={{ paddingBottom: 4 }}
             showsVerticalScrollIndicator={false}
           >
             {/* Zone Information */}
@@ -160,8 +171,8 @@ export const ZoneDetailsModal = ({
               style={{
                 backgroundColor: "#F9FAFB",
                 borderRadius: 12,
-                padding: 16,
-                marginBottom: 16,
+                padding: 13,
+                marginBottom: 12,
               }}
             >
               <View
@@ -169,10 +180,10 @@ export const ZoneDetailsModal = ({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 8,
-                  marginBottom: 12,
+                  marginBottom: 10,
                 }}
               >
-                <MapPin size={20} color={colors.stroke} />
+                <MapPin size={18} color={colors.stroke} />
                 <Text
                   style={{
                     fontSize: 16,
@@ -189,16 +200,16 @@ export const ZoneDetailsModal = ({
                   style={{
                     flexDirection: "row",
                     gap: 10,
-                    marginBottom: 12,
+                    marginBottom: 10,
                   }}
                 >
-                  <Clock size={18} color="#6B7280" style={{ marginTop: 2 }} />
+                  <Clock size={16} color="#6B7280" style={{ marginTop: 1 }} />
                   <Text
                     style={{
                       fontSize: 14,
                       color: "#374151",
                       flex: 1,
-                      lineHeight: 20,
+                      lineHeight: 18,
                     }}
                   >
                     {zone.rules_description}
@@ -211,16 +222,16 @@ export const ZoneDetailsModal = ({
                   style={{
                     flexDirection: "row",
                     gap: 10,
-                    marginBottom: 12,
+                    marginBottom: 10,
                   }}
                 >
-                  <Map size={18} color="#6B7280" style={{ marginTop: 2 }} />
+                  <Map size={16} color="#6B7280" style={{ marginTop: 1 }} />
                   <Text
                     style={{
                       fontSize: 14,
                       color: "#374151",
                       flex: 1,
-                      lineHeight: 20,
+                      lineHeight: 18,
                     }}
                   >
                     Capacity: {capacitySpaces} parking space
@@ -233,22 +244,22 @@ export const ZoneDetailsModal = ({
                 style={{
                   flexDirection: "row",
                   gap: 10,
-                  paddingTop: 12,
+                  paddingTop: 10,
                   borderTopWidth: 1,
                   borderTopColor: "#E5E7EB",
                 }}
               >
                 <AlertCircle
-                  size={18}
+                  size={16}
                   color="#3B82F6"
-                  style={{ marginTop: 2 }}
+                  style={{ marginTop: 1 }}
                 />
                 <Text
                   style={{
                     fontSize: 13,
                     color: "#6B7280",
                     flex: 1,
-                    lineHeight: 18,
+                    lineHeight: 16,
                   }}
                 >
                   Tap the zone badge on the map to highlight the parking area
@@ -261,8 +272,8 @@ export const ZoneDetailsModal = ({
               style={{
                 backgroundColor: "#F9FAFB",
                 borderRadius: 12,
-                padding: 16,
-                marginBottom: 16,
+                padding: 13,
+                marginBottom: 12,
               }}
             >
               <View
@@ -271,7 +282,7 @@ export const ZoneDetailsModal = ({
                   alignItems: "center",
                   justifyContent: "space-between",
                   gap: 12,
-                  marginBottom: 12,
+                  marginBottom: 10,
                 }}
               >
                 <View style={{ flex: 1 }}>
@@ -288,7 +299,7 @@ export const ZoneDetailsModal = ({
                     style={{
                       fontSize: 13,
                       color: "#6B7280",
-                      marginTop: 2,
+                      marginTop: 1,
                     }}
                   >
                     {totalAvailableSpots > 0
@@ -299,10 +310,10 @@ export const ZoneDetailsModal = ({
                 {totalAvailableSpots > 0 && (
                   <View
                     style={{
-                      minWidth: 36,
-                      height: 36,
-                      paddingHorizontal: 10,
-                      borderRadius: 18,
+                      minWidth: 32,
+                      height: 32,
+                      paddingHorizontal: 8,
+                      borderRadius: 16,
                       backgroundColor: "#DEF7EC",
                       alignItems: "center",
                       justifyContent: "center",
@@ -322,7 +333,7 @@ export const ZoneDetailsModal = ({
               </View>
 
               {availableReports.length > 0 ? (
-                <View style={{ gap: 10 }}>
+                <View style={{ gap: 8 }}>
                   {availableReports.map((report) => {
                     const quantity = Math.max(
                       1,
@@ -341,7 +352,7 @@ export const ZoneDetailsModal = ({
                         style={{
                           backgroundColor: "#FFFFFF",
                           borderRadius: 12,
-                          padding: 14,
+                          padding: 12,
                           borderWidth: 1,
                           borderColor: "#E5E7EB",
                         }}
@@ -352,7 +363,7 @@ export const ZoneDetailsModal = ({
                             justifyContent: "space-between",
                             alignItems: "center",
                             gap: 12,
-                            marginBottom: 6,
+                            marginBottom: 4,
                           }}
                         >
                           <Text
@@ -367,8 +378,8 @@ export const ZoneDetailsModal = ({
                           </Text>
                           <View
                             style={{
-                              paddingHorizontal: 10,
-                              paddingVertical: 5,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
                               borderRadius: 999,
                               backgroundColor: "#DEF7EC",
                             }}
@@ -389,7 +400,7 @@ export const ZoneDetailsModal = ({
                           style={{
                             fontSize: 13,
                             color: "#4B5563",
-                            lineHeight: 18,
+                            lineHeight: 16,
                           }}
                         >
                           {hasDistance
@@ -404,7 +415,7 @@ export const ZoneDetailsModal = ({
                           style={{
                             fontSize: 12,
                             color: "#6B7280",
-                            marginTop: 8,
+                            marginTop: 6,
                           }}
                         >
                           Tap to view this report
@@ -418,7 +429,7 @@ export const ZoneDetailsModal = ({
                   style={{
                     backgroundColor: "#FFFFFF",
                     borderRadius: 12,
-                    padding: 14,
+                    padding: 12,
                     borderWidth: 1,
                     borderColor: "#E5E7EB",
                   }}
@@ -427,7 +438,7 @@ export const ZoneDetailsModal = ({
                     style={{
                       fontSize: 13,
                       color: "#6B7280",
-                      lineHeight: 18,
+                      lineHeight: 16,
                     }}
                   >
                     No users have reported an available parking spot in this zone
@@ -443,15 +454,15 @@ export const ZoneDetailsModal = ({
               style={{
                 backgroundColor: "#3B82F6",
                 borderRadius: 12,
-                padding: 16,
+                padding: 13,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 10,
-                marginBottom: 16,
+                gap: 8,
+                marginBottom: 12,
               }}
             >
-              <Map size={20} color="#FFF" />
+              <Map size={18} color="#FFF" />
               <Text
                 style={{
                   fontSize: 16,
@@ -468,19 +479,19 @@ export const ZoneDetailsModal = ({
               style={{
                 backgroundColor: "#FEF3C7",
                 borderRadius: 12,
-                padding: 14,
+                padding: 12,
                 flexDirection: "row",
                 gap: 10,
-                marginBottom: 20,
+                marginBottom: 16,
               }}
             >
-              <AlertCircle size={18} color="#D97706" style={{ marginTop: 1 }} />
+              <AlertCircle size={16} color="#D97706" style={{ marginTop: 1 }} />
               <Text
                 style={{
                   fontSize: 13,
                   color: "#92400E",
                   flex: 1,
-                  lineHeight: 18,
+                  lineHeight: 16,
                 }}
               >
                 Always check street signs for current parking restrictions and

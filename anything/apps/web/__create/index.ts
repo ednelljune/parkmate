@@ -11,10 +11,12 @@ import { serializeError } from 'serialize-error';
 import { getHTMLForErrorPage } from './get-html-for-error-page';
 import { API_BASENAME, api, routesReady } from './route-builder';
 import * as notificationsActivityRoute from '../src/app/api/notifications/activity/route.js';
+import * as notificationsActivityDeleteRoute from '../src/app/api/notifications/activity/delete/route.js';
 import * as notificationsActivityVersionRoute from '../src/app/api/notifications/activity/version/route.js';
 import * as notificationsCreateRoute from '../src/app/api/notifications/create/route.js';
 import * as notificationsListRoute from '../src/app/api/notifications/list/route.js';
 import * as notificationsMailboxRoute from '../src/app/api/notifications/mailbox/route.js';
+import * as notificationsMailboxDeleteRoute from '../src/app/api/notifications/mailbox/delete/route.js';
 import * as notificationsMailboxVersionRoute from '../src/app/api/notifications/mailbox/version/route.js';
 import * as notificationsRegisterTokenRoute from '../src/app/api/notifications/register-token/route.js';
 import * as notificationsSendAlertRoute from '../src/app/api/notifications/send-alert/route.js';
@@ -128,10 +130,12 @@ app.all('/integrations/:path{.+}', async (c, next) => {
 });
 
 mountRoute('get', '/api/notifications/activity', notificationsActivityRoute.GET);
+mountRoute('post', '/api/notifications/activity/delete', notificationsActivityDeleteRoute.POST);
 mountRoute('get', '/api/notifications/activity/version', notificationsActivityVersionRoute.GET);
 mountRoute('post', '/api/notifications/create', notificationsCreateRoute.POST);
 mountRoute('post', '/api/notifications/list', notificationsListRoute.POST);
 mountRoute('get', '/api/notifications/mailbox', notificationsMailboxRoute.GET);
+mountRoute('post', '/api/notifications/mailbox/delete', notificationsMailboxDeleteRoute.POST);
 mountRoute('get', '/api/notifications/mailbox/version', notificationsMailboxVersionRoute.GET);
 mountRoute('post', '/api/notifications/register-token', notificationsRegisterTokenRoute.POST);
 mountRoute('post', '/api/notifications/send-alert', notificationsSendAlertRoute.POST);

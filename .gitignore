@@ -37,3 +37,6 @@ temp-export-review/
 
 **/.git.backup-20260330/
 **/main/.git.backup-20260330/
+
+# iOS CocoaPods dependencies
+anything/apps/mobile/ios/Pods/

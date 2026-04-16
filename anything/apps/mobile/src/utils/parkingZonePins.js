@@ -4,7 +4,7 @@ import { filterOverlappingZones } from "@/utils/zoneDeduplication";
 import { getApiZoneEffectiveDistanceMeters } from "@/utils/zoneAlerts";
 
 export const MAX_DETECTED_API_ZONE_PINS = 12;
-export const MAX_DETECTED_COUNCIL_ZONE_PINS = 6;
+export const MAX_DETECTED_COUNCIL_ZONE_PINS = 12;
 
 const getZoneCoordinate = (zone) => {
   const latitude = Number(zone?.center_lat ?? zone?.latitude);

@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -438,6 +439,23 @@ function ProfileRankBadge({ badge }) {
   );
 }
 
+function LegalLinkCard({ title, detail, onPress }) {
+  return (
+    <TouchableOpacity style={styles.legalLinkCard} onPress={onPress} activeOpacity={0.88}>
+      <View style={styles.legalLinkIconWrap}>
+        <ShieldCheck size={17} color="#0EA5E9" />
+      </View>
+      <View style={styles.legalLinkCopy}>
+        <Text style={styles.legalLinkTitle}>{title}</Text>
+        <Text style={styles.legalLinkDetail}>{detail}</Text>
+      </View>
+      <View style={styles.legalLinkArrowWrap}>
+        <ArrowUpRight size={16} color="#0EA5E9" />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
@@ -731,6 +749,30 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <View style={[styles.panel, styles.legalPanelCard]}>
+          <View style={styles.sectionHeaderRow}>
+            <View>
+              <Text style={styles.sectionEyebrow}>Legal</Text>
+              <Text style={[styles.sectionTitle, styles.legalSectionTitle]}>
+                Privacy and terms
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.legalLinksStack}>
+            <LegalLinkCard
+              title="Privacy Policy"
+              detail="See what information ParkMate collects and how it is used."
+              onPress={() => router.push("/legal/privacy-policy")}
+            />
+            <LegalLinkCard
+              title="Terms of Service"
+              detail="Review the main rules, disclaimers, and account responsibilities."
+              onPress={() => router.push("/legal/terms-of-service")}
+            />
+          </View>
+        </View>
+
         <TouchableOpacity
           style={[styles.signOutButton, isSigningOut && styles.signOutButtonDisabled]}
           onPress={handleSignOut}
@@ -990,6 +1032,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 15,
   },
+  legalPanelCard: {
+    borderRadius: 22,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+  },
   sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1015,6 +1062,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   playbookSectionTitle: {
+    fontSize: 18,
+    lineHeight: 23,
+  },
+  legalSectionTitle: {
     fontSize: 18,
     lineHeight: 23,
   },
@@ -1287,6 +1338,53 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 10,
     borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  legalLinksStack: {
+    marginTop: 14,
+    gap: 10,
+  },
+  legalLinkCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#F8FCFF",
+    borderRadius: 17,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "#D9F2FF",
+  },
+  legalLinkIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E0F2FE",
+  },
+  legalLinkCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  legalLinkTitle: {
+    color: "#0F172A",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  legalLinkDetail: {
+    color: "#64748B",
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  legalLinkArrowWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",

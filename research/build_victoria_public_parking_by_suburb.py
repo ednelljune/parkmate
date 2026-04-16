@@ -41,6 +41,10 @@ MELBOURNE_SIGN_PLATES_URL = (
 MELBOURNE_ROAD_CORRIDORS_URL = (
     "https://discover.data.vic.gov.au/dataset/road-corridors"
 )
+VICMAP_FOI_PARKING_AREA_URL = (
+    "https://services-ap1.arcgis.com/P744lA0wf4LlBZ84/ArcGIS/rest/services/"
+    "Vicmap_Features_of_Interest/FeatureServer/4/query"
+)
 LOCALITY_SOURCE_URL = (
     "https://spatial.planning.vic.gov.au/gis/rest/services/boundary/MapServer/2"
 )
@@ -458,6 +462,62 @@ def load_geelong_entities(index: LocalityIndex) -> list[dict]:
     return entities
 
 
+def load_vicmap_parking_area_entities(index: LocalityIndex) -> list[dict]:
+    raw_path = RAW_DIR / "vicmap_foi_index_centroid_parking_area_raw.json"
+    records = load_json(raw_path).get("features", [])
+    entities = []
+    for record in records:
+        attrs = record.get("attributes", {})
+        lat = safe_float(attrs.get("y_coord"))
+        lon = safe_float(attrs.get("x_coord"))
+        locality = match_locality(index, lat, lon)
+        name = str(attrs.get("name") or "").strip()
+        parent_name = str(attrs.get("parent_name") or "").strip()
+        entities.append(
+            {
+                "source_owner": "Department of Transport and Planning",
+                "source_dataset": "Vicmap Features of Interest (parking area subtype)",
+                "source_url": VICMAP_FOI_PARKING_AREA_URL,
+                "entity_kind": "parking_area",
+                "external_id": f"vicmap-foi-parking-{attrs.get('ufi') or attrs.get('pfi')}",
+                "zone_external_id": str(attrs.get("ufi") or attrs.get("pfi") or ""),
+                "name": name or parent_name or "Public Parking Area",
+                "zone_type": "Parking",
+                "rules_description": compact_text(
+                    [
+                        "Official Vicmap parking area feature.",
+                        (
+                            f"Parent feature: {parent_name}"
+                            if parent_name and parent_name.lower() != name.lower()
+                            else None
+                        ),
+                        "Time limits and fees are not published in this source layer.",
+                    ]
+                ),
+                "street": "",
+                "geometry_kind": "centroid",
+                "center_lat": lat,
+                "center_lng": lon,
+                "capacity_spaces": "",
+                "paid": "",
+                "time_limit_minutes": "",
+                "permit_required": "",
+                "bay_external_id": "",
+                "sensor_external_id": "",
+                "street_segment_id": "",
+                "occupancy_status": "",
+                "occupancy_updated_at": "",
+                "raw_feature_count": 1,
+                "locality_name": locality["locality_name"],
+                "gazetted_locality_name": locality["gazetted_locality_name"],
+                "vicnames_id": locality["vicnames_id"],
+                "ufi": locality["ufi"],
+                "pfi": locality["pfi"],
+            }
+        )
+    return entities
+
+
 def build_melbourne_signplate_rules() -> dict[str, list[str]]:
     signplates = load_json(RAW_DIR / "melbourne_signplates_raw.json")["result"]["records"]
     grouped = defaultdict(list)
@@ -856,6 +916,7 @@ def write_summary(path: Path, localities: list[dict], entities: list[dict]) -> N
         f"- City of Melbourne Parking zones linked to street segments: {MELBOURNE_ZONE_LINKS_URL}",
         f"- City of Melbourne Sign plates located in each Parking zone: {MELBOURNE_SIGN_PLATES_URL}",
         f"- City of Melbourne Road corridors: {MELBOURNE_ROAD_CORRIDORS_URL}",
+        f"- Vicmap Features of Interest parking areas: {VICMAP_FOI_PARKING_AREA_URL}",
         "",
         "## Results",
         "",
@@ -883,9 +944,9 @@ def write_summary(path: Path, localities: list[dict], entities: list[dict]) -> N
             (
                 "- `victoria-public-parking-zones-by-suburb-<date>.csv` is the detailed export. "
                 "Ballarat rows include zone polygons and meter points, Casey rows are restriction "
-                "segments, Geelong rows are lot references, and Melbourne rows include both "
-                "parking zones reconstructed from zone-to-segment links and live bay or sensor "
-                "reference points."
+                "segments, Geelong rows are lot references, Melbourne rows include both parking "
+                "zones reconstructed from zone-to-segment links and live bay or sensor reference "
+                "points, and Vicmap rows add statewide parking-area centroid features."
             ),
             (
                 "- `victoria-public-parking-suburb-coverage-<date>.csv` includes all 2,973 "
@@ -918,6 +979,7 @@ def main() -> None:
     entities.extend(load_ballarat_meter_entities(locality_index))
     entities.extend(load_casey_entities(locality_index))
     entities.extend(load_geelong_entities(locality_index))
+    entities.extend(load_vicmap_parking_area_entities(locality_index))
     entities.extend(load_melbourne_bay_entities(locality_index))
     entities.extend(load_melbourne_bay_sensor_entities(locality_index))
     entities.extend(load_melbourne_entities(locality_index))

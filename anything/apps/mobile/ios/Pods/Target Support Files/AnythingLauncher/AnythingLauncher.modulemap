@@ -1,6 +1,0 @@
-module AnythingLauncher {
-  umbrella header "AnythingLauncher-umbrella.h"
-
-  export *
-  module * { export * }
-}

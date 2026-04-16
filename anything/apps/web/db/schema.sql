@@ -63,6 +63,15 @@ CREATE TABLE IF NOT EXISTS false_reports (
   CONSTRAINT false_reports_report_id_reported_by_key UNIQUE (report_id, reported_by)
 );
 
+CREATE TABLE IF NOT EXISTS user_hidden_notifications (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  feed_type TEXT NOT NULL,
+  notification_id TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT user_hidden_notifications_user_feed_item_key UNIQUE (user_id, feed_type, notification_id)
+);
+
 CREATE OR REPLACE FUNCTION public.sync_supabase_auth_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -127,3 +136,5 @@ CREATE INDEX IF NOT EXISTS idx_false_reports_report_id ON false_reports (report_
 CREATE UNIQUE INDEX IF NOT EXISTS idx_live_reports_client_report_id ON live_reports (client_report_id);
 CREATE INDEX IF NOT EXISTS idx_parking_zones_boundary_gist ON parking_zones USING GIST (boundary);
 CREATE INDEX IF NOT EXISTS idx_live_reports_location_gist ON live_reports USING GIST (location);
+CREATE INDEX IF NOT EXISTS idx_user_hidden_notifications_user_feed_created
+ON user_hidden_notifications (user_id, feed_type, created_at DESC);

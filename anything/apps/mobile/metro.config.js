@@ -65,6 +65,10 @@ const NATIVE_ALIASES = {
 };
 const SHARED_ALIASES = {
   "expo-image": path.resolve(__dirname, "./polyfills/shared/expo-image.tsx"),
+  "expo-speech-recognition": path.resolve(
+    __dirname,
+    "./polyfills/shared/expo-speech-recognition.ts",
+  ),
   "@sentry/react-native": path.resolve(
     __dirname,
     "./node_modules/@sentry/react-native",

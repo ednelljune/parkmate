@@ -2,6 +2,11 @@ import sql from "@/app/api/utils/sql";
 import { requireAuthenticatedUser } from "@/app/api/utils/supabase-auth";
 import { ensureActivityLogSchema } from "@/app/api/utils/activity-log";
 import { ensureFalseReportsSchema } from "@/app/api/utils/false-reports";
+import {
+  ensureHiddenNotificationsSchema,
+  getHiddenNotificationIds,
+  HIDDEN_NOTIFICATION_FEED_TYPES,
+} from "@/app/api/utils/hidden-notifications";
 import { getEffectiveReportExpiresAtSql } from "@/app/api/utils/report-ttl";
 
 const LEGACY_ACTIVITY_TIMEOUT_MS = 4000;
@@ -347,6 +352,7 @@ export async function GET(request) {
   try {
     await ensureActivityLogSchema();
     await ensureFalseReportsSchema();
+    await ensureHiddenNotificationsSchema();
 
     const auth = await requireAuthenticatedUser(request);
     if (auth.response) {
@@ -381,13 +387,19 @@ export async function GET(request) {
     }
 
     const activities = mergeActivities(persistedActivities, legacyActivities, limit);
+    const hiddenIds = await getHiddenNotificationIds({
+      userId,
+      feedType: HIDDEN_NOTIFICATION_FEED_TYPES.activity,
+    });
 
-    const notifications = activities.map((activity) => ({
-      ...activity,
-      zone_name: activity.zone_name || "Reported spot",
-      message: buildActivityMessage(activity),
-      sent_at: activity.occurred_at,
-    }));
+    const notifications = activities
+      .filter((activity) => !hiddenIds.has(String(activity?.id || "").trim()))
+      .map((activity) => ({
+        ...activity,
+        zone_name: activity.zone_name || "Reported spot",
+        message: buildActivityMessage(activity),
+        sent_at: activity.occurred_at,
+      }));
 
     return Response.json({
       success: true,

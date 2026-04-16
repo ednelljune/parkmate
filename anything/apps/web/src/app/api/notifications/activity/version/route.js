@@ -2,6 +2,10 @@ import sql from "@/app/api/utils/sql";
 import { requireAuthenticatedUser } from "@/app/api/utils/supabase-auth";
 import { ensureActivityLogSchema } from "@/app/api/utils/activity-log";
 import { ensureFalseReportsSchema } from "@/app/api/utils/false-reports";
+import {
+  ensureHiddenNotificationsSchema,
+  HIDDEN_NOTIFICATION_FEED_TYPES,
+} from "@/app/api/utils/hidden-notifications";
 import { getEffectiveReportExpiresAtSql } from "@/app/api/utils/report-ttl";
 
 const EXCLUDED_ZONE_TYPE = "meter";
@@ -11,6 +15,7 @@ export async function GET(request) {
   try {
     await ensureActivityLogSchema();
     await ensureFalseReportsSchema();
+    await ensureHiddenNotificationsSchema();
 
     const auth = await requireAuthenticatedUser(request);
     if (auth.response) {
@@ -108,6 +113,15 @@ export async function GET(request) {
             WHERE fr_count.report_id = lr.id
           ) >= ${FALSE_REPORT_TRUST_THRESHOLD}
           AND LOWER(COALESCE(pz.zone_type, lr.parking_type, '')) NOT LIKE '%' || $2 || '%'
+
+        UNION ALL
+
+        SELECT
+          CONCAT('hidden-activity-', uhn.notification_id) AS event_id,
+          uhn.created_at AS occurred_at
+        FROM user_hidden_notifications uhn
+        WHERE uhn.user_id = $1
+          AND uhn.feed_type = $3
       ),
       deduped_activity_version_events AS (
         SELECT
@@ -123,7 +137,7 @@ export async function GET(request) {
         MAX(occurred_at) AS latest_occurred_at
       FROM deduped_activity_version_events
     `,
-      [userId, EXCLUDED_ZONE_TYPE],
+      [userId, EXCLUDED_ZONE_TYPE, HIDDEN_NOTIFICATION_FEED_TYPES.activity],
     );
 
     const status = rows[0] || {};

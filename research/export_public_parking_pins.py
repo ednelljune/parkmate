@@ -69,6 +69,7 @@ def derive_type(row: dict[str, str]) -> str:
         "Car Parking Zones",
         "City of Casey Parking Restriction Zones",
         "Parking Lots",
+        "Vicmap Features of Interest (parking area subtype)",
     }:
         return zone_type
 
@@ -128,6 +129,9 @@ def include_row(row: dict[str, str]) -> bool:
             re.search(r"(^|\W)[1-9]\d*p(\W|$)", rules_lower)
             or "full hour" in rules_lower
         )
+
+    if dataset == "Vicmap Features of Interest (parking area subtype)":
+        return True
 
     return False
 

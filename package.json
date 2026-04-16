@@ -1,4 +1,11 @@
 {
   "name": "parkmate-root",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "expo": "^55.0.15"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.10",
+    "typescript": "~5.9.2"
+  }
 }

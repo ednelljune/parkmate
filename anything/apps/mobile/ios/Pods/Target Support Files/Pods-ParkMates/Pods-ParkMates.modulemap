@@ -1,6 +1,0 @@
-module Pods_ParkMates {
-  umbrella header "Pods-ParkMates-umbrella.h"
-
-  export *
-  module * { export * }
-}

@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "scripts": {
     "start": "sh ./scripts/expo-node20.sh start",
-    "start:tunnel": "sh ./scripts/expo-node20.sh start --clear --dev-client --host tunnel",
+    "start:tunnel": "sh ./scripts/expo-start-tunnel.sh",
+    "start:tunnel:proxy": "node ./scripts/start-remote-dev.mjs",
+    "start:tunnel:expo": "sh ./scripts/expo-node20.sh start --clear --dev-client --host tunnel",
     "start:lan": "sh ./scripts/expo-node20.sh start --clear --dev-client --host lan",
     "ios": "sh ./scripts/expo-node20.sh run:ios",
     "android": "sh ./scripts/expo-node20.sh run:android",

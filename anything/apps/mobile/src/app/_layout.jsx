@@ -6,16 +6,17 @@ import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PARKMATE_LOGO_ANIMATION_DURATION_MS } from '@/components/AnimatedParkMateLogo';
+
+const PARKMATE_STATIC_LOGO = require('../../assets/images/parkmate-logo.png');
 SplashScreen.preventAutoHideAsync().catch(() => null);
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
 };
 
-let hasCompletedColdStartBranding = false;
 const BOOT_SCENE_TIMEOUT_MS = PARKMATE_LOGO_ANIMATION_DURATION_MS + 2000;
 
 const queryClient = new QueryClient({
@@ -40,8 +41,7 @@ export default function RootLayout() {
 function RootLayoutContent() {
   const { initiate, isReady } = useAuth();
   const { isStartupReady } = useStartupPrefetch();
-  const [hasCompletedBootScene, setHasCompletedBootScene] = useState(hasCompletedColdStartBranding);
-  const shouldPlayColdStartBranding = !hasCompletedColdStartBranding;
+  const [hasCompletedBootScene, setHasCompletedBootScene] = useState(false);
   const hasHiddenNativeSplash = useRef(false);
 
   useEffect(() => {
@@ -57,7 +57,6 @@ function RootLayoutContent() {
   }, []);
 
   const handleBootSceneComplete = useCallback(() => {
-    hasCompletedColdStartBranding = true;
     setHasCompletedBootScene(true);
   }, []);
 
@@ -78,13 +77,20 @@ function RootLayoutContent() {
       <View style={styles.backdropOrbLarge} />
       <View style={styles.backdropOrbSmall} />
       <View style={styles.loadingCard}>
-        <AnimatedParkMateLogo
-          size={224}
-          style={styles.logoImage}
-          playOnce={shouldPlayColdStartBranding && !hasCompletedBootScene}
-          staticOnly={hasCompletedBootScene}
-          onAnimationComplete={handleBootSceneComplete}
-        />
+        {hasCompletedBootScene ? (
+          <Image
+            source={PARKMATE_STATIC_LOGO}
+            resizeMode="contain"
+            style={styles.logoImage}
+          />
+        ) : (
+          <AnimatedParkMateLogo
+            size={224}
+            style={styles.logoImage}
+            playOnce
+            onAnimationComplete={handleBootSceneComplete}
+          />
+        )}
         {hasCompletedBootScene ? (
           <Text style={styles.loadingLabel}>Connecting to ParkMate services...</Text>
         ) : null}

@@ -1,6 +1,7 @@
 import { useAuthStore } from '@/utils/auth/store';
 import { signInWithCredentials } from '@/utils/auth/credentialsAuth';
 import { Redirect, router, useNavigation } from 'expo-router';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -28,6 +29,7 @@ export default function Signup() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -161,7 +163,7 @@ export default function Signup() {
           <View style={styles.header}>
             <Image
               resizeMode="contain"
-              source={require('../../../assets/images/parkmate-logo.png')}
+              source={require('../../../assets/images/parkmate-logo-current.png')}
               style={styles.logoImage}
             />
             <Text style={styles.brand}>
@@ -202,15 +204,28 @@ export default function Signup() {
 
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                autoCapitalize="none"
-                onChangeText={setPassword}
-                placeholder="At least 6 characters"
-                placeholderTextColor="#9ca3af"
-                secureTextEntry
-                style={styles.input}
-                value={password}
-              />
+              <View style={styles.passwordField}>
+                <TextInput
+                  autoCapitalize="none"
+                  onChangeText={setPassword}
+                  placeholder="At least 6 characters"
+                  placeholderTextColor="#9ca3af"
+                  secureTextEntry={!showPassword}
+                  style={styles.passwordInput}
+                  value={password}
+                />
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => setShowPassword((current) => !current)}
+                  style={styles.passwordToggle}
+                >
+                  {showPassword ? (
+                    <EyeOff color="#6b7280" size={18} />
+                  ) : (
+                    <Eye color="#6b7280" size={18} />
+                  )}
+                </Pressable>
+              </View>
             </View>
           </View>
 
@@ -339,6 +354,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  passwordField: {
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    paddingLeft: 16,
+    paddingRight: 14,
+  },
+  passwordInput: {
+    color: '#111827',
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 14,
+  },
+  passwordToggle: {
+    alignItems: 'center',
+    height: 24,
+    justifyContent: 'center',
+    marginLeft: 10,
+    width: 24,
   },
   errorBox: {
     backgroundColor: '#fef2f2',

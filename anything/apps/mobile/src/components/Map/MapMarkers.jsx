@@ -41,6 +41,25 @@ const areCoordinatesEqual = (left, right) =>
   Number(left?.latitude) === Number(right?.latitude) &&
   Number(left?.longitude) === Number(right?.longitude);
 
+const isCouncilZoneWithinUserRadius = (zone, userLocation, radius, isSelected) => {
+  if (isSelected) {
+    return true;
+  }
+
+  if (!userLocation || !Number.isFinite(radius)) {
+    return false;
+  }
+
+  const latitude = normalizeCoordinate(zone?.latitude);
+  const longitude = normalizeCoordinate(zone?.longitude);
+  if (latitude === null || longitude === null) {
+    return false;
+  }
+
+  const distance = getDistanceMeters(userLocation, { latitude, longitude });
+  return distance !== null && distance <= radius;
+};
+
 const NativeCouncilZoneMarker = React.memo(
   ({
     zone,
@@ -522,10 +541,19 @@ export const ParkingZoneMarkers = React.memo(
           const latitude = normalizeCoordinate(zone?.latitude);
           const longitude = normalizeCoordinate(zone?.longitude);
           const hasValidId = zone?.id != null && String(zone.id).trim().length > 0;
+          const isSelected =
+            selectedZone?.id != null &&
+            zone?.id != null &&
+            String(selectedZone.id) === String(zone.id);
 
-          return hasValidId && latitude !== null && longitude !== null;
+          return (
+            hasValidId &&
+            latitude !== null &&
+            longitude !== null &&
+            isCouncilZoneWithinUserRadius(zone, userLocation, radius, isSelected)
+          );
         }),
-      [zones],
+      [radius, selectedZone?.id, userLocation, zones],
     );
 
     if (validZones.length === 0) {
@@ -593,6 +621,9 @@ export const AndroidParkingZoneOverlay = ({
             selectedZone?.id != null &&
             zone?.id != null &&
             String(selectedZone.id) === String(zone.id);
+          if (!isCouncilZoneWithinUserRadius(zone, userLocation, radius, isSelected)) {
+            return null;
+          }
           const availableSpots = Math.max(0, getAvailabilityCount?.(zone) || 0);
           const isEmphasized = isSelected || isNearby || availableSpots > 0;
           const hasAvailability = availableSpots > 0;

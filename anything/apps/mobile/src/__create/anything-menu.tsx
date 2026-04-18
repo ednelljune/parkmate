@@ -5,7 +5,7 @@ export default function ParkMateMenu() {
   return (
     <View pointerEvents="box-none" style={styles.container}>
       <Pressable style={styles.badge}>
-        <Image source={require("../../assets/images/parkmate-logo.png")} style={styles.logo} />
+        <Image source={require("../../assets/images/parkmate-logo-current.png")} style={styles.logo} />
         <View>
           <Text style={styles.eyebrow}>PARKMATE</Text>
           <Text style={styles.title}>Street-smart parking</Text>

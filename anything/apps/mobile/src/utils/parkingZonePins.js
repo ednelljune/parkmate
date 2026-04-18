@@ -84,6 +84,42 @@ export const getNearbyCouncilZones = (location, radiusMeters) => {
   });
 };
 
+export const getCouncilZonesInRegion = (
+  region,
+  paddingFactor = 0.1,
+) => {
+  if (
+    !region ||
+    !Number.isFinite(region.latitude) ||
+    !Number.isFinite(region.longitude)
+  ) {
+    return [];
+  }
+
+  const latitudeDelta = Math.max(Number(region.latitudeDelta) || 0, 0.002);
+  const longitudeDelta = Math.max(Number(region.longitudeDelta) || 0, 0.002);
+  const latitudePadding = latitudeDelta * paddingFactor;
+  const longitudePadding = longitudeDelta * paddingFactor;
+  const minLat = region.latitude - latitudeDelta / 2 - latitudePadding;
+  const maxLat = region.latitude + latitudeDelta / 2 + latitudePadding;
+  const minLng = region.longitude - longitudeDelta / 2 - longitudePadding;
+  const maxLng = region.longitude + longitudeDelta / 2 + longitudePadding;
+
+  return LOCAL_COUNCIL_PARKINGS.filter((zone) => {
+    const coordinate = getZoneCoordinate(zone);
+    if (!coordinate) {
+      return false;
+    }
+
+    return (
+      coordinate.latitude >= minLat &&
+      coordinate.latitude <= maxLat &&
+      coordinate.longitude >= minLng &&
+      coordinate.longitude <= maxLng
+    );
+  });
+};
+
 export const getDetectedZonePins = ({
   apiZones = [],
   location,

@@ -1,0 +1,21 @@
+diff --git a/node_modules/@expo/ngrok/src/utils.js b/node_modules/@expo/ngrok/src/utils.js
+index 8933977..ffdf3eb 100644
+--- a/node_modules/@expo/ngrok/src/utils.js
++++ b/node_modules/@expo/ngrok/src/utils.js
+@@ -28,6 +28,15 @@ function validate(opts) {
+ }
+ 
+ function isRetriable(err) {
++  const connectionRefused =
++    err &&
++    (
++      err.code === "ECONNREFUSED" ||
++      (typeof err.message === "string" &&
++        err.message.includes("ECONNREFUSED 127.0.0.1:4040"))
++    );
++  if (connectionRefused) {
++    return true;
++  }
+   if (!err.response) {
+     return false;
+   }

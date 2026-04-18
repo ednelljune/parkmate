@@ -47,6 +47,8 @@ export const ZoneDetailsModal = ({
   const capacitySpaces = Number(zone?.capacity_spaces ?? zone?.capacitySpaces);
   const hasCapacitySpaces =
     Number.isFinite(capacitySpaces) && capacitySpaces >= 0;
+  const coverageLabel = String(zone?.coverage_label || "").trim();
+  const coverageAccuracyLabel = String(zone?.coverage_accuracy_label || "").trim();
   const totalAvailableSpots = availableReports.reduce((total, report) => {
     const quantity = Number(report?.quantity);
     return total + (Number.isFinite(quantity) && quantity > 0 ? quantity : 1);
@@ -240,6 +242,40 @@ export const ZoneDetailsModal = ({
                 </View>
               )}
 
+              {coverageLabel && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 10,
+                    marginBottom: 10,
+                  }}
+                >
+                  <Map size={16} color="#6B7280" style={{ marginTop: 1 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: "#374151",
+                        lineHeight: 18,
+                      }}
+                    >
+                      Coverage: {coverageLabel}
+                    </Text>
+                    {coverageAccuracyLabel ? (
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: "#6B7280",
+                          marginTop: 2,
+                        }}
+                      >
+                        {coverageAccuracyLabel}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              )}
+
               <View
                 style={{
                   flexDirection: "row",
@@ -262,8 +298,9 @@ export const ZoneDetailsModal = ({
                     lineHeight: 16,
                   }}
                 >
-                  Tap the zone badge on the map to highlight the parking area
-                  boundaries
+                  Tap the zone badge on the map to preview the zone coverage.
+                  Approximate highlights stay soft when exact geometry is not
+                  available.
                 </Text>
               </View>
             </View>

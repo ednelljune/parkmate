@@ -1,0 +1,5605 @@
+{
+  "objectIdFieldName": "OBJECTID",
+  "uniqueIdField": {
+    "name": "OBJECTID",
+    "isSystemMaintained": true
+  },
+  "globalIdFieldName": "",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 102100,
+    "latestWkid": 3857
+  },
+  "fields": [
+    {
+      "name": "ufi",
+      "type": "esriFieldTypeInteger",
+      "alias": "ufi",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "pfi",
+      "type": "esriFieldTypeInteger",
+      "alias": "pfi",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "feature_type",
+      "type": "esriFieldTypeString",
+      "alias": "feature_type",
+      "sqlType": "sqlTypeOther",
+      "length": 30,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "feature_subtype",
+      "type": "esriFieldTypeString",
+      "alias": "feature_subtype",
+      "sqlType": "sqlTypeOther",
+      "length": 30,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "name",
+      "type": "esriFieldTypeString",
+      "alias": "name",
+      "sqlType": "sqlTypeOther",
+      "length": 100,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "parent_name",
+      "type": "esriFieldTypeString",
+      "alias": "parent_name",
+      "sqlType": "sqlTypeOther",
+      "length": 100,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "theme1",
+      "type": "esriFieldTypeString",
+      "alias": "theme1",
+      "sqlType": "sqlTypeOther",
+      "length": 20,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "theme2",
+      "type": "esriFieldTypeString",
+      "alias": "theme2",
+      "sqlType": "sqlTypeOther",
+      "length": 20,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "x_coord",
+      "type": "esriFieldTypeDouble",
+      "alias": "x_coord",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "y_coord",
+      "type": "esriFieldTypeDouble",
+      "alias": "y_coord",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "ufi": 76031131,
+        "pfi": 1343155,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MERCY PLACE PARKVILLE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.93918913,
+        "y_coord": -37.776241724
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76110474,
+        "pfi": 1264106,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": "YARRAM TARRA TRAIL RESERVE",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.672294276,
+        "y_coord": -38.563182194999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051342,
+        "pfi": 1151410,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAMPBELLS KINGDOM CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.8103178,
+        "y_coord": -36.750224968999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051343,
+        "pfi": 1151411,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CASTLE CRAG CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.84511611099998,
+        "y_coord": -36.754613243
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051344,
+        "pfi": 1151412,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ORGAN PIPES TO KING RAT CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.84696206,
+        "y_coord": -36.759886556999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051345,
+        "pfi": 1151413,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE WATCHTOWER FACES CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.840424701,
+        "y_coord": -36.750722109
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051346,
+        "pfi": 1151414,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MOUNT ARAPILES TELSTRA TOWER CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.833250087,
+        "y_coord": -36.75102173
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051347,
+        "pfi": 1151415,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "PHAROS GULLY CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.84250972700002,
+        "y_coord": -36.75248936
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051348,
+        "pfi": 1151416,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MELVILLE CAVE- BUSHRANGERS BLUFF CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.844151025,
+        "y_coord": -36.768586374
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051350,
+        "pfi": 1151418,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE NORTHERN GROUP CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.837041377,
+        "y_coord": -36.746829561
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051351,
+        "pfi": 1151420,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "PLAQUE AREA CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.846660242,
+        "y_coord": -36.757788286
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76051452,
+        "pfi": 1267419,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "IRONBARK GORGE CARPARK",
+        "parent_name": "WERRIBEE GORGE STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.334360904,
+        "y_coord": -37.665678621999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76098790,
+        "pfi": 1343241,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "VICTORIA HARBOUR PRECINCT",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.93620471200003,
+        "y_coord": -37.819601596
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76111704,
+        "pfi": 1264107,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.062740704,
+        "y_coord": -38.113681108
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76056392,
+        "pfi": 1151417,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MITRE ROCK CARPARK",
+        "parent_name": "MOUNT ARAPILES-TOOAN STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.829992076,
+        "y_coord": -36.736607567
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76056396,
+        "pfi": 1267415,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SLOSSS GULLY AND INGLISTON GORGE CARPARK",
+        "parent_name": "WERRIBEE GORGE STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.32192292899998,
+        "y_coord": -37.65923223
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068009,
+        "pfi": 629042,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BLACK FLAT",
+        "parent_name": "WYPERFELD NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.017252486,
+        "y_coord": -35.578410699
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068011,
+        "pfi": 630108,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TARRA-BULGA VISITOR CENTRE CARPARK",
+        "parent_name": "TARRA-BULGA NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.56648651599997,
+        "y_coord": -38.428746741
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068087,
+        "pfi": 988729,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WILD DOG COVE CARPARK",
+        "parent_name": "BAY OF ISLANDS COASTAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.869085924,
+        "y_coord": -38.603262636000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068088,
+        "pfi": 988731,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CROWN OF THORNS CARPARK",
+        "parent_name": "PORT CAMPBELL NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.89758406800001,
+        "y_coord": -38.608983011999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068090,
+        "pfi": 988733,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WORM BAY CARPARK",
+        "parent_name": "BAY OF ISLANDS COASTAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.859546193,
+        "y_coord": -38.60173116
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068103,
+        "pfi": 1004738,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": "CASTLEMAINE DIGGINGS NATIONAL HERITAGE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.25351708,
+        "y_coord": -37.12025744299999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068107,
+        "pfi": 1009528,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MOUNT ZERO CARPARK",
+        "parent_name": "GRAMPIANS NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.37516687000002,
+        "y_coord": -36.891119457
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068110,
+        "pfi": 1014935,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "FRENCH ISLAND BARGE CARPARK",
+        "parent_name": "FRENCH ISLAND NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 145.391992197,
+        "y_coord": -38.392324957999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51930687,
+        "pfi": 1146608,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GOLD MUSEUM CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.866859724,
+        "y_coord": -37.574282954999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52200730,
+        "pfi": 1014934,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TANKERTON JETTY CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 145.273281172,
+        "y_coord": -38.382905038
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51980597,
+        "pfi": 1146593,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 13",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.29980980599998,
+        "y_coord": -36.778523998000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51919759,
+        "pfi": 995699,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BOGGY CORNER CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.452006913,
+        "y_coord": -37.134807749
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51920570,
+        "pfi": 1004740,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.492258409,
+        "y_coord": -38.392010153
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51921400,
+        "pfi": 1146609,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SOVEREIGN HILL MAIN CAR PARK",
+        "parent_name": "SOVEREIGN HILL HISTORICAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.867067753,
+        "y_coord": -37.575140068
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51921401,
+        "pfi": 1146611,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.29936715999997,
+        "y_coord": -36.781129574000005
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51921577,
+        "pfi": 1004782,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WHISKEY FLAT CAR PARK 1",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.18393463099997,
+        "y_coord": -37.004012077999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51921578,
+        "pfi": 1004784,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SLATEY CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.169406337,
+        "y_coord": -36.994603178999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51927538,
+        "pfi": 995703,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "HORSE HILL CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.45519506,
+        "y_coord": -37.139714978
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51929894,
+        "pfi": 1004739,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.43375092999997,
+        "y_coord": -38.37497288699999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51929682,
+        "pfi": 1004779,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WHISKEY FLAT CAR PARK 2",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.184421715,
+        "y_coord": -37.006227085
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51929692,
+        "pfi": 1004019,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CHAIN BAY 1",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.417655998,
+        "y_coord": -37.113419684
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51929810,
+        "pfi": 1018757,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BUS PARKING",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.260229433,
+        "y_coord": -37.838680303
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51938566,
+        "pfi": 995697,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CARAVAN CORNER CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.459257571,
+        "y_coord": -37.141246951999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51928649,
+        "pfi": 995701,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TYROL CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.45252947999998,
+        "y_coord": -37.137327325
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51929533,
+        "pfi": 1146621,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 16",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.302117493,
+        "y_coord": -36.778916147
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51930350,
+        "pfi": 1146623,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 18",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.302608039,
+        "y_coord": -36.779345056
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51930453,
+        "pfi": 1146625,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 24",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.29890843500002,
+        "y_coord": -36.780342645999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51940809,
+        "pfi": 1004780,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WIRE PLAIN CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.174822285,
+        "y_coord": -36.996434836999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51933581,
+        "pfi": 1003286,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "LOWER SLALOM CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.285242819,
+        "y_coord": -36.862843864999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51941549,
+        "pfi": 1146626,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 9",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.30265798700003,
+        "y_coord": -36.780839930999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51942347,
+        "pfi": 1146602,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 3",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.29881058,
+        "y_coord": -36.779161720999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51942348,
+        "pfi": 1146603,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 5B",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.298604886,
+        "y_coord": -36.780257698
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51942349,
+        "pfi": 1146616,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 19",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.301183705,
+        "y_coord": -36.779234831
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51933436,
+        "pfi": 995700,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SKATING RINK CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.455436223,
+        "y_coord": -37.141752526999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51933661,
+        "pfi": 1004786,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WHITEYS CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.16736977500003,
+        "y_coord": -36.995101776999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51933662,
+        "pfi": 1004787,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BLUE RIBBON CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.14864051599997,
+        "y_coord": -36.988708784
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51943108,
+        "pfi": 1146613,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SOVEREIGN HILL DISABLED CAR PARK",
+        "parent_name": "SOVEREIGN HILL HISTORICAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.86595062700002,
+        "y_coord": -37.57500705
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51943109,
+        "pfi": 1146620,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 20",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.302087305,
+        "y_coord": -36.77998499499999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51943807,
+        "pfi": 1018758,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "DAY CAR PARK TOBOGGAN RUN",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.263888573,
+        "y_coord": -37.839397801
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51943795,
+        "pfi": 995698,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CHALET CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.453478177,
+        "y_coord": -37.137887995999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51934768,
+        "pfi": 1009542,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TUNNEL CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.57823787,
+        "y_coord": -37.186920279
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51934587,
+        "pfi": 1018772,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 2",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.261160292,
+        "y_coord": -37.839329887
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51935962,
+        "pfi": 1003285,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GULLY CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.277389827,
+        "y_coord": -36.861498579
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51935967,
+        "pfi": 1004785,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CORNER CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.171465851,
+        "y_coord": -36.994992906
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51937206,
+        "pfi": 1146618,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 26",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.298968211,
+        "y_coord": -36.783034632
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51938319,
+        "pfi": 1146627,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 5A",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.298669528,
+        "y_coord": -36.780864444
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51938318,
+        "pfi": 1146610,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 23",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.29939334399998,
+        "y_coord": -36.779847122
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51938958,
+        "pfi": 1018767,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 3",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.26093816399998,
+        "y_coord": -37.838475012
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51939524,
+        "pfi": 1146617,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.299656664,
+        "y_coord": -36.781389632
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51940462,
+        "pfi": 1018762,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 1 CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.26304326000002,
+        "y_coord": -37.839941618999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51941692,
+        "pfi": 995696,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WALKERS CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.453267653,
+        "y_coord": -37.139229879
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51942451,
+        "pfi": 995702,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CSIR CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.456561985,
+        "y_coord": -37.143066252000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51942517,
+        "pfi": 1018763,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 4",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.259695738,
+        "y_coord": -37.837333376
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51943176,
+        "pfi": 1146624,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 17",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.30192576399998,
+        "y_coord": -36.7795224
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51943357,
+        "pfi": 1146615,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 11",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.30119869399996,
+        "y_coord": -36.777973803
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51943358,
+        "pfi": 1146622,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 15",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.29930157099997,
+        "y_coord": -36.779167002
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51944186,
+        "pfi": 1146600,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 1",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.301988035,
+        "y_coord": -36.77849262099999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51944187,
+        "pfi": 1146601,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 14",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.298991453,
+        "y_coord": -36.778842368999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51944188,
+        "pfi": 1146619,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 25",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.300607546,
+        "y_coord": -36.783342884
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51944061,
+        "pfi": 1146592,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 2",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.299712669,
+        "y_coord": -36.777754855
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51944062,
+        "pfi": 1146594,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 12",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.300592425,
+        "y_coord": -36.778762916999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51920957,
+        "pfi": 1009524,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ROSEA CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.50259983200002,
+        "y_coord": -37.179430024999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51945416,
+        "pfi": 1146597,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 27",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.296422068,
+        "y_coord": -36.78273235899999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51921721,
+        "pfi": 1146596,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 22",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.300483104,
+        "y_coord": -36.779934346999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51921722,
+        "pfi": 1146598,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 21",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.30112816599998,
+        "y_coord": -36.780242664
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 51921723,
+        "pfi": 1146607,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 6",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.298611802,
+        "y_coord": -36.781767936
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52258025,
+        "pfi": 1146936,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 7",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.89482614,
+        "y_coord": -37.627042357
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52258026,
+        "pfi": 1146937,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 2",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.89130334,
+        "y_coord": -37.628321807
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52258028,
+        "pfi": 1146939,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.89180367999998,
+        "y_coord": -37.62737991699999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52258029,
+        "pfi": 1146940,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 3",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.890637156,
+        "y_coord": -37.62602591099999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52258030,
+        "pfi": 1146941,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 4",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.891699904,
+        "y_coord": -37.625589610000006
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52258032,
+        "pfi": 1146943,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 5",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.88976458099998,
+        "y_coord": -37.625167394
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52258033,
+        "pfi": 1146944,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 6",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.894709543,
+        "y_coord": -37.62548581
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52258034,
+        "pfi": 1146945,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 1",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.89297399,
+        "y_coord": -37.628164923
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52258035,
+        "pfi": 1146946,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.889091895,
+        "y_coord": -37.62690789
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 52687200,
+        "pfi": 1149233,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "AMOS ROAD CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.39002845399997,
+        "y_coord": -38.349493305
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 56344755,
+        "pfi": 1018770,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "NEULYNES CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.24045536399998,
+        "y_coord": -37.849946916
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 57663439,
+        "pfi": 1146926,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SOUTH CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.848676628,
+        "y_coord": -36.112169908
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 57663440,
+        "pfi": 1146927,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "OVERFLOW CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.84792332700002,
+        "y_coord": -36.110984648
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 57663441,
+        "pfi": 1146928,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "NORTH CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.851022124,
+        "y_coord": -36.10957631099999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 57663445,
+        "pfi": 1146932,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MCFARLANES HILL RESIDENCE CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.847486458,
+        "y_coord": -36.112475765
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 64592934,
+        "pfi": 992564,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.080123308,
+        "y_coord": -38.105142748999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 59921661,
+        "pfi": 1018764,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "EMERGENCY MUSTER POINT 2 - DAY CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.26357645599998,
+        "y_coord": -37.839747970999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 59921719,
+        "pfi": 1267417,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "EMERGENCY MUSTER POINT 1 - VILLAGE ROUNDABOUT",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.26651749,
+        "y_coord": -37.840903202999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 59921722,
+        "pfi": 1267420,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "LORNA DUNKLEY SHELTER",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.273720189,
+        "y_coord": -36.871716244999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 59921724,
+        "pfi": 1267422,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TOLMER REST AREA",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 140.969533718,
+        "y_coord": -36.343889664
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 62629151,
+        "pfi": 1279397,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "HAUNTED HILLS MOUNTAIN BIKE PARK - MAIN CARPARK AND PICNIC AREA",
+        "parent_name": "HAUNTED HILLS BIKE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.316430225,
+        "y_coord": -38.200130327
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 66187025,
+        "pfi": 1308081,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "KELVIN GROVE CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 145.11183697799999,
+        "y_coord": -38.049066042
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 68743426,
+        "pfi": 967723,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "OLIVE JUSTICE PLACE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 145.23838349800002,
+        "y_coord": -38.449953195
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 69917127,
+        "pfi": 1267638,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ACACIA CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.88701771700002,
+        "y_coord": -36.121722446
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 69917128,
+        "pfi": 1267639,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "OAK CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.889359237,
+        "y_coord": -36.121968804999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 70344820,
+        "pfi": 1333532,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "EASTERN BEACH SECOND CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 148.012341831,
+        "y_coord": -37.876951215
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 70344821,
+        "pfi": 1333533,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "EASTERN BEACH MAIN CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 148.015835126,
+        "y_coord": -37.875351104
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 71166139,
+        "pfi": 1334455,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MULGA CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.885629894,
+        "y_coord": -36.120710099
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73095542,
+        "pfi": 1336609,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "KANANOOK CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 145.134579786,
+        "y_coord": -38.120835724
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73119576,
+        "pfi": 1003282,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SLALOM CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.281072499,
+        "y_coord": -36.863370002
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73119578,
+        "pfi": 1003284,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WINDY CORNER CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.28639007200002,
+        "y_coord": -36.864369710999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73119579,
+        "pfi": 1003287,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "LOWER WINDY CORNER CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.28674209599998,
+        "y_coord": -36.863755360999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73119657,
+        "pfi": 1004781,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CORRAL CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.142411246,
+        "y_coord": -36.982873704999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73119782,
+        "pfi": 1018766,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 5",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.26095120899998,
+        "y_coord": -37.837799581999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73120118,
+        "pfi": 1316978,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "EASTERN OVAL CARPARK",
+        "parent_name": "EASTERN OVAL",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.862292304,
+        "y_coord": -37.558607452
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73119876,
+        "pfi": 1146599,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MAIN ROAD CAR PARK",
+        "parent_name": "SOVEREIGN HILL HISTORICAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.868102688,
+        "y_coord": -37.575769363999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73119877,
+        "pfi": 1146604,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": "SOVEREIGN HILL HISTORICAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.86434494800002,
+        "y_coord": -37.57648449
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73119879,
+        "pfi": 1146606,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": "SOVEREIGN HILL HISTORICAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.86457480899998,
+        "y_coord": -37.57766431099999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73119880,
+        "pfi": 1146612,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GRANT STREET CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.868301004,
+        "y_coord": -37.57384067099999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73150024,
+        "pfi": 1146595,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CAR PARK 4",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.298577753,
+        "y_coord": -36.779531721
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73215780,
+        "pfi": 1336808,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "DEASON CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.747831358,
+        "y_coord": -37.052764361
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73555937,
+        "pfi": 652705,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "DSE CARPARK",
+        "parent_name": "OTWAY FOREST PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.988703407,
+        "y_coord": -38.356626178
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73556219,
+        "pfi": 1267421,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "DOBIE HIGHWAY PARK",
+        "parent_name": "DOBIE HIGHWAY PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.013337276,
+        "y_coord": -37.313396628
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73452722,
+        "pfi": 1267418,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WESTERN BLUFF CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.33826111,
+        "y_coord": -37.666697923
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73712534,
+        "pfi": 1239259,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "1001 STEPS",
+        "parent_name": "BAYVIEW PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 145.326478133,
+        "y_coord": -38.003684625
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 73974458,
+        "pfi": 1151419,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TAYLORS ROCK - DECLARATION CRAG CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.85235131800002,
+        "y_coord": -36.766610295999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 74552742,
+        "pfi": 701279,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GOULBURN VALLEY HEALTH",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 145.402837828,
+        "y_coord": -36.363977925
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75878075,
+        "pfi": 1337614,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.137669591,
+        "y_coord": -36.974529530999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068171,
+        "pfi": 1149234,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "NOBLES ROCK CAR PARK",
+        "parent_name": "DISCOVERY BAY COASTAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.131612166,
+        "y_coord": -38.115985793
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068172,
+        "pfi": 1149235,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MURRELLS BEACH ROAD CARPARK",
+        "parent_name": "DISCOVERY BAY COASTAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.530528457,
+        "y_coord": -38.402021520999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068174,
+        "pfi": 1149237,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE BLOWHOLES CARPARK",
+        "parent_name": "DISCOVERY BAY COASTAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.369128499,
+        "y_coord": -38.37929099099999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76068482,
+        "pfi": 1339973,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "POOMBEEYT KOONTAPOOL CARPARK",
+        "parent_name": "PORT CAMPBELL NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.067221909,
+        "y_coord": -38.64597392499999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76071689,
+        "pfi": 630107,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TARRA VALLEY RAINFOREST CARPARK",
+        "parent_name": "TARRA-BULGA NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 146.538066133,
+        "y_coord": -38.447682734000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76071695,
+        "pfi": 988728,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BAY OF MARTYRS CARPARK",
+        "parent_name": "BAY OF ISLANDS COASTAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.85977333099999,
+        "y_coord": -38.599770093
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76071696,
+        "pfi": 988732,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE WELL CARPARK",
+        "parent_name": "BAY OF ISLANDS COASTAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.861685694,
+        "y_coord": -38.604050072
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76156985,
+        "pfi": 1264190,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": "STEPHENSONS PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.07726150099998,
+        "y_coord": -38.118601544
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76241773,
+        "pfi": 1343181,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.928485418,
+        "y_coord": -37.813650063
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76241774,
+        "pfi": 1343271,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.91843406799998,
+        "y_coord": -37.813514088
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76241775,
+        "pfi": 1343509,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.928616472,
+        "y_coord": -37.811624175
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248001,
+        "pfi": 1004827,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SLALOM NORTH CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 147.28225069799998,
+        "y_coord": -36.863086669
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248013,
+        "pfi": 1009522,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "HOLLOW MOUNTAIN CARPARK",
+        "parent_name": "GRAMPIANS NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.38282655,
+        "y_coord": -36.885775439
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248014,
+        "pfi": 1009529,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SILVERBAND FALLS CARPARK",
+        "parent_name": "GRAMPIANS NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.52868486,
+        "y_coord": -37.198707342000006
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248015,
+        "pfi": 1009535,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WONDERLAND CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.502980008,
+        "y_coord": -37.150453004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248016,
+        "pfi": 1009552,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SUNDIAL CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 142.514420772,
+        "y_coord": -37.172308951
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248034,
+        "pfi": 1146938,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "PETER LALOR RESIDENCE CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.893827999,
+        "y_coord": -37.623679756
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248035,
+        "pfi": 1146942,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BELLA GUERIN RESIDENCE CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 143.891688454,
+        "y_coord": -37.622738308
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248036,
+        "pfi": 1149232,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ESTUARY BEACH CAR PARK",
+        "parent_name": "DISCOVERY BAY COASTAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 140.99432126600001,
+        "y_coord": -38.056225434999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248037,
+        "pfi": 1149236,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GORGE WALK CARPARK",
+        "parent_name": "LOWER GLENELG NATIONAL PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 141.015675155,
+        "y_coord": -37.994811317999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248063,
+        "pfi": 967717,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MAHERS LANDING CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 145.791652297,
+        "y_coord": -38.638297428
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76248105,
+        "pfi": 1267416,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WERRIBEE GORGE TOP FIRST CARPARK",
+        "parent_name": "WERRIBEE GORGE STATE PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.36428813,
+        "y_coord": -37.661639208000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996145,
+        "pfi": 1343070,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WTC WHARF",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.953823472,
+        "y_coord": -37.822719430999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996658,
+        "pfi": 1343611,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96202800799998,
+        "y_coord": -37.82658757
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996091,
+        "pfi": 1343015,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.986484682,
+        "y_coord": -37.816164169
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996092,
+        "pfi": 1343016,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MLC TOWER (NORTH TOWER)",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958867272,
+        "y_coord": -37.818016523
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996093,
+        "pfi": 1343017,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.950264283,
+        "y_coord": -37.818636569
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996094,
+        "pfi": 1343018,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CHALLENGE TOWER - SOUTH TOWER",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.959022826,
+        "y_coord": -37.818352610999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996096,
+        "pfi": 1343020,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "VICTORIAN COLLEGE OF OPTOMETRY",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96682233,
+        "y_coord": -37.795461458
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996098,
+        "pfi": 1343022,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.969292976,
+        "y_coord": -37.79966107
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996101,
+        "pfi": 1343025,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "LEVESON APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.950774096,
+        "y_coord": -37.80198737600001
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996103,
+        "pfi": 1343027,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.950336384,
+        "y_coord": -37.802552006
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996104,
+        "pfi": 1343028,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95175650399997,
+        "y_coord": -37.802955728
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996105,
+        "pfi": 1343029,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TRINITY APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.960201951,
+        "y_coord": -37.803353863
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996106,
+        "pfi": 1343030,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.965625709,
+        "y_coord": -37.803841592000005
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996107,
+        "pfi": 1343031,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.943915946,
+        "y_coord": -37.804849927
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996108,
+        "pfi": 1343032,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "NEVILLE JEFFRIES HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.94362272700002,
+        "y_coord": -37.805175471
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996109,
+        "pfi": 1343033,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96657787700002,
+        "y_coord": -37.805295996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996110,
+        "pfi": 1343034,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.942787474,
+        "y_coord": -37.80515036600001
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996112,
+        "pfi": 1343036,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MILANO APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.961980764,
+        "y_coord": -37.807404988
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996113,
+        "pfi": 1343037,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "LA TROBE APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966950072,
+        "y_coord": -37.808282856999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996114,
+        "pfi": 1343038,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.974282585,
+        "y_coord": -37.808543650000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996116,
+        "pfi": 1343040,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.98327162,
+        "y_coord": -37.809658086000006
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996117,
+        "pfi": 1343041,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MELBOURNE CENTRAL",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.963025998,
+        "y_coord": -37.810721056
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996118,
+        "pfi": 1343042,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "QV VILLAGE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.965659738,
+        "y_coord": -37.810545542
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996120,
+        "pfi": 1343044,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MANTRA ON RUSSELL",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.968002708,
+        "y_coord": -37.811319714
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996122,
+        "pfi": 1343046,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MIDCITY CENTRE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96728946099998,
+        "y_coord": -37.812432568999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996123,
+        "pfi": 1343047,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE DOMINION BUILDING",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.956314278,
+        "y_coord": -37.813220187
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996124,
+        "pfi": 1343048,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "RECRUITMENT SUPER HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.959988272,
+        "y_coord": -37.8145072
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996125,
+        "pfi": 1343049,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ACCI HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.971442158,
+        "y_coord": -37.814702124
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996126,
+        "pfi": 1343050,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.955951589,
+        "y_coord": -37.814910609
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996127,
+        "pfi": 1343051,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "161 COLLINS STREET",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.968762069,
+        "y_coord": -37.815414798999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996135,
+        "pfi": 1343060,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.979320265,
+        "y_coord": -37.84458552499999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996137,
+        "pfi": 1343062,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "EIGHT APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.97022187700003,
+        "y_coord": -37.829798441
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996139,
+        "pfi": 1343064,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "HERALD AND WEEKLY TIMES BUILDING",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966757606,
+        "y_coord": -37.820990372000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996140,
+        "pfi": 1343065,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.956388438,
+        "y_coord": -37.821307314
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996141,
+        "pfi": 1343066,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.921842827,
+        "y_coord": -37.821751672999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996142,
+        "pfi": 1343067,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "IBM TOWER",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966092515,
+        "y_coord": -37.821173672
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996143,
+        "pfi": 1343068,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "RIVERSIDE QUAY PUBLIC CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.963343053,
+        "y_coord": -37.8213163
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996144,
+        "pfi": 1343069,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GALLERY TOWER",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966887095,
+        "y_coord": -37.821678240999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996151,
+        "pfi": 1343077,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "AMA HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958371109,
+        "y_coord": -37.786546914999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996162,
+        "pfi": 1343089,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.967443063,
+        "y_coord": -37.815820807
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996163,
+        "pfi": 1343090,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.969987336,
+        "y_coord": -37.81616713
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996164,
+        "pfi": 1343091,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.967278575,
+        "y_coord": -37.816295094000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996165,
+        "pfi": 1343092,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "DEFENCE PLAZA",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.954500132,
+        "y_coord": -37.817306378000005
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996166,
+        "pfi": 1343093,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BNZA HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.961449814,
+        "y_coord": -37.817287889
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996167,
+        "pfi": 1343094,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958337647,
+        "y_coord": -37.817523174
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996169,
+        "pfi": 1343096,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "PRIME VALUE HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96244424,
+        "y_coord": -37.817978513
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996170,
+        "pfi": 1343097,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE OLDERFLEET BUILDINGS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958557375,
+        "y_coord": -37.818401496999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996177,
+        "pfi": 1343104,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.934522564,
+        "y_coord": -37.79895895000001
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996178,
+        "pfi": 1343105,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MELBOURNE UNIVERSITY",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.960067745,
+        "y_coord": -37.800583646999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996182,
+        "pfi": 1343109,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "VARDON PLACE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.987215981,
+        "y_coord": -37.810033864000005
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996183,
+        "pfi": 1343110,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.951871202,
+        "y_coord": -37.810256203
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996184,
+        "pfi": 1343111,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958057516,
+        "y_coord": -37.810741062999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996185,
+        "pfi": 1343112,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "HOTEL GRAND CHANCELLOR",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96853176700003,
+        "y_coord": -37.810972551999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996187,
+        "pfi": 1343114,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BOURKE MEWS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.971982802,
+        "y_coord": -37.811346039
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996189,
+        "pfi": 1343116,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ROYAL MINT CENTRE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958129708,
+        "y_coord": -37.811621808
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996191,
+        "pfi": 1343118,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CHURCH CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96295463299998,
+        "y_coord": -37.811700555
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996192,
+        "pfi": 1343119,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.957592889,
+        "y_coord": -37.812021013999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996193,
+        "pfi": 1343120,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "QUEST NEWQUAY",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.94084288,
+        "y_coord": -37.814006614
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996229,
+        "pfi": 1343162,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BOURKE JUNCTION",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.949379142,
+        "y_coord": -37.817322382
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996230,
+        "pfi": 1343163,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TRUSTEES HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.960657456,
+        "y_coord": -37.81751593800001
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996231,
+        "pfi": 1343164,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.97145031099998,
+        "y_coord": -37.817732375
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996232,
+        "pfi": 1343165,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "HOUSING INDUSTRY ASSOCIATION",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.980366371,
+        "y_coord": -37.818192946
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996237,
+        "pfi": 1343170,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "LYGON COURT SHOPPING CENTRE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96818624399998,
+        "y_coord": -37.798016863
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996238,
+        "pfi": 1343171,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.971762109,
+        "y_coord": -37.800135710999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996239,
+        "pfi": 1343172,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96142832700002,
+        "y_coord": -37.803187464000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996241,
+        "pfi": 1343174,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95028343599998,
+        "y_coord": -37.805524954
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996243,
+        "pfi": 1343176,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "LANSDOWNE HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.977897718,
+        "y_coord": -37.808941299
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996244,
+        "pfi": 1343177,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE EYE AND EAR HOSPITAL CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.977091215,
+        "y_coord": -37.809219670999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996246,
+        "pfi": 1343179,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "DORIJO",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.98678345200003,
+        "y_coord": -37.809912998
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996249,
+        "pfi": 1343182,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CITY CENTRE BUDGET HOTEL",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.972572384,
+        "y_coord": -37.812429343999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996251,
+        "pfi": 1343185,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TREASURY GATE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.97319282099997,
+        "y_coord": -37.812587874
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996252,
+        "pfi": 1343186,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "370 DOCKLANDS DRIVE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.941915561,
+        "y_coord": -37.812834663
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996253,
+        "pfi": 1343187,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.955971596,
+        "y_coord": -37.81331895099999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996254,
+        "pfi": 1343188,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.954830595,
+        "y_coord": -37.813487493
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996255,
+        "pfi": 1343189,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "120 COLLINS STREET",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.969386041,
+        "y_coord": -37.81397102099999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996256,
+        "pfi": 1343190,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.970289145,
+        "y_coord": -37.813953446
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996257,
+        "pfi": 1343191,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CANNONS HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.973580262,
+        "y_coord": -37.81422933299999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996258,
+        "pfi": 1343192,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ASF HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.971321689,
+        "y_coord": -37.814593120000005
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996259,
+        "pfi": 1343193,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "QUEST ON WILLIAM",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95823821200003,
+        "y_coord": -37.814912267
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996266,
+        "pfi": 1343200,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.950231543,
+        "y_coord": -37.826822519
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996267,
+        "pfi": 1343201,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96083552300001,
+        "y_coord": -37.826826280999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996272,
+        "pfi": 1343207,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "553 ST KILDA ROAD",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.980373144,
+        "y_coord": -37.846840116
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996276,
+        "pfi": 1343211,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "FRESHWATER PLACE RESIDENTIAL",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.962159849,
+        "y_coord": -37.821665663999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996277,
+        "pfi": 1343212,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96517175099999,
+        "y_coord": -37.821705910999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996278,
+        "pfi": 1343213,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.962648295,
+        "y_coord": -37.822207386
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996279,
+        "pfi": 1343214,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95218149000002,
+        "y_coord": -37.822327432
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996298,
+        "pfi": 1343233,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.975139682,
+        "y_coord": -37.815511114
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996299,
+        "pfi": 1343234,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.970743882,
+        "y_coord": -37.815945054
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996300,
+        "pfi": 1343235,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.960653613,
+        "y_coord": -37.815799465
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996301,
+        "pfi": 1343236,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "NATIONAL AUSTRALIA BANK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.964935575,
+        "y_coord": -37.816615644
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996302,
+        "pfi": 1343237,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MOORE STEPHENS HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.955561246,
+        "y_coord": -37.81675992699999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996303,
+        "pfi": 1343238,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ROSS HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966173872,
+        "y_coord": -37.816980848
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996304,
+        "pfi": 1343239,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "RIALTO",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.957547393,
+        "y_coord": -37.818646901
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996305,
+        "pfi": 1343240,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.961524203,
+        "y_coord": -37.818829473
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996307,
+        "pfi": 1343242,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE PODIUM BUILDING",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.94792732099998,
+        "y_coord": -37.819316648
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996309,
+        "pfi": 1343244,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.955934499,
+        "y_coord": -37.819413762
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996312,
+        "pfi": 1343247,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BEST WESTERN RIVERSIDE APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958276263,
+        "y_coord": -37.81972833499999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996318,
+        "pfi": 1343253,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ROYAL WOMENS HOSPITAL",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95545004399997,
+        "y_coord": -37.798681079
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996319,
+        "pfi": 1343254,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ROYAL WOMENS HOSPITAL PROPERTIES",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966041691,
+        "y_coord": -37.799690162
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996320,
+        "pfi": 1343255,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96926405399998,
+        "y_coord": -37.799115831
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996322,
+        "pfi": 1343257,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ASTORIAL APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.964295669,
+        "y_coord": -37.800979969
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996323,
+        "pfi": 1343258,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "UROPA APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96431931700002,
+        "y_coord": -37.801874837
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996324,
+        "pfi": 1343259,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96086833700002,
+        "y_coord": -37.803696495
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996325,
+        "pfi": 1343260,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ULYSSES",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.947083333,
+        "y_coord": -37.804071392000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996328,
+        "pfi": 1343263,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "NORTH MELBOURNE RAILWAY STATION",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.941902203,
+        "y_coord": -37.807015563
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996329,
+        "pfi": 1343264,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96792681399998,
+        "y_coord": -37.806338094999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996330,
+        "pfi": 1343265,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.968030938,
+        "y_coord": -37.807845877
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996332,
+        "pfi": 1343267,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "NARRM NGARRGU",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958467535,
+        "y_coord": -37.807873932
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996333,
+        "pfi": 1343268,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "STARGATE APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958943217,
+        "y_coord": -37.80818516
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996337,
+        "pfi": 1343272,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ARGUS CENTRE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96044055299998,
+        "y_coord": -37.810093758
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996338,
+        "pfi": 1343273,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "VICTORIA BREWERY SITE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.985628945,
+        "y_coord": -37.810033555
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996339,
+        "pfi": 1343274,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.970474759,
+        "y_coord": -37.810562106999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996341,
+        "pfi": 1343276,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GOLDEN SQUARE PARKING",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.965893033,
+        "y_coord": -37.811744792
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996342,
+        "pfi": 1343277,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "FORMER ROYAL MINT",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95708298899999,
+        "y_coord": -37.812150808
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996343,
+        "pfi": 1343280,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE WILTSHIRE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.954673167,
+        "y_coord": -37.813152738999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996344,
+        "pfi": 1343281,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96156777299998,
+        "y_coord": -37.822571790999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996348,
+        "pfi": 1343285,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE MELBURNIAN",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.97014965,
+        "y_coord": -37.825689008000005
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996359,
+        "pfi": 1343301,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.969928267,
+        "y_coord": -37.829908236
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996365,
+        "pfi": 1343307,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SOUTHGATE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966750345,
+        "y_coord": -37.820306704000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996374,
+        "pfi": 1343316,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ROYAL COURT",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958437726,
+        "y_coord": -37.786004762000005
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996381,
+        "pfi": 1343323,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MOONEE VALLEY COUNCIL CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.930190632,
+        "y_coord": -37.788867569
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996390,
+        "pfi": 1343332,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "570 BOURKE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95676625000002,
+        "y_coord": -37.815497218
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996391,
+        "pfi": 1343333,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.98431020499999,
+        "y_coord": -37.815818830000005
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996392,
+        "pfi": 1343334,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958948718,
+        "y_coord": -37.81594582499999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996393,
+        "pfi": 1343335,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "QUEST JOLIMONT",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.979577008,
+        "y_coord": -37.816748176
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996394,
+        "pfi": 1343336,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "QBE HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.962637913,
+        "y_coord": -37.818399782
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996396,
+        "pfi": 1343338,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "15W(FORMER MONASH HOUSE)",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.959193953,
+        "y_coord": -37.819201682
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996397,
+        "pfi": 1343340,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.949279303,
+        "y_coord": -37.819980683
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996399,
+        "pfi": 1343342,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ARDEN GARDENS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.940742571,
+        "y_coord": -37.796147093
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996400,
+        "pfi": 1343343,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "UNIVERSITY OF MELBOURNE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.961346015,
+        "y_coord": -37.795476265
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996405,
+        "pfi": 1343348,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.950375686,
+        "y_coord": -37.800468265
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996406,
+        "pfi": 1343349,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.967147732,
+        "y_coord": -37.802175913
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996408,
+        "pfi": 1343351,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.948959081,
+        "y_coord": -37.803356357
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996409,
+        "pfi": 1343352,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.942864464,
+        "y_coord": -37.804767582
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996410,
+        "pfi": 1343354,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.974688605,
+        "y_coord": -37.809057898
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996411,
+        "pfi": 1343355,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.98516542,
+        "y_coord": -37.81141128
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996412,
+        "pfi": 1343356,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SPENCER OUTLET CENTRE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95119798399998,
+        "y_coord": -37.815007042
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996413,
+        "pfi": 1343357,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TASMA",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.987902408,
+        "y_coord": -37.813486596000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996416,
+        "pfi": 1343360,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.925817186,
+        "y_coord": -37.815299259999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996421,
+        "pfi": 1343365,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CROWN CASINO CARPARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958645849,
+        "y_coord": -37.825770638
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996423,
+        "pfi": 1343368,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.960501212,
+        "y_coord": -37.828183073
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996426,
+        "pfi": 1343371,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "320 ST KILDA ROAD",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.97069302399998,
+        "y_coord": -37.829402329
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996427,
+        "pfi": 1343372,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ELM APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.969574004,
+        "y_coord": -37.830011454
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996428,
+        "pfi": 1343373,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BUILDING B",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96618647200003,
+        "y_coord": -37.830429833
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996432,
+        "pfi": 1343377,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95753975200003,
+        "y_coord": -37.821100431
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996436,
+        "pfi": 1343381,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958891555,
+        "y_coord": -37.78249419
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996451,
+        "pfi": 1343396,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "FLINDERS GATE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.968553251,
+        "y_coord": -37.816625418
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996453,
+        "pfi": 1343398,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95567478,
+        "y_coord": -37.8172592
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996454,
+        "pfi": 1343399,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GRAND CITY APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95428401599997,
+        "y_coord": -37.817586985
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996455,
+        "pfi": 1343400,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "COLLINS STREET TOWER",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.957958377,
+        "y_coord": -37.817639709
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996456,
+        "pfi": 1343401,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "RIVERSIDE PLAZA",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.958606133,
+        "y_coord": -37.81945573
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996462,
+        "pfi": 1343407,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "LA MAMA THEATRE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.967696093,
+        "y_coord": -37.798995876000006
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996465,
+        "pfi": 1343410,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.94839395999998,
+        "y_coord": -37.803367087
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996466,
+        "pfi": 1343411,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.943807025,
+        "y_coord": -37.805257180999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996467,
+        "pfi": 1343412,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "LYGON STREET CHURCH OF CHRIST",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966582013,
+        "y_coord": -37.805823921999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996469,
+        "pfi": 1343414,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "QUEEN VICTORIA MARKET CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95664339500001,
+        "y_coord": -37.808747686000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996470,
+        "pfi": 1343415,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "COCHLEAR HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.97772628099997,
+        "y_coord": -37.80892287
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996471,
+        "pfi": 1343416,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95861165,
+        "y_coord": -37.809424318999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996472,
+        "pfi": 1343418,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ABERLOUR COURT",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.98703572399998,
+        "y_coord": -37.81001597
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996474,
+        "pfi": 1343420,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE EASTERN TOWN HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.988137448,
+        "y_coord": -37.810414807
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996475,
+        "pfi": 1343421,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.970834519,
+        "y_coord": -37.810328008
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996476,
+        "pfi": 1343422,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.922354258,
+        "y_coord": -37.811197469
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996477,
+        "pfi": 1343423,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WILLS TOWER  WILLS COURT",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.957459321,
+        "y_coord": -37.810684992
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996479,
+        "pfi": 1343425,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.940055931,
+        "y_coord": -37.813313484999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996480,
+        "pfi": 1343426,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "1 COLLINS STREET",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.973726701,
+        "y_coord": -37.813713406
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996481,
+        "pfi": 1343427,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.921668035,
+        "y_coord": -37.816397362
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996488,
+        "pfi": 1343434,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.944019431,
+        "y_coord": -37.82459226
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996490,
+        "pfi": 1343436,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96139534399998,
+        "y_coord": -37.827616289999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996491,
+        "pfi": 1343437,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.961698101,
+        "y_coord": -37.827955548999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996499,
+        "pfi": 1343447,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95181532399997,
+        "y_coord": -37.820683038999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996500,
+        "pfi": 1343448,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "EUREKA TOWER",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96457166899998,
+        "y_coord": -37.821652375999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996505,
+        "pfi": 1343453,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95853363399996,
+        "y_coord": -37.785187578999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996519,
+        "pfi": 1343468,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GRAND HYATT",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.969811476,
+        "y_coord": -37.815278279
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996520,
+        "pfi": 1343469,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MIDTOWN",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.954087535,
+        "y_coord": -37.815439682
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996521,
+        "pfi": 1343470,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CITIBANK CENTRE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.962694101,
+        "y_coord": -37.816005243
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996523,
+        "pfi": 1343472,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE BOND STORE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.970210208,
+        "y_coord": -37.815911760999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996525,
+        "pfi": 1343474,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "333 COLLINS STREET",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.963260265,
+        "y_coord": -37.817056920999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996526,
+        "pfi": 1343475,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "EXCHANGE TOWER",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95709657999998,
+        "y_coord": -37.81685539
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996529,
+        "pfi": 1343478,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "VICTORIA UNIVERSITY OF TECHNOLOGY",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.964049521,
+        "y_coord": -37.818041902
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996535,
+        "pfi": 1343484,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE EDITION",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95661212200002,
+        "y_coord": -37.819874451
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996544,
+        "pfi": 1343493,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96787547800002,
+        "y_coord": -37.799166795
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996545,
+        "pfi": 1343494,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.951596052,
+        "y_coord": -37.799492855
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996546,
+        "pfi": 1343495,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CARLTON CLOCKTOWER COMPLEX",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.968263431,
+        "y_coord": -37.79996454
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996547,
+        "pfi": 1343496,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "JANE BELL HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.953961226,
+        "y_coord": -37.800981381999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996548,
+        "pfi": 1343497,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "BMDI HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95475028200002,
+        "y_coord": -37.801903177
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996550,
+        "pfi": 1343499,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SOPHIA HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96021480299999,
+        "y_coord": -37.802889574999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996551,
+        "pfi": 1343500,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GLOBAL HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.961455833,
+        "y_coord": -37.802990782
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996555,
+        "pfi": 1343504,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "EXHIBITION MEWS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.968600468,
+        "y_coord": -37.805775565
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996556,
+        "pfi": 1343506,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.947800117,
+        "y_coord": -37.809361452999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996557,
+        "pfi": 1343507,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "QV RETAIL  PARKING",
+        "parent_name": "QV VILLAGE",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.965659738,
+        "y_coord": -37.810545542
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996558,
+        "pfi": 1343508,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "WILLS TOWER",
+        "parent_name": "WILLS TOWER  WILLS COURT",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.957459321,
+        "y_coord": -37.810684992
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996560,
+        "pfi": 1343510,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TOTAL HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.968145242,
+        "y_coord": -37.811979801
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996561,
+        "pfi": 1343511,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.971925774,
+        "y_coord": -37.812454714999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996563,
+        "pfi": 1343513,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.954952144,
+        "y_coord": -37.812738915
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996564,
+        "pfi": 1343514,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.960474375,
+        "y_coord": -37.813510195999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996565,
+        "pfi": 1343515,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.97263341899998,
+        "y_coord": -37.814292384
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996566,
+        "pfi": 1343516,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "150 COLLINS STREET",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.968184642,
+        "y_coord": -37.81418557200001
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996567,
+        "pfi": 1343517,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "COUNCIL HOUSE 2",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96674753099998,
+        "y_coord": -37.814155403
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996569,
+        "pfi": 1343520,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95637506399999,
+        "y_coord": -37.814768829
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996571,
+        "pfi": 1343522,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GRAND HYATT MELBOURNE RETAIL",
+        "parent_name": "GRAND HYATT",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.970089121,
+        "y_coord": -37.815044062
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996574,
+        "pfi": 1343525,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CARPARK",
+        "parent_name": "OLYMPIC PARK",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.98508427700003,
+        "y_coord": -37.82562165
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996577,
+        "pfi": 1343528,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "RIVERGARDEN CONDOS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95635936399998,
+        "y_coord": -37.826623076
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996578,
+        "pfi": 1343529,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CITYVIEW",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966645452,
+        "y_coord": -37.82817243
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996591,
+        "pfi": 1343543,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "QUAY WEST APARTMENTS",
+        "parent_name": "SOUTHGATE",
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.966750345,
+        "y_coord": -37.820306704000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996596,
+        "pfi": 1343548,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TWENTY8 FRESHWATER PLACE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.962274383,
+        "y_coord": -37.822656566
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996599,
+        "pfi": 1343551,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95856701,
+        "y_coord": -37.784916143
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996610,
+        "pfi": 1343562,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MERCER",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.971732175,
+        "y_coord": -37.81544835
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996611,
+        "pfi": 1343563,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "RACV BUILDING",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95960072,
+        "y_coord": -37.81586612
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996612,
+        "pfi": 1343564,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE COLLINS - DARLING TOWERS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96609549500002,
+        "y_coord": -37.816018277
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996613,
+        "pfi": 1343565,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.986737739,
+        "y_coord": -37.816161449
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996614,
+        "pfi": 1343566,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.956190503,
+        "y_coord": -37.816515759999994
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996615,
+        "pfi": 1343567,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "IOOF CENTRE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.963830036,
+        "y_coord": -37.816613904
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996616,
+        "pfi": 1343568,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "INSURANCE HOUSE GROUP",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.98981459,
+        "y_coord": -37.816644084
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996618,
+        "pfi": 1343570,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "357 COLLINS STREET",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.962795547,
+        "y_coord": -37.817216204
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996619,
+        "pfi": 1343571,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "SKYLOFTS 601 ON LITTLE COLLINS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95491147,
+        "y_coord": -37.818016446
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996620,
+        "pfi": 1343572,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "REED HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96117906799998,
+        "y_coord": -37.818851602
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996621,
+        "pfi": 1343573,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.950876339,
+        "y_coord": -37.819479672
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996627,
+        "pfi": 1343579,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "TRAVEL INN HOTEL",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.968080521,
+        "y_coord": -37.800382326
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996628,
+        "pfi": 1343580,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.961913928,
+        "y_coord": -37.80076532
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996629,
+        "pfi": 1343581,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE OXFORD",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.954738552,
+        "y_coord": -37.801029374
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996631,
+        "pfi": 1343583,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.955160784,
+        "y_coord": -37.80173933499999
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996632,
+        "pfi": 1343584,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96452537399998,
+        "y_coord": -37.80226236
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996633,
+        "pfi": 1343585,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "MELBOURNE UNIVERSITY",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.961008231,
+        "y_coord": -37.803948126
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996634,
+        "pfi": 1343586,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96158075399998,
+        "y_coord": -37.803754895
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996635,
+        "pfi": 1343587,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.94482196299998,
+        "y_coord": -37.805314031
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996637,
+        "pfi": 1343589,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "FREDERICK CAMPBELL - RMIT BUILDING 51",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.964835965,
+        "y_coord": -37.806564632
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996639,
+        "pfi": 1343591,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.974461557,
+        "y_coord": -37.808998416
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996641,
+        "pfi": 1343593,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "CITY EDGE SERVICED APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.98788607,
+        "y_coord": -37.81050953
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996643,
+        "pfi": 1343595,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE DISTRICT DOCKLANDS EAST CAR PARK",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.93939141500002,
+        "y_coord": -37.812192696000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996644,
+        "pfi": 1343596,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "NW BUILDING",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.93703477000003,
+        "y_coord": -37.812742121
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996645,
+        "pfi": 1343597,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "THE STRAND MELBOURNE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96288744599997,
+        "y_coord": -37.812596006999996
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996646,
+        "pfi": 1343598,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "COUNCIL HOUSE",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.96716855999998,
+        "y_coord": -37.813830356000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996647,
+        "pfi": 1343599,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "AQUAVISTA",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.940206658,
+        "y_coord": -37.814263616
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996648,
+        "pfi": 1343600,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "ADINA",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.959969799,
+        "y_coord": -37.814273198
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996649,
+        "pfi": 1343601,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.971486505,
+        "y_coord": -37.814795816
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996656,
+        "pfi": 1343609,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "VUE GRANDE APARTMENTS",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.956834782,
+        "y_coord": -37.826054146000004
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996665,
+        "pfi": 1343620,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.957438813,
+        "y_coord": -37.820961163
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 75996666,
+        "pfi": 1343621,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.95730527,
+        "y_coord": -37.821027724
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76004309,
+        "pfi": 1343215,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "FORMER ROYAL MINT",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.957592889,
+        "y_coord": -37.812021013999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76006674,
+        "pfi": 1343121,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": null,
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.963022233,
+        "y_coord": -37.815081719999995
+      }
+    },
+    {
+      "attributes": {
+        "ufi": 76006711,
+        "pfi": 1343358,
+        "feature_type": "community space",
+        "feature_subtype": "parking area",
+        "name": "GALLERIA",
+        "parent_name": null,
+        "theme1": null,
+        "theme2": null,
+        "x_coord": 144.963022233,
+        "y_coord": -37.815081719999995
+      }
+    }
+  ]
+}

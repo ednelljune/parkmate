@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkMate | Find Public Parking Across Victoria</title>
+    <meta name="description"
+        content="ParkMate helps drivers find free public parking across Victoria with live parking intel, directions, and early access beta invites." />
+    <meta name="theme-color" content="#0b1f33" />
+    <meta property="og:title" content="ParkMate | Find Public Parking Across Victoria" />
+    <meta property="og:description"
+        content="Stop circling the block. Join the ParkMate early access beta and find public parking faster across Victoria." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="./parkmate-logo.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ParkMate | Find Public Parking Across Victoria" />
+    <meta name="twitter:description"
+        content="Join the ParkMate early access beta and find public parking faster across Victoria." />
+    <link rel="icon" href="./parkmate-logo.svg" type="image/svg+xml" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        .animate-dash-line {
+            animation: dash 2s linear infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .animate-floating {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .fade-in-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .delay-100 {
+            transition-delay: 100ms;
+        }
+
+        .delay-200 {
+            transition-delay: 200ms;
+        }
+
+        .delay-300 {
+            transition-delay: 300ms;
+        }
+
+        .delay-400 {
+            transition-delay: 400ms;
+        }
+
+        .delay-500 {
+            transition-delay: 500ms;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-[#0b1f33] text-slate-100 selection:bg-blue-500/30 selection:text-white overflow-x-hidden">
+
+    <!-- Navigation -->
+    <nav
+        class="fixed top-0 left-0 right-0 z-50 bg-[#0b1f33]/80 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex items-center justify-between h-20">
+            <!-- Logo -->
+            <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer">
+                <img src="./parkmate-logo.svg" alt="ParkMate Logo"
+                    class="w-10 h-10 shadow-lg shadow-emerald-500/20 rounded-xl" />
+                <span class="text-2xl font-bold tracking-tight text-white">ParkMate</span>
+            </div>
+
+            <!-- Desktop Nav -->
+            <div class="hidden md:flex items-center gap-8">
+                <a href="#features"
+                    class="text-sm font-medium text-slate-300 hover:text-white transition-colors">Features</a>
+                <a href="#how-it-works"
+                    class="text-sm font-medium text-slate-300 hover:text-white transition-colors">How it Works</a>
+                <a href="#problem" class="text-sm font-medium text-slate-300 hover:text-white transition-colors">The
+                    Problem</a>
+                <a href="#contact" class="text-sm font-medium text-slate-300 hover:text-white transition-colors">Contact</a>
+            </div>
+
+            <!-- Mobile menu button -->
+            <div class="md:hidden">
+                <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')"
+                    class="text-slate-300 hover:text-white p-2">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Nav -->
+        <div id="mobile-menu" class="hidden md:hidden bg-[#0c233d] border-b border-white/5 py-4 flex flex-col gap-4">
+            <a href="#features" class="px-4 text-base font-medium text-slate-300 hover:text-white">Features</a>
+            <a href="#how-it-works" class="px-4 text-base font-medium text-slate-300 hover:text-white">How it Works</a>
+            <a href="#problem" class="px-4 text-base font-medium text-slate-300 hover:text-white">The Problem</a>
+            <a href="#contact" class="px-4 text-base font-medium text-slate-300 hover:text-white">Contact</a>
+        </div>
+    </nav>
+
+    <!-- 1. Hero Section -->
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+        <!-- Background glow effects -->
+        <div
+            class="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2">
+        </div>
+        <div
+            class="absolute top-1/3 right-1/4 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none translate-x-1/2 -translate-y-1/2">
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+
+                <!-- Hero Content -->
+                <div class="max-w-2xl mx-auto lg:mx-0 text-center lg:text-left pt-10 lg:pt-0">
+                    <div
+                        class="fade-in-up inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm font-medium mb-6">
+                        <i data-lucide="check-circle" class="w-3 h-3 text-emerald-400"></i>
+                        <span>Now covering all of Victoria</span>
+                    </div>
+
+                    <h1
+                        class="fade-in-up delay-100 text-5xl lg:text-7xl font-bold tracking-tight text-white leading-[1.1] mb-6">
+                        Find the perfect <br class="hidden lg:block" />
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">
+                            public parking,
+                        </span>
+                        <br /> every time.
+                    </h1>
+
+                    <p
+                        class="fade-in-up delay-200 text-lg lg:text-xl text-slate-300 mb-10 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                        Stop circling the block. Accept our exclusive invitation to help test ParkMate during our Early
+                        Access phase. We give you real-time access to free public parking zones, helping you avoid
+                        confusing paid meters.
+                    </p>
+
+                    <div class="fade-in-up delay-300 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                        <a href="#join-beta"
+                            class="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-full text-base font-semibold transition-all shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50 flex items-center justify-center gap-2">
+                            Join the TestFlight Beta
+                            <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </a>
+                        <a href="#how-it-works"
+                            class="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-8 py-4 rounded-full text-base font-semibold transition-colors flex items-center justify-center gap-2">
+                            See How It Works
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Hero Abstract UI / Mockup -->
+                <div
+                    class="fade-in-up delay-200 relative lg:h-[600px] flex items-center justify-center perspective-1000">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-full blur-[80px]">
+                    </div>
+
+                    <!-- Abstract Phone Frame -->
+                    <div
+                        class="relative w-[300px] h-[600px] bg-slate-900 rounded-[48px] border-[8px] border-slate-800 shadow-2xl shadow-blue-900/40 overflow-hidden z-10 flex flex-col transform lg:translate-x-12">
+                        <!-- Notch -->
+                        <div class="absolute top-0 inset-x-0 h-7 flex justify-center z-50">
+                            <div class="w-32 h-6 bg-slate-950 rounded-b-3xl"></div>
+                        </div>
+
+                        <!-- App UI Mockup -->
+                        <div class="flex-1 bg-[#0b1f33] relative">
+                            <!-- Map area abstract -->
+                            <div class="absolute inset-0 bg-[#0f2942]">
+                                <div class="w-full h-full opacity-30"
+                                    style="background-image: radial-gradient(#3b82f6 1px, transparent 1px); background-size: 20px 20px">
+                                </div>
+
+                                <!-- Simulated Path -->
+                                <svg class="absolute inset-0 w-full h-full text-blue-500 opacity-60"
+                                    viewBox="0 0 300 600">
+                                    <path d="M 150 500 C 150 400, 50 350, 100 250 C 150 150, 250 200, 200 100"
+                                        fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"
+                                        stroke-dasharray="10 10" class="animate-dash-line"></path>
+                                </svg>
+
+                                <div
+                                    class="absolute top-[80px] right-[80px] w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/40 animate-bounce">
+                                    <span class="text-white font-bold text-xs">P</span>
+                                </div>
+                                <div
+                                    class="absolute top-[230px] left-[80px] w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/40 opacity-70">
+                                    <span class="text-white font-bold text-[10px]">P</span>
+                                </div>
+
+                                <!-- Car Position -->
+                                <div
+                                    class="absolute bottom-[80px] left-[130px] w-12 h-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20">
+                                    <div class="w-4 h-4 bg-blue-400 rounded-full shadow-[0_0_15px_rgba(96,165,250,1)]">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bottom Sheet UI -->
+                            <div
+                                class="absolute bottom-0 inset-x-0 h-[45%] bg-slate-900 rounded-t-[32px] border-t border-white/5 p-6 flex flex-col shadow-[0_-20px_40px_rgba(0,0,0,0.5)]">
+                                <div class="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6"></div>
+                                <h3 class="text-white font-bold text-xl mb-1">Victoria St. Parking</h3>
+                                <p class="text-slate-400 text-sm mb-4">2 spots available • 4 min away</p>
+
+                                <div class="flex gap-3 mb-6">
+                                    <div class="flex-1 bg-slate-800 rounded-xl p-3 flex items-center gap-3">
+                                        <i data-lucide="clock" class="text-blue-400 w-5 h-5"></i>
+                                        <div>
+                                            <p class="text-xs text-slate-400">Time Limit</p>
+                                            <p class="text-sm font-semibold text-white">2 Hours</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 bg-slate-800 rounded-xl p-3 flex items-center gap-3">
+                                        <i data-lucide="shield-check" class="text-green-400 w-5 h-5"></i>
+                                        <div>
+                                            <p class="text-xs text-slate-400">Zone Type</p>
+                                            <p class="text-sm font-semibold text-white">Free</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold mt-auto flex items-center justify-center gap-2">
+                                    <i data-lucide="navigation" class="w-4 h-4"></i> Navigate Here
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Floating cards -->
+                    <div
+                        class="animate-floating absolute top-32 -left-12 lg:-left-20 bg-slate-800/90 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl z-20 flex items-center gap-4 hidden sm:flex">
+                        <div class="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                            <i data-lucide="check-circle" class="text-green-400 w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-white">Spot Found!</p>
+                            <p class="text-xs text-slate-400">Saved 15 minutes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. Social Proof / Stats -->
+    <section class="py-10 border-y border-white/5 bg-slate-900/30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm font-medium text-slate-400 mb-8 uppercase tracking-widest">Powered by official
+                city data</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div class="text-center fade-in-up">
+                    <h4 class="text-3xl font-bold text-white mb-2">10,000+</h4>
+                    <p class="text-sm text-slate-400">Parking Zones Mapped</p>
+                </div>
+                <div class="text-center fade-in-up delay-100">
+                    <h4 class="text-3xl font-bold text-white mb-2">Exclusive</h4>
+                    <p class="text-sm text-slate-400">Beta Testing Phase</p>
+                </div>
+                <div class="text-center fade-in-up delay-200">
+                    <h4 class="text-3xl font-bold text-white mb-2">14 min</h4>
+                    <p class="text-sm text-slate-400">Average Time Saved</p>
+                </div>
+                <div class="text-center fade-in-up delay-300">
+                    <h4 class="text-3xl font-bold text-white mb-2">Victoria-wide</h4>
+                    <p class="text-sm text-slate-400">Cities Covered</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Key Features -->
+    <section id="features" class="py-24 lg:py-32 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-20 fade-in-up">
+                <h2 class="text-3xl md:text-5xl font-bold text-white mb-6">Everything you need to park perfectly.</h2>
+                <p class="text-lg text-slate-300">We've turned parking from a guessing game into an exact science. Enjoy
+                    a suite of tools designed specifically for the modern driver.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Box 1 -->
+                <div
+                    class="fade-in-up delay-100 bg-slate-800/40 border border-white/5 p-8 rounded-3xl hover:bg-slate-800/60 transition-colors relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-150 transition-transform duration-500">
+                        <i data-lucide="search" class="w-24 h-24"></i>
+                    </div>
+                    <div class="w-14 h-14 bg-slate-700/50 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="search" class="text-emerald-400 w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Map Free Public Zones</h3>
+                    <p class="text-slate-400 leading-relaxed">Instantly locate free and non-metered public street
+                        parking zones around your destination before you even leave.</p>
+                </div>
+
+                <!-- Box 2 -->
+                <div
+                    class="fade-in-up delay-200 bg-slate-800/40 border border-white/5 p-8 rounded-3xl hover:bg-slate-800/60 transition-colors relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-150 transition-transform duration-500">
+                        <i data-lucide="shield-check" class="w-24 h-24"></i>
+                    </div>
+                    <div class="w-14 h-14 bg-slate-700/50 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="shield-check" class="text-sky-400 w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Avoid Paid Meters</h3>
+                    <p class="text-slate-400 leading-relaxed">We focus strictly on public zones. Say goodbye to
+                        confusing metered parking rules and surprise parking fines forever.</p>
+                </div>
+
+                <!-- Box 3 -->
+                <div
+                    class="fade-in-up delay-300 bg-slate-800/40 border border-white/5 p-8 rounded-3xl hover:bg-slate-800/60 transition-colors relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-150 transition-transform duration-500">
+                        <i data-lucide="navigation" class="w-24 h-24"></i>
+                    </div>
+                    <div class="w-14 h-14 bg-slate-700/50 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="navigation" class="text-purple-400 w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Turn-by-turn Directions</h3>
+                    <p class="text-slate-400 leading-relaxed">Seamless navigation routes you directly to the available
+                        spot, avoiding traffic and one-way confusion.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. How It Works -->
+    <section id="how-it-works" class="py-24 bg-slate-900/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-2 gap-16 items-center">
+                <!-- Visual Steps -->
+                <div
+                    class="fade-in-up order-2 lg:order-1 relative h-[500px] w-full rounded-3xl overflow-hidden bg-gradient-to-br from-[#0c233d] to-slate-900 border border-white/10 p-8 flex items-center justify-center shadow-2xl">
+                    <div class="absolute inset-0 opacity-20"
+                        style="background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 30px 30px">
+                    </div>
+                    <div class="relative z-10 w-full max-w-sm">
+                        <!-- App Flow Animation Container -->
+                        <div id="app-flow-mockup"
+                            class="bg-[#0b1f33] rounded-[32px] border border-white/10 shadow-2xl overflow-hidden relative h-[420px] w-full">
+
+                            <!-- Map Background (Shared) -->
+                            <div class="absolute inset-0 z-0 bg-slate-100 overflow-hidden">
+                                <img src="./pakenham-map-bg.jpg" alt="Map Background"
+                                    class="absolute inset-0 w-full h-full object-cover opacity-100" />
+
+                                <!-- Background Map Pins -->
+                                <div id="mock-static-marker"
+                                    class="absolute top-[28%] left-[38%] flex flex-col items-center opacity-80 transition-opacity duration-300">
+                                    <div class="border-[1.5px] border-transparent rounded-[6px] px-2 py-0.5"><span
+                                            class="text-[8px] font-black text-transparent uppercase tracking-wider">1
+                                            OPEN</span></div>
+                                    <div
+                                        class="bg-[#0b1f33] border border-white rounded-[4px] px-1.5 py-0 z-10 shadow-sm -mt-[2px]">
+                                        <span
+                                            class="text-[7px] font-black text-white uppercase tracking-wider">1P</span>
+                                    </div>
+                                    <div
+                                        class="w-6 h-6 rounded-full border-2 border-blue-500 bg-white flex items-center justify-center -mt-1">
+                                        <span class="text-blue-500 font-black text-[10px]">P</span>
+                                    </div>
+                                    <div
+                                        class="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent border-t-blue-500 mt-0.5">
+                                    </div>
+                                </div>
+                                <div class="absolute top-[60%] left-[70%] flex flex-col items-center opacity-60">
+                                    <div
+                                        class="bg-[#0b1f33] border border-white rounded-[4px] px-1.5 py-0 z-10 shadow-sm">
+                                        <span
+                                            class="text-[7px] font-black text-white uppercase tracking-wider">2P</span>
+                                    </div>
+                                    <div
+                                        class="w-6 h-6 rounded-full border-2 border-purple-500 bg-white flex items-center justify-center -mt-1">
+                                        <span class="text-purple-500 font-black text-[10px]">P</span>
+                                    </div>
+                                    <div
+                                        class="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent border-t-purple-500 mt-0.5">
+                                    </div>
+                                </div>
+                                <div class="absolute top-[80%] left-[30%] flex flex-col items-center opacity-60">
+                                    <div
+                                        class="bg-[#0b1f33] border border-white rounded-[4px] px-1.5 py-0 z-10 shadow-sm">
+                                        <span
+                                            class="text-[7px] font-black text-white uppercase tracking-wider">3P</span>
+                                    </div>
+                                    <div
+                                        class="w-6 h-6 rounded-full border-2 border-orange-500 bg-white flex items-center justify-center -mt-1">
+                                        <span class="text-orange-500 font-black text-[10px]">P</span>
+                                    </div>
+                                    <div
+                                        class="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent border-t-orange-500 mt-0.5">
+                                    </div>
+                                </div>
+                                <div class="absolute top-[30%] right-[15%] flex flex-col items-center opacity-60">
+                                    <div
+                                        class="bg-[#0b1f33] border border-white rounded-[4px] px-1.5 py-0 z-10 shadow-sm">
+                                        <span
+                                            class="text-[7px] font-black text-white uppercase tracking-wider">FH</span>
+                                    </div>
+                                    <div
+                                        class="w-6 h-6 rounded-full border-2 border-slate-500 bg-white flex items-center justify-center -mt-1">
+                                        <span class="text-slate-500 font-black text-[10px]">P</span>
+                                    </div>
+                                    <div
+                                        class="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent border-t-slate-500 mt-0.5">
+                                    </div>
+                                </div>
+
+                                <!-- Glowing Reported / Availability P marker -->
+                                <div id="mock-marker"
+                                    class="absolute top-[28%] left-[38%] flex flex-col items-center transition-all duration-500 opacity-0 scale-50 z-20">
+                                    <div
+                                        class="bg-[#0b1f33] border-[1.5px] border-white rounded-[6px] px-2 py-0.5 z-20 shadow-md">
+                                        <span class="text-[8px] font-black text-white uppercase tracking-wider">1
+                                            OPEN</span>
+                                    </div>
+                                    <div
+                                        class="w-8 h-8 rounded-full border-2 border-white bg-emerald-500 flex items-center justify-center -mt-1 shadow-[0_0_15px_rgba(16,185,129,0.5)] z-10">
+                                        <span class="text-white font-black text-sm">P</span>
+                                    </div>
+                                    <div
+                                        class="bg-amber-500 border-[1px] border-white rounded-[4px] px-1.5 py-0.5 -mt-2 z-20">
+                                        <span
+                                            class="text-[#0b1f33] font-black text-[7px] uppercase tracking-wider">1P</span>
+                                    </div>
+                                    <div
+                                        class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[7px] border-l-transparent border-r-transparent border-t-emerald-500 mt-0 z-0">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- State 0: Scanning -->
+                            <div id="mock-state-0"
+                                class="absolute inset-x-4 top-6 z-10 transition-opacity duration-500 opacity-100">
+                                <div
+                                    class="bg-slate-800/95 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl w-full flex items-center gap-4">
+                                    <i data-lucide="crosshair" class="text-emerald-400 w-6 h-6 animate-pulse"></i>
+                                    <p class="text-slate-300 font-medium">Scanning your radius...</p>
+                                </div>
+                            </div>
+
+                            <!-- State 1: Received Alert -->
+                            <div id="mock-state-1"
+                                class="absolute inset-0 z-10 flex border-t-0 flex-col pt-6 px-4 transition-opacity duration-500 opacity-0">
+                                <div
+                                    class="bg-slate-800/95 backdrop-blur-md border border-emerald-500/30 p-4 rounded-2xl shadow-xl shadow-emerald-900/40 w-full animate-[slideDown_0.5s_ease-out]">
+                                    <div class="flex items-start gap-3">
+                                        <div
+                                            class="w-10 h-10 rounded-full bg-emerald-500/20 flex flex-shrink-0 items-center justify-center mt-1 text-emerald-400">
+                                            <i data-lucide="bell" class="w-5 h-5"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-base font-bold text-white mb-1">Spot Alert!</p>
+                                            <p class="text-sm text-slate-300">A driver has reported an available spot at
+                                                Bourke St.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- State 2: Claim the spot -->
+                            <div id="mock-state-2"
+                                class="absolute inset-0 z-20 flex flex-col justify-end transition-opacity duration-500 opacity-0 pointer-events-none">
+                                <div class="bg-slate-900 rounded-t-[32px] border-t border-white/10 p-6 shadow-[0_-20px_40px_rgba(0,0,0,0.5)] transform translate-y-full transition-transform duration-500 pointer-events-auto"
+                                    id="mock-sheet-2">
+                                    <div class="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6"></div>
+                                    <h3 class="text-white font-bold text-2xl mb-1">Bourke St Zone</h3>
+                                    <p class="text-emerald-400 text-sm mb-6 flex items-center gap-1"><i
+                                            data-lucide="clock" class="w-4 h-4"></i> Reported just now</p>
+
+                                    <button
+                                        class="w-full bg-emerald-600 text-white flex justify-center py-4 rounded-xl font-bold gap-2 relative overflow-hidden group">
+                                        <span class="relative z-10">Claim Spot</span>
+                                        <div
+                                            class="absolute inset-0 bg-white/20 translate-x-[-100%] animate-[shimmer_2s_infinite]">
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- State 3: Park and Timer -->
+                            <div id="mock-state-3"
+                                class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#0b1f33] transition-opacity duration-500 opacity-0 pointer-events-none">
+                                <div
+                                    class="w-20 h-20 bg-emerald-500/10 border-4 border-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                                    <i data-lucide="check" class="text-emerald-400 w-10 h-10 animate-pulse"></i>
+                                </div>
+                                <h3 class="text-white font-bold text-3xl mb-2">Parked!</h3>
+                                <p class="text-slate-400 text-base mb-8">Bourke St Zone</p>
+
+                                <div class="bg-slate-800/80 border border-white/5 px-10 py-5 rounded-3xl mb-4 w-[80%]">
+                                    <p
+                                        class="text-xs text-slate-500 uppercase tracking-widest text-center mb-2 font-semibold flex items-center justify-center gap-1">
+                                        <i data-lucide="clock" class="w-3 h-3"></i> 1P Limit
+                                    </p>
+                                    <p class="text-4xl font-mono text-white text-center tabular-nums"><span
+                                            id="mock-timer-min">59</span>:<span id="mock-timer-sec">59</span></p>
+                                </div>
+                            </div>
+
+                            <!-- State 4: Report Spot -->
+                            <div id="mock-state-4"
+                                class="absolute inset-0 z-40 flex flex-col justify-end transition-opacity duration-500 opacity-0 pointer-events-none">
+                                <div class="bg-slate-900 rounded-t-[32px] border-t border-emerald-500/30 p-6 flex flex-col gap-4 shadow-[0_-20px_40px_rgba(0,0,0,0.5)] transform translate-y-full transition-transform duration-500 pointer-events-auto"
+                                    id="mock-sheet-4">
+                                    <div class="text-center mb-4 mt-2">
+                                        <div
+                                            class="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-400">
+                                            <i data-lucide="share" class="w-6 h-6"></i>
+                                        </div>
+                                        <h3 class="text-white font-bold text-xl mb-2">Leaving so soon?</h3>
+                                        <p class="text-slate-400 text-sm">Help the community by reporting this spot as
+                                            available.</p>
+                                    </div>
+                                    <button
+                                        class="w-full bg-emerald-600 text-white flex justify-center items-center py-4 rounded-xl font-bold gap-2">
+                                        Report Spot Empty
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text Steps -->
+                <div class="order-1 lg:order-2">
+                    <h2 class="fade-in-up text-3xl md:text-5xl font-bold text-white mb-10">Three simple steps.</h2>
+                    <div class="space-y-10">
+                        <div class="fade-in-up flex gap-6">
+                            <div class="flex-shrink-0">
+                                <div
+                                    class="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
+                                    <span class="text-emerald-400 font-bold">01</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-white mb-2">Radius Auto-Scan</h3>
+                                <p class="text-slate-400 leading-relaxed text-base">We automatically detect your
+                                    location and scan your immediate radius using official state data to find all free
+                                    public parking zones.</p>
+                            </div>
+                        </div>
+
+                        <div class="fade-in-up delay-100 flex gap-6">
+                            <div class="flex-shrink-0">
+                                <div
+                                    class="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
+                                    <span class="text-emerald-400 font-bold">02</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-white mb-2">Navigate & Park</h3>
+                                <p class="text-slate-400 leading-relaxed text-base">Simply select an available zone, and
+                                    our navigation routes you directly to the parking spot for immediate access.</p>
+                            </div>
+                        </div>
+
+                        <div class="fade-in-up delay-200 flex gap-6">
+                            <div class="flex-shrink-0">
+                                <div
+                                    class="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
+                                    <span class="text-emerald-400 font-bold">03</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-white mb-2">Claim and Report a Spot</h3>
+                                <p class="text-slate-400 leading-relaxed text-base">Once you park or leave, easily
+                                    report the spot's availability within the app to help other drivers in the
+                                    community.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. Why Choose ParkMate -->
+    <section class="py-24 relative overflow-hidden text-center">
+        <div class="absolute inset-0 bg-blue-600/5"></div>
+        <div class="fade-in-up max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center">
+            <i data-lucide="car" class="text-blue-500 mb-6 w-12 h-12"></i>
+            <h2 class="text-3xl md:text-5xl font-bold text-white mb-8">Why use ParkMate?</h2>
+            <p class="text-xl md:text-2xl text-slate-300 leading-relaxed font-light">
+                "Unlike standard maps that just give you driving directions, ParkMate focuses solely on the hardest part
+                of the journey: <span class="text-white font-semibold">arriving and parking.</span> We cut out the
+                parking anxiety with precision accuracy."
+            </p>
+        </div>
+    </section>
+
+    <!-- 6. The Problem -->
+    <section id="problem" class="py-24 bg-slate-900/40 border-t border-white/5">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-in-up">
+                <div
+                    class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium mb-6">
+                    <i data-lucide="alert-circle" class="w-3 h-3"></i>
+                    <span>The Problem</span>
+                </div>
+                <h2 class="text-3xl md:text-5xl font-bold text-white mb-6">Parking shouldn't be the hardest part of
+                    driving.</h2>
+                <p class="text-lg text-slate-400">Every day, drivers waste endless hours needlessly circling city
+                    blocks, polluting the air and increasing their stress levels, simply because they don't know where
+                    to park.</p>
+            </div>
+
+            <div
+                class="fade-in-up delay-100 bg-slate-800/40 p-10 md:p-14 rounded-[40px] border border-white/5 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-8 opacity-5">
+                    <i data-lucide="quote" class="w-48 h-48"></i>
+                </div>
+
+                <i data-lucide="quote" class="text-emerald-500/40 w-12 h-12 mb-6"></i>
+                <p class="text-2xl md:text-3xl font-light text-slate-200 leading-relaxed mb-10 relative z-10">
+                    "I often complain about spending so much of my day just looking for a parking spot. Circling around
+                    blocks repeatedly is incredibly frustrating and a massive waste of time."
+                </p>
+
+                <div class="flex items-center gap-4 relative z-10">
+                    <div
+                        class="w-14 h-14 bg-slate-700 rounded-full overflow-hidden flex items-center justify-center border-2 border-emerald-500/30">
+                        <i data-lucide="user" class="text-slate-400 w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-white font-bold text-lg">Jeffrey Patawaran</h4>
+                        <p class="text-emerald-400 text-sm font-medium">Daily Commuter</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. Final Call to Action -->
+    <section id="join-beta" class="py-24 relative overflow-hidden">
+        <div class="absolute inset-0 bg-blue-900/20"></div>
+        <div class="absolute -top-32 -right-32 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px]"></div>
+        <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-cyan-500/20 rounded-full blur-[100px]"></div>
+
+        <div
+            class="fade-in-up max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 flex flex-col items-center">
+            <h2 class="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight">Ready to eliminate parking stress?
+            </h2>
+            <p class="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
+                We are currently launching our exclusive Early Access beta. Step up to be one of our founding testers to experience ParkMate and help shape the future of parking in Victoria.
+            </p>
+            
+            <div class="flex flex-col items-center justify-center gap-6 mt-4">
+                <!-- Mobile CTA / Button (Visible on small screens) -->
+                <a href="https://testflight.apple.com/join/dj73AP9F" target="_blank" rel="noopener noreferrer"
+                    class="bg-white text-[#0b1f33] px-10 py-5 rounded-full text-lg font-bold hover:bg-slate-100 transition-colors shadow-2xl shadow-white/10 flex items-center justify-center gap-2 group md:hidden w-full max-w-sm">
+                    Join via TestFlight
+                    <i data-lucide="arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
+                </a>
+
+                <!-- QR Code Box (Visible on medium+ screens) -->
+                <div class="bg-slate-800/80 backdrop-blur-md p-8 rounded-3xl border border-white/10 shadow-2xl hidden md:flex flex-col items-center gap-5 hover:-translate-y-2 transition-transform duration-300 group">
+                    <div class="bg-white p-4 rounded-2xl relative">
+                        <div class="absolute inset-0 border-2 border-emerald-500 rounded-2xl animate-pulse opacity-50"></div>
+                        <img src="./testflight-qr.svg" alt="Scan to join TestFlight" class="w-48 h-48 rounded-xl relative z-10" />
+                    </div>
+                    <div class="text-center">
+                        <p class="text-white font-bold text-xl inline-flex items-center gap-2 mb-1">
+                            <i data-lucide="smartphone" class="w-6 h-6 text-emerald-400"></i>
+                            Scan to Download
+                        </p>
+                        <p class="text-slate-400 text-sm">Open your camera to join TestFlight</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Contact Support -->
+    <section id="contact" class="py-12 border-t border-white/5 bg-slate-900/30">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center fade-in-up">
+            <h3 class="text-2xl font-bold text-white mb-2">Have Questions?</h3>
+            <p class="text-slate-400 mb-6 text-sm md:text-base">We're here to help. Send us an email and our team will get back to you.</p>
+            <a href="mailto:support@parkmate.com?subject=ParkMate%20Support%20Request" class="inline-flex items-center gap-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 px-6 py-3 rounded-xl text-sm font-bold transition-colors">
+                <i data-lucide="mail" class="w-4 h-4"></i>
+                support@getparkmate.app
+            </a>
+        </div>
+    </section>
+
+    <!-- 9. Footer -->
+    <footer class="border-t border-white/10 bg-[#071524] py-12">
+        <div
+            class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <i data-lucide="map-pin" class="text-blue-500 w-6 h-6"></i>
+                <span class="text-xl font-bold text-white tracking-tight">ParkMate</span>
+            </div>
+            <div class="flex flex-wrap justify-center gap-6 md:gap-8">
+                <a href="privacy-policy.html" class="text-sm text-slate-400 hover:text-white transition-colors">Privacy Policy</a>
+                <a href="terms-of-service.html" class="text-sm text-slate-400 hover:text-white transition-colors">Terms of Service</a>
+                <a href="#contact" class="text-sm text-slate-400 hover:text-white transition-colors">Contact Support</a>
+                <a href="mailto:support@parkmate.com?subject=ParkMate%20Marketing%20Enquiry" class="text-sm text-slate-400 hover:text-white transition-colors">Marketing Contact</a>
+            </div>
+            <p class="text-slate-500 text-sm">© 2026 ParkMate. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Simple Intersection Observer API for scroll animations
+        document.addEventListener("DOMContentLoaded", function () {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("visible");
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: "0px 0px -50px 0px"
+            });
+
+            document.querySelectorAll(".fade-in-up").forEach((el) => {
+                observer.observe(el);
+            });
+
+            // App Flow Mockup Animation
+            const state0 = document.getElementById('mock-state-0');
+            const state1 = document.getElementById('mock-state-1');
+            const state2 = document.getElementById('mock-state-2');
+            const sheet2 = document.getElementById('mock-sheet-2');
+            const state3 = document.getElementById('mock-state-3');
+            const state4 = document.getElementById('mock-state-4');
+            const sheet4 = document.getElementById('mock-sheet-4');
+            const marker = document.getElementById('mock-marker');
+            const staticMarker = document.getElementById('mock-static-marker');
+
+            let timerInterval;
+
+            async function runAnimationLoop() {
+                while (true) {
+                    // Reset to State 0
+                    state0.style.opacity = '1';
+                    state1.style.opacity = '0';
+                    state2.style.opacity = '0';
+                    state3.style.opacity = '0';
+                    state4.style.opacity = '0';
+                    sheet2.style.transform = 'translateY(100%)';
+                    sheet4.style.transform = 'translateY(100%)';
+                    marker.style.opacity = '0';
+                    marker.style.transform = 'scale(0.5)';
+                    marker.classList.remove('animate-bounce');
+                    if (staticMarker) staticMarker.style.opacity = '0.6';
+                    document.getElementById('mock-timer-min').innerText = '59';
+                    document.getElementById('mock-timer-sec').innerText = '59';
+                    if (timerInterval) clearInterval(timerInterval);
+
+                    // State 0: Scanning 
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    // State 1: Alert
+                    state0.style.opacity = '0';
+                    state1.style.opacity = '1';
+                    await new Promise(r => setTimeout(r, 2500));
+
+                    // State 2: Claim spot
+                    state1.style.opacity = '0';
+                    state2.style.opacity = '1';
+                    marker.style.opacity = '1';
+                    marker.style.transform = 'scale(1)';
+                    marker.classList.add('animate-bounce');
+                    if (staticMarker) staticMarker.style.opacity = '0';
+                    await new Promise(r => setTimeout(r, 400));
+                    sheet2.style.transform = 'translateY(0)';
+                    await new Promise(r => setTimeout(r, 2500));
+
+                    // State 3: Park and Timer
+                    sheet2.style.transform = 'translateY(100%)';
+                    await new Promise(r => setTimeout(r, 300));
+                    state2.style.opacity = '0';
+                    state3.style.opacity = '1';
+
+                    let timeRemaining = 3599; // 59m 59s
+                    timerInterval = setInterval(() => {
+                        timeRemaining--;
+                        let minutes = Math.floor(timeRemaining / 60);
+                        let seconds = timeRemaining % 60;
+                        document.getElementById('mock-timer-min').innerText = minutes < 10 ? '0' + minutes : minutes;
+                        document.getElementById('mock-timer-sec').innerText = seconds < 10 ? '0' + seconds : seconds;
+                    }, 1000);
+
+                    await new Promise(r => setTimeout(r, 3500));
+
+                    // State 4: Report Spot
+                    state3.style.opacity = '0';
+                    state4.style.opacity = '1';
+                    await new Promise(r => setTimeout(r, 200));
+                    sheet4.style.transform = 'translateY(0)';
+
+                    await new Promise(r => setTimeout(r, 4000));
+                }
+            }
+
+            if (document.getElementById('app-flow-mockup')) {
+                runAnimationLoop();
+            }
+        });
+    </script>
+</body>
+
+</html>

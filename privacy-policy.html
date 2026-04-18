@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkMate Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        .animate-dash-line {
+            animation: dash 2s linear infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .animate-floating {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .fade-in-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .delay-100 {
+            transition-delay: 100ms;
+        }
+
+        .delay-200 {
+            transition-delay: 200ms;
+        }
+
+        .delay-300 {
+            transition-delay: 300ms;
+        }
+
+        .delay-400 {
+            transition-delay: 400ms;
+        }
+
+        .delay-500 {
+            transition-delay: 500ms;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-[#0b1f33] text-slate-100 selection:bg-blue-500/30 selection:text-white overflow-x-hidden">
+
+    <!-- Navigation -->
+    <nav
+        class="fixed top-0 left-0 right-0 z-50 bg-[#0b1f33]/80 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex items-center justify-between h-20">
+            <!-- Logo -->
+            <a href="parkmate-marketing-preview.html" class="flex-shrink-0 flex items-center gap-2 cursor-pointer transition-transform hover:scale-105">
+                <img src="./parkmate-logo.svg" alt="ParkMate Logo"
+                    class="w-10 h-10 shadow-lg shadow-emerald-500/20 rounded-xl" />
+                <span class="text-2xl font-bold tracking-tight text-white">ParkMate</span>
+            </a>
+
+            <!-- Desktop Nav -->
+            <div class="hidden md:flex items-center gap-8">
+                <a href="parkmate-marketing-preview.html#features"
+                    class="text-sm font-medium text-slate-300 hover:text-white transition-colors">Features</a>
+                <a href="parkmate-marketing-preview.html#how-it-works"
+                    class="text-sm font-medium text-slate-300 hover:text-white transition-colors">How it Works</a>
+                <a href="parkmate-marketing-preview.html#problem" class="text-sm font-medium text-slate-300 hover:text-white transition-colors">The
+                    Problem</a>
+            </div>
+
+            <!-- Mobile menu button -->
+            <div class="md:hidden">
+                <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')"
+                    class="text-slate-300 hover:text-white p-2">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Nav -->
+        <div id="mobile-menu" class="hidden md:hidden bg-[#0c233d] border-b border-white/5 py-4 flex flex-col gap-4">
+            <a href="parkmate-marketing-preview.html#features" class="px-4 text-base font-medium text-slate-300 hover:text-white">Features</a>
+            <a href="parkmate-marketing-preview.html#how-it-works" class="px-4 text-base font-medium text-slate-300 hover:text-white">How it Works</a>
+            <a href="parkmate-marketing-preview.html#problem" class="px-4 text-base font-medium text-slate-300 hover:text-white">The Problem</a>
+        </div>
+    </nav>
+    <section class="py-32 relative min-h-screen">
+        <div class="absolute inset-0 bg-[#0b1f33]"></div>
+        <div class="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none translate-x-1/2 translate-y-1/2"></div>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 bg-slate-900/50 p-8 md:p-14 rounded-[40px] border border-white/5 mt-10 shadow-2xl backdrop-blur-sm">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-8">Privacy Policy</h1>
+<p class="text-slate-300 leading-relaxed mb-4"><b class="text-white">Effective Date:</b> 14 April 2026  </p>
+<p class="text-slate-300 leading-relaxed mb-4"><b class="text-white">Last Updated:</b> 14 April 2026</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">Privacy Policy for ParkMate</h2>
+<p class="text-slate-300 leading-relaxed mb-4">ParkMate ("<b class="text-white">ParkMate</b>," "<b class="text-white">we</b>," "<b class="text-white">our</b>," or "<b class="text-white">us</b>") provides a mobile app that helps users find parking zones, view and share parking availability reports, receive alerts, manage parking timers, and access related account features.</p>
+<p class="text-slate-300 leading-relaxed mb-4">This Privacy Policy explains how we collect, use, disclose, and protect information when you use the ParkMate app and related services.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">1. Information We Collect</h2>
+<h3 class="text-2xl font-bold text-white mt-8 mb-4">a. Account Information</h3>
+<p class="text-slate-300 leading-relaxed mb-4">When you create an account, we may collect:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Your name</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Your email address</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Your login credentials and authentication data</li>
+</ul>
+<h3 class="text-2xl font-bold text-white mt-8 mb-4">b. Location Information</h3>
+<p class="text-slate-300 leading-relaxed mb-4">If you allow location access, we may collect:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Your device's approximate or precise location</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Location data used to show nearby parking zones, reports, and directions</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Location data used when you create, claim, or verify a parking report</li>
+</ul>
+<h3 class="text-2xl font-bold text-white mt-8 mb-4">c. Parking Activity and User Contributions</h3>
+<p class="text-slate-300 leading-relaxed mb-4">When you use ParkMate features, we may collect:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Parking spot reports you submit</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Spot claims and false-report actions</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Zone selections</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Activity feed and leaderboard-related data</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Reputation, points, trust, and contribution metrics associated with your account</li>
+</ul>
+<h3 class="text-2xl font-bold text-white mt-8 mb-4">d. Notifications Data</h3>
+<p class="text-slate-300 leading-relaxed mb-4">If you enable notifications, we may collect and process:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Push notification token(s)</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Device/session identifiers used to register notifications</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Notification interaction data</li>
+</ul>
+<h3 class="text-2xl font-bold text-white mt-8 mb-4">e. Device, App, and Diagnostic Information</h3>
+<p class="text-slate-300 leading-relaxed mb-4">We may automatically collect:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Device type</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Operating system</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">App version</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Crash logs</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Error reports</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Performance and diagnostic information</li>
+</ul>
+<h3 class="text-2xl font-bold text-white mt-8 mb-4">f. Locally Stored Information</h3>
+<p class="text-slate-300 leading-relaxed mb-4">The app may store information on your device, such as:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Login session data</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Timer state</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Recently cached parking/report data</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Read/unread activity state</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">App preferences</li>
+</ul>
+<h3 class="text-2xl font-bold text-white mt-8 mb-4">g. Optional Permissions and Features</h3>
+<p class="text-slate-300 leading-relaxed mb-4">If enabled in your version of the app, ParkMate may request access to features such as:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Camera</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Photo library</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Microphone</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Contacts</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">These permissions are only used if you choose to use the related feature.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">2. How We Use Information</h2>
+<p class="text-slate-300 leading-relaxed mb-4">We use information to:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Create and manage your account</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Authenticate you and keep you signed in</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Show nearby parking zones and live parking reports</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Let you report, claim, delete, or flag parking spots</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Provide directions and map functionality</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Send parking alerts, timer reminders, and service notifications</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Display your profile, contribution history, and leaderboard position</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Improve app reliability, security, and performance</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Detect abuse, fraud, spam, or inaccurate reporting</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Comply with legal obligations</li>
+</ul>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">3. How We Share Information</h2>
+<p class="text-slate-300 leading-relaxed mb-4">We may share information:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">With service providers that help us operate ParkMate</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">With infrastructure, hosting, authentication, analytics, crash-reporting, notification, and mapping providers</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">When required by law, regulation, legal process, or government request</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">To protect rights, safety, property, users, or the public</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">In connection with a merger, acquisition, financing, or sale of assets</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">We may also display certain account- or activity-related information to other users where relevant to app features, such as leaderboards, contribution history, or community parking activity.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">4. Third-Party Services</h2>
+<p class="text-slate-300 leading-relaxed mb-4">ParkMate may rely on third-party providers such as:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2"><b class="text-white">Supabase</b> for authentication and backend services</li>
+<li class="text-slate-300 ml-6 list-disc mb-2"><b class="text-white">Sentry</b> for crash and error reporting</li>
+<li class="text-slate-300 ml-6 list-disc mb-2"><b class="text-white">Expo</b> and related notification services</li>
+<li class="text-slate-300 ml-6 list-disc mb-2"><b class="text-white">Google Maps / Apple Maps</b> or similar mapping/directions providers</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">Your use of ParkMate may also involve those providers processing information under their own privacy terms.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">5. Retention</h2>
+<p class="text-slate-300 leading-relaxed mb-4">We retain information for as long as reasonably necessary to:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Provide the service</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Maintain account functionality</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Support safety, moderation, and fraud prevention</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Meet legal, tax, accounting, or regulatory requirements</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Resolve disputes and enforce our terms</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">Locally stored information may remain on your device until deleted by you, the app, or your device settings.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">6. Security</h2>
+<p class="text-slate-300 leading-relaxed mb-4">We use reasonable administrative, technical, and organizational measures to help protect personal information. However, no method of transmission or storage is completely secure, and we cannot guarantee absolute security.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">7. Your Choices</h2>
+<p class="text-slate-300 leading-relaxed mb-4">Depending on your device, region, and applicable law, you may be able to:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Access or update your account information</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Disable location permissions</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Disable notifications</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Delete the app and local app data</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Request deletion of your account and associated personal information by contacting us at support@parkmate.com</li>
+</ul>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">8. Children's Privacy</h2>
+<p class="text-slate-300 leading-relaxed mb-4">ParkMate is not intended for children under 13, or under the minimum age required in your jurisdiction. We do not knowingly collect personal information from children in violation of applicable law.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">9. International Data Transfers</h2>
+<p class="text-slate-300 leading-relaxed mb-4">Your information may be processed and stored in countries other than your own. By using ParkMate, you understand that your information may be transferred to and processed in jurisdictions with different data protection laws.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">10. Changes to This Privacy Policy</h2>
+<p class="text-slate-300 leading-relaxed mb-4">We may update this Privacy Policy from time to time. If we make material changes, we will update the "Last Updated" date and may provide additional notice in the app or by other appropriate means.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">11. Contact Us</h2>
+<p class="text-slate-300 leading-relaxed mb-4">If you have questions or requests about this Privacy Policy, contact us at:</p>
+<p class="text-slate-300 leading-relaxed mb-4">ParkMate </p>
+<p class="text-slate-300 leading-relaxed mb-4">support@parkmate.com </p>
+<p class="text-slate-300 leading-relaxed mb-4">Melbourne VIC, Australia</p>
+        </div>
+    </section>
+<!-- 8. Footer -->
+    <footer class="border-t border-white/10 bg-[#071524] py-12">
+        <div
+            class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <i data-lucide="map-pin" class="text-blue-500 w-6 h-6"></i>
+                <span class="text-xl font-bold text-white tracking-tight">ParkMate</span>
+            </div>
+            <div class="flex flex-wrap justify-center gap-6 md:gap-8">
+                <a href="privacy-policy.html" class="text-sm text-slate-400 hover:text-white transition-colors">Privacy Policy</a>
+                <a href="terms-of-service.html" class="text-sm text-slate-400 hover:text-white transition-colors">Terms of Service</a>
+                <a href="contact.html" class="text-sm text-slate-400 hover:text-white transition-colors">Contact Support</a>
+                <a href="#" class="text-sm text-slate-400 hover:text-white transition-colors">Twitter</a>
+                <a href="#" class="text-sm text-slate-400 hover:text-white transition-colors">Instagram</a>
+            </div>
+            <p class="text-slate-500 text-sm">© 2026 ParkMate. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTopBtn" class="fixed bottom-8 right-8 md:bottom-12 md:right-12 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/50 text-white w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-600/30 transition-all duration-300 opacity-0 translate-y-10 pointer-events-none z-50">
+        <i data-lucide="arrow-up" class="w-5 h-5 md:w-6 md:h-6"></i>
+    </button>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Simple Intersection Observer API for scroll animations
+        document.addEventListener("DOMContentLoaded", function () {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("visible");
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: "0px 0px -50px 0px"
+            });
+
+            document.querySelectorAll(".fade-in-up").forEach((el) => {
+                observer.observe(el);
+            });
+
+            // App Flow Mockup Animation
+            const state0 = document.getElementById('mock-state-0');
+            const state1 = document.getElementById('mock-state-1');
+            const state2 = document.getElementById('mock-state-2');
+            const sheet2 = document.getElementById('mock-sheet-2');
+            const state3 = document.getElementById('mock-state-3');
+            const state4 = document.getElementById('mock-state-4');
+            const sheet4 = document.getElementById('mock-sheet-4');
+            const marker = document.getElementById('mock-marker');
+            const staticMarker = document.getElementById('mock-static-marker');
+
+            let timerInterval;
+
+            async function runAnimationLoop() {
+                while (true) {
+                    // Reset to State 0
+                    state0.style.opacity = '1';
+                    state1.style.opacity = '0';
+                    state2.style.opacity = '0';
+                    state3.style.opacity = '0';
+                    state4.style.opacity = '0';
+                    sheet2.style.transform = 'translateY(100%)';
+                    sheet4.style.transform = 'translateY(100%)';
+                    marker.style.opacity = '0';
+                    marker.style.transform = 'scale(0.5)';
+                    marker.classList.remove('animate-bounce');
+                    if (staticMarker) staticMarker.style.opacity = '0.6';
+                    document.getElementById('mock-timer-min').innerText = '59';
+                    document.getElementById('mock-timer-sec').innerText = '59';
+                    if (timerInterval) clearInterval(timerInterval);
+
+                    // State 0: Scanning 
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    // State 1: Alert
+                    state0.style.opacity = '0';
+                    state1.style.opacity = '1';
+                    await new Promise(r => setTimeout(r, 2500));
+
+                    // State 2: Claim spot
+                    state1.style.opacity = '0';
+                    state2.style.opacity = '1';
+                    marker.style.opacity = '1';
+                    marker.style.transform = 'scale(1)';
+                    marker.classList.add('animate-bounce');
+                    if (staticMarker) staticMarker.style.opacity = '0';
+                    await new Promise(r => setTimeout(r, 400));
+                    sheet2.style.transform = 'translateY(0)';
+                    await new Promise(r => setTimeout(r, 2500));
+
+                    // State 3: Park and Timer
+                    sheet2.style.transform = 'translateY(100%)';
+                    await new Promise(r => setTimeout(r, 300));
+                    state2.style.opacity = '0';
+                    state3.style.opacity = '1';
+
+                    let timeRemaining = 3599; // 59m 59s
+                    timerInterval = setInterval(() => {
+                        timeRemaining--;
+                        let minutes = Math.floor(timeRemaining / 60);
+                        let seconds = timeRemaining % 60;
+                        document.getElementById('mock-timer-min').innerText = minutes < 10 ? '0' + minutes : minutes;
+                        document.getElementById('mock-timer-sec').innerText = seconds < 10 ? '0' + seconds : seconds;
+                    }, 1000);
+
+                    await new Promise(r => setTimeout(r, 3500));
+
+                    // State 4: Report Spot
+                    state3.style.opacity = '0';
+                    state4.style.opacity = '1';
+                    await new Promise(r => setTimeout(r, 200));
+                    sheet4.style.transform = 'translateY(0)';
+
+                    await new Promise(r => setTimeout(r, 4000));
+                }
+            }
+
+            if (document.getElementById('app-flow-mockup')) {
+                runAnimationLoop();
+            }
+            // Scroll to Top Logic
+            const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+            if (scrollToTopBtn) {
+                window.addEventListener('scroll', () => {
+                    if (window.scrollY > 400) {
+                        scrollToTopBtn.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+                        scrollToTopBtn.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                    } else {
+                        scrollToTopBtn.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+                        scrollToTopBtn.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                    }
+                });
+
+                scrollToTopBtn.addEventListener('click', () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

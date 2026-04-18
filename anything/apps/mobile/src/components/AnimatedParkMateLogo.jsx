@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system/legacy';
 import { StyleSheet, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { WebView } from 'react-native-webview';
 import { createParkMateAnimatedLogoHtml } from '@/components/parkmateLogoAnimatedV8';
 
 export const PARKMATE_LOGO_ANIMATION_DURATION_MS = 3200;
+const PARKMATE_SVG_ASSET = Asset.fromModule(
+  require('../../assets/images/parkmate-logo.svg'),
+);
 
 const PARKMATE_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="512" height="512">
   <defs>
@@ -105,11 +110,42 @@ export function AnimatedParkMateLogo({
   staticOnly = false,
 }) {
   const [hasWebViewError, setHasWebViewError] = useState(false);
+  const [assetSvgXml, setAssetSvgXml] = useState(null);
   const completionRef = useRef(false);
   const logoHtml = useMemo(
     () => createParkMateAnimatedLogoHtml(PARKMATE_LOGO_ANIMATION_DURATION_MS),
     [],
   );
+  const renderedSvgXml = assetSvgXml || PARKMATE_LOGO_SVG;
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadBundledSvg = async () => {
+      try {
+        await PARKMATE_SVG_ASSET.downloadAsync();
+        const assetUri =
+          PARKMATE_SVG_ASSET.localUri || PARKMATE_SVG_ASSET.uri || null;
+
+        if (!assetUri) {
+          return;
+        }
+
+        const svgXml = await FileSystem.readAsStringAsync(assetUri);
+        if (!isCancelled && svgXml) {
+          setAssetSvgXml(svgXml);
+        }
+      } catch {
+        // Keep the embedded fallback so startup never breaks on asset load failure.
+      }
+    };
+
+    loadBundledSvg().catch(() => {});
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     completionRef.current = false;
@@ -137,10 +173,10 @@ export function AnimatedParkMateLogo({
       style={[styles.container, { width: size, height: size }, style]}
     >
       {staticOnly || hasWebViewError ? (
-        <SvgXml xml={PARKMATE_LOGO_SVG} width="100%" height="100%" />
+        <SvgXml xml={renderedSvgXml} width="100%" height="100%" />
       ) : (
         <>
-          <SvgXml xml={PARKMATE_LOGO_SVG} width="100%" height="100%" />
+          <SvgXml xml={renderedSvgXml} width="100%" height="100%" />
           <WebView
             bounces={false}
             onError={() => setHasWebViewError(true)}

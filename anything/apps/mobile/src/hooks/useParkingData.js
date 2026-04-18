@@ -24,7 +24,12 @@ const REPORT_TTL_MS = 3 * 60 * 1000;
 const DEFAULT_NEARBY_REPORTS_STALE_TIME_MS = 15000;
 const DEFAULT_NEARBY_REPORTS_REFETCH_INTERVAL_MS = 15000;
 const DEFAULT_NEARBY_REPORTS_VERSION_REFETCH_INTERVAL_MS = 10000;
+const DEFAULT_PARKING_ZONES_REFETCH_INTERVAL_MS = 15000;
+const DEFAULT_CURRENT_ZONE_REFETCH_INTERVAL_MS = 10000;
 const NEARBY_REPORTS_VERSION_TIMEOUT_MS = 8000;
+const PARKING_QUERY_TIMEOUT_MS = 15000;
+const PARKING_QUERY_RETRY_DELAY_MS = 1200;
+const PARKING_QUERY_ATTEMPTS = 3;
 
 export const NEARBY_REPORTS_QUERY_KEY = ["nearby_reports"];
 export const NEARBY_REPORTS_VERSION_QUERY_KEY = ["nearby_reports_version"];
@@ -134,6 +139,89 @@ export const getCurrentZoneQueryKey = (queryLocation) => [
   queryLocation?.longitude,
 ];
 
+const sleep = (durationMs) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, durationMs);
+  });
+
+const readJsonResponse = async (response, fallbackMessage) => {
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    throw new Error(responseText || fallbackMessage);
+  }
+
+  try {
+    return responseText ? JSON.parse(responseText) : {};
+  } catch {
+    throw new Error(
+      `${fallbackMessage}: ${responseText.slice(0, 120) || "empty response"}`,
+    );
+  }
+};
+
+const fetchParkingEndpoint = async ({
+  label,
+  path,
+  payload,
+  fallbackResult,
+  timeoutMs = PARKING_QUERY_TIMEOUT_MS,
+  attempts = PARKING_QUERY_ATTEMPTS,
+}) => {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    let timeoutId;
+
+    try {
+      const response = await Promise.race([
+        fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }),
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(
+              new Error(
+                `${label} request timed out after ${Math.round(timeoutMs / 1000)}s`,
+              ),
+            );
+          }, timeoutMs);
+        }),
+      ]);
+
+      return await readJsonResponse(response, `Failed to fetch ${label}`);
+    } catch (error) {
+      lastError = error;
+      const canRetry = attempt < attempts;
+
+      console.warn("[parking.fetch] Request failed", {
+        label,
+        attempt,
+        attempts,
+        message: error?.message || String(error),
+        payload,
+        canRetry,
+      });
+
+      if (canRetry) {
+        await sleep(PARKING_QUERY_RETRY_DELAY_MS);
+      }
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  if (fallbackResult) {
+    return fallbackResult();
+  }
+
+  throw lastError || new Error(`Failed to fetch ${label}`);
+};
+
 const readNearbyReportsVersionResponse = async (response) => {
   const responseText = await response.text();
 
@@ -156,19 +244,17 @@ export const fetchParkingZonesQuery = async (location, radiusMeters = 500) => {
     return { zones: [] };
   }
 
-  const response = await fetch("/api/zones/list", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  return fetchParkingEndpoint({
+    label: "parking zones",
+    path: "/api/zones/list",
+    payload: {
       latitude: queryLocation.latitude,
       longitude: queryLocation.longitude,
       radiusMeters,
       includeGeometry: true,
-    }),
+    },
+    fallbackResult: () => ({ zones: [] }),
   });
-
-  if (!response.ok) return { zones: [] };
-  return response.json();
 };
 
 export const fetchCurrentZoneQuery = async (location) => {
@@ -177,17 +263,15 @@ export const fetchCurrentZoneQuery = async (location) => {
     return { zone: null };
   }
 
-  const response = await fetch("/api/zones/at-location", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  return fetchParkingEndpoint({
+    label: "current parking zone",
+    path: "/api/zones/at-location",
+    payload: {
       latitude: queryLocation.latitude,
       longitude: queryLocation.longitude,
-    }),
+    },
+    fallbackResult: () => ({ zone: null }),
   });
-
-  if (!response.ok) return { zone: null };
-  return response.json();
 };
 
 export const fetchNearbyReportsQuery = async (location, radiusMeters = 500) => {
@@ -196,21 +280,16 @@ export const fetchNearbyReportsQuery = async (location, radiusMeters = 500) => {
     return { success: false, spots: [] };
   }
 
-  const response = await fetch("/api/reports/nearby", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  return fetchParkingEndpoint({
+    label: "nearby reports",
+    path: "/api/reports/nearby",
+    payload: {
       latitude: queryLocation.latitude,
       longitude: queryLocation.longitude,
       radiusMeters,
-    }),
+    },
+    fallbackResult: () => ({ success: false, spots: [] }),
   });
-
-  if (!response.ok) {
-    return { success: false, spots: [] };
-  }
-
-  return response.json();
 };
 
 const fetchNearbyReportsVersion = async (nearbyReportsVersionUrl, payload) => {
@@ -502,6 +581,9 @@ export const useParkingZones = (location, radiusMeters = 500) => {
     enabled: !!queryLocation,
     placeholderData: (previousData) => previousData,
     staleTime: 30000,
+    refetchOnMount: true,
+    refetchInterval: DEFAULT_PARKING_ZONES_REFETCH_INTERVAL_MS,
+    retry: false,
   });
 
   return zonesData?.zones || [];
@@ -610,7 +692,10 @@ export const useCurrentZone = (location) => {
     queryFn: async () => fetchCurrentZoneQuery(queryLocation),
     enabled: !!queryLocation,
     placeholderData: (previousData) => previousData,
-    staleTime: 30000,
+    staleTime: 15000,
+    refetchOnMount: true,
+    refetchInterval: DEFAULT_CURRENT_ZONE_REFETCH_INTERVAL_MS,
+    retry: false,
   });
 
   return currentZoneData?.zone || null;
@@ -1071,6 +1156,62 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
     },
     onError: (error) => {
       Alert.alert("Error", error.message);
+    },
+  });
+};
+
+export const useSuggestParkingZone = (location, onSuccess) => {
+  const { data: user } = useUser();
+  const suggestZoneUrl = resolveBackendUrl("/api/zones/suggest");
+
+  return useMutation({
+    mutationFn: async ({ coords, areaName }) => {
+      const session = useAuthStore.getState().session;
+
+      if (!user?.id) {
+        throw new Error("Please sign in to suggest parking zones");
+      }
+
+      const response = await fetch(suggestZoneUrl || "/api/zones/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latitude: coords?.latitude,
+          longitude: coords?.longitude,
+          areaName: typeof areaName === "string" ? areaName.trim() : "",
+        }),
+      });
+
+      const responseText = await response.text().catch(() => "");
+      const payload = safeJsonParse(responseText);
+
+      console.log("[zones.suggest] Suggest zone response received", {
+        requestUrl: suggestZoneUrl || "/api/zones/suggest",
+        status: response.status,
+        ok: response.ok,
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        body: payload || responseText || null,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message ||
+            payload?.error ||
+            responseText ||
+            "Failed to suggest parking zone",
+        );
+      }
+
+      return payload || {};
+    },
+    onSuccess: (data) => {
+      if (onSuccess) {
+        onSuccess(data);
+      }
+    },
+    onError: (error) => {
+      Alert.alert("Unable to suggest zone", error.message);
     },
   });
 };

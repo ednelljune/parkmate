@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo, useContext } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,9 @@ import {
 import MapView, { Circle, Polygon, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import {
+  BottomTabBarHeightContext,
+} from "@react-navigation/bottom-tabs";
 import { useLocalSearchParams } from "expo-router";
 
 import { useLocation } from "@/hooks/useLocation";
@@ -19,6 +21,7 @@ import {
   useCurrentZone,
   useNearbyReports,
   useReportSpot,
+  useSuggestParkingZone,
   useClaimSpot,
   useReportFalseSpot,
   useDeleteReportSpot,
@@ -54,43 +57,28 @@ import {
   getApiZoneCenter,
   getApiZoneEffectiveDistanceMeters,
 } from "@/utils/zoneAlerts";
-import { mergeDistinctZones } from "@/utils/zoneDeduplication";
+import { filterOverlappingZones, mergeDistinctZones } from "@/utils/zoneDeduplication";
 import { PARKING_ALERT_RADIUS_METERS } from "@/constants/detectionRadius";
 import { BRAND_PALETTE } from "@/theme/brandColors";
-import {
-  buildMapPolygonsFromBoundary,
-  isLocationInsideZoneBoundary,
-} from "@/utils/zoneGeometry";
+import { isLocationInsideZoneBoundary } from "@/utils/zoneGeometry";
+import { getZoneCoverageModel, getZoneCoverageSummary } from "@/utils/zoneCoverage";
 
 const normalizeCoordinate = (value) => {
   const parsed = typeof value === "number" ? value : Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const getBoundaryRadiusMeters = (coordinates, center) => {
-  if (!Array.isArray(coordinates) || !center) {
-    return null;
-  }
-
-  const distances = coordinates
-    .map((coordinate) => getDistanceMeters(center, coordinate))
-    .filter((distance) => Number.isFinite(distance));
-
-  if (distances.length === 0) {
-    return null;
-  }
-
-  return Math.max(...distances);
-};
-
-const closeBoundaryRing = (coordinates) => {
-  if (!Array.isArray(coordinates) || coordinates.length < 3) {
+const buildTracePath = (coordinates, closePath = false) => {
+  if (!Array.isArray(coordinates) || coordinates.length < 2) {
     return [];
+  }
+
+  if (!closePath || coordinates.length < 3) {
+    return coordinates;
   }
 
   const [firstCoordinate] = coordinates;
   const lastCoordinate = coordinates[coordinates.length - 1];
-
   if (
     firstCoordinate?.latitude === lastCoordinate?.latitude &&
     firstCoordinate?.longitude === lastCoordinate?.longitude
@@ -106,42 +94,42 @@ const interpolateCoordinate = (start, end, ratio) => ({
   longitude: start.longitude + (end.longitude - start.longitude) * ratio,
 });
 
-const buildTraceCoordinates = (coordinates, progress) => {
-  const closedRing = closeBoundaryRing(coordinates);
-  if (closedRing.length < 4) {
-    return closedRing;
+const buildTraceCoordinates = (coordinates, progress, { closePath = false } = {}) => {
+  const tracePath = buildTracePath(coordinates, closePath);
+  if (tracePath.length < 2) {
+    return tracePath;
   }
 
   const clampedProgress = Math.max(0, Math.min(progress, 1));
   if (clampedProgress === 0) {
-    return [closedRing[0]];
+    return [tracePath[0]];
   }
 
   if (clampedProgress === 1) {
-    return closedRing;
+    return tracePath;
   }
 
   const segmentLengths = [];
   let totalLength = 0;
 
-  for (let index = 1; index < closedRing.length; index += 1) {
-    const length = getDistanceMeters(closedRing[index - 1], closedRing[index]);
+  for (let index = 1; index < tracePath.length; index += 1) {
+    const length = getDistanceMeters(tracePath[index - 1], tracePath[index]);
     segmentLengths.push(length);
     totalLength += length;
   }
 
   if (!Number.isFinite(totalLength) || totalLength <= 0) {
-    return closedRing;
+    return tracePath;
   }
 
   const targetLength = totalLength * clampedProgress;
-  const tracedCoordinates = [closedRing[0]];
+  const tracedCoordinates = [tracePath[0]];
   let traversedLength = 0;
 
-  for (let index = 1; index < closedRing.length; index += 1) {
+  for (let index = 1; index < tracePath.length; index += 1) {
     const segmentLength = segmentLengths[index - 1];
-    const startCoordinate = closedRing[index - 1];
-    const endCoordinate = closedRing[index];
+    const startCoordinate = tracePath[index - 1];
+    const endCoordinate = tracePath[index];
 
     if (traversedLength + segmentLength <= targetLength) {
       tracedCoordinates.push(endCoordinate);
@@ -185,7 +173,7 @@ const METERS_PER_DEGREE_LATITUDE = 111320;
 const RADIUS_VIEW_PADDING_MULTIPLIER = 1.15;
 const NAVIGATION_CARD_TO_ACTION_BUTTON_GAP = 12;
 const NAVIGATION_CARD_WIDTH = 220;
-const SELECTED_ZONE_TRACE_DURATION_MS = 1400;
+const SELECTED_ZONE_TRACE_DURATION_MS = 2200;
 
 const normalizeZoneIdentity = (name, type) => {
   const normalizedName = String(name || "").trim().toLowerCase();
@@ -209,6 +197,12 @@ const sanitizeZoneForSelection = (zone) => {
     center_lat: latitude,
     center_lng: longitude,
     boundary_geojson: zone.boundary_geojson ?? null,
+    sourceDataset: zone.sourceDataset ?? zone.source_dataset ?? null,
+    sourceOwner: zone.sourceOwner ?? zone.source_owner ?? null,
+    localityName: zone.localityName ?? zone.locality_name ?? null,
+    coverage_geojson: zone.coverage_geojson ?? null,
+    segment_geojson: zone.segment_geojson ?? null,
+    street_segment_geojson: zone.street_segment_geojson ?? null,
   };
 };
 
@@ -324,6 +318,7 @@ function ParkMateContent() {
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedZoneOption, setSelectedZoneOption] = useState(null);
+  const [suggestedAreaName, setSuggestedAreaName] = useState("");
   const [spotQuantity, setSpotQuantity] = useState(1);
   const [selectedZone, setSelectedZone] = useState(null);
   const [activeNavigationTarget, setActiveNavigationTarget] = useState(null);
@@ -336,7 +331,6 @@ function ParkMateContent() {
   const [mapRegion, setMapRegion] = useState(mapRegionRef.current);
   const [overlayMapRegion, setOverlayMapRegion] = useState(mapRegionRef.current);
   const [mapOverlayRevision, setMapOverlayRevision] = useState(0);
-  const [selectedZoneScreenPoint, setSelectedZoneScreenPoint] = useState(null);
   const [selectedZoneTraceProgress, setSelectedZoneTraceProgress] = useState(0);
   const scheduleOverlayRefresh = useCallback(
     (immediate = false) => {
@@ -351,7 +345,8 @@ function ParkMateContent() {
 
   const detectionRadius = PARKING_ALERT_RADIUS_METERS;
   const { location } = useLocation();
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeightContext = useContext(BottomTabBarHeightContext);
+  const tabBarHeight = Number(tabBarHeightContext) || 0;
   const focusCoordinate = useMemo(() => {
     if (location?.latitude != null && location?.longitude != null) {
       return {
@@ -586,7 +581,7 @@ function ParkMateContent() {
       councilZones: mergeDistinctZones(
         baselineDetectedZonePins.councilZones,
         prioritizedDetectedZonePins.councilZones,
-      ).slice(0, MAX_DETECTED_COUNCIL_ZONE_PINS),
+      ),
     };
   }, [
     detectionRadius,
@@ -869,10 +864,40 @@ function ParkMateContent() {
     return effectiveReportZoneOptions[0] || null;
   }, [currentZone?.id, effectiveReportZoneOptions, selectedZone?.id]);
 
-  const visibleCouncilParkings = useMemo(
-    () => detectedZonePins.councilZones,
-    [detectedZonePins.councilZones],
-  );
+  const visibleCouncilParkings = useMemo(() => {
+    let nextVisibleCouncilZones = detectedZonePins.councilZones;
+
+    if (selectedZone && Platform.OS === "android") {
+      const selectedLatitude = Number(selectedZone.center_lat ?? selectedZone.latitude);
+      const selectedLongitude = Number(selectedZone.center_lng ?? selectedZone.longitude);
+      if (Number.isFinite(selectedLatitude) && Number.isFinite(selectedLongitude)) {
+        const selectedZoneId =
+          selectedZone.id != null ? String(selectedZone.id) : null;
+        const alreadyVisible = nextVisibleCouncilZones.some((zone) => {
+          if (selectedZoneId && zone?.id != null) {
+            return String(zone.id) === selectedZoneId;
+          }
+
+          return (
+            Number(zone?.latitude) === selectedLatitude &&
+            Number(zone?.longitude) === selectedLongitude
+          );
+        });
+
+        if (!alreadyVisible) {
+          nextVisibleCouncilZones = [
+            selectedZone,
+            ...nextVisibleCouncilZones.slice(
+              0,
+              Math.max(MAX_DETECTED_COUNCIL_ZONE_PINS - 1, 0),
+            ),
+          ];
+        }
+      }
+    }
+
+    return filterOverlappingZones(nextVisibleCouncilZones, visibleZoneMarkers);
+  }, [detectedZonePins.councilZones, selectedZone, visibleZoneMarkers]);
   const zonePinZoomScale = useMemo(
     () => getZoomedOutZoneScale(mapRegion),
     [mapRegion?.latitudeDelta, mapRegion?.longitudeDelta],
@@ -975,62 +1000,63 @@ function ParkMateContent() {
         return leftDistance - rightDistance;
       });
   }, [reports, selectedZone]);
-  const selectedZonePolygons = useMemo(
-    () => buildMapPolygonsFromBoundary(selectedZone?.boundary_geojson),
-    [selectedZone?.boundary_geojson],
+  const selectedZoneCoverage = useMemo(
+    () => getZoneCoverageModel(selectedZone),
+    [selectedZone],
   );
-  const selectedZoneTracePolylines = useMemo(
-    () =>
-      selectedZonePolygons
-        .map((coordinates) => buildTraceCoordinates(coordinates, selectedZoneTraceProgress))
-        .filter((coordinates) => coordinates.length >= 2),
-    [selectedZonePolygons, selectedZoneTraceProgress],
+  const selectedZoneCoverageSummary = useMemo(
+    () => getZoneCoverageSummary(selectedZone),
+    [selectedZone],
   );
-  const selectedZoneHighlightCircle = useMemo(() => {
-    const latitude = normalizeCoordinate(selectedZone?.center_lat);
-    const longitude = normalizeCoordinate(selectedZone?.center_lng);
-
-    if (latitude === null || longitude === null) {
-      return null;
-    }
-
-    const center = { latitude, longitude };
-    const inferredRadius = selectedZonePolygons
-      .map((coordinates) => getBoundaryRadiusMeters(coordinates, center))
-      .filter((radius) => Number.isFinite(radius))
-      .reduce((maxRadius, radius) => Math.max(maxRadius, radius), 0);
-
-    return {
-      center,
-      radius: Math.max(28, Math.min(inferredRadius || 42, 180)),
-    };
-  }, [
-    selectedZone?.center_lat,
-    selectedZone?.center_lng,
-    selectedZonePolygons,
-  ]);
-  const selectedZoneHighlightDiameter = useMemo(() => {
-    if (!selectedZoneHighlightCircle) {
+  const selectedZonePolygons = selectedZoneCoverage.polygons;
+  const selectedZoneLineCoverage = selectedZoneCoverage.polylines;
+  const selectedZoneApproximateCircle = selectedZoneCoverage.approximateCircle;
+  const selectedZoneFillOpacity = useMemo(() => {
+    if (selectedZoneCoverage.kind !== "polygon") {
       return 0;
     }
 
-    const latitudeDelta = Math.max(Number(mapRegion?.latitudeDelta) || DEFAULT_MAP_DELTA, 0.0001);
-    const mapHeight = Math.max(windowHeight - insets.top - tabBarHeight, 240);
-    const pixelsPerDegreeLat = mapHeight / latitudeDelta;
-    const radiusDegrees = selectedZoneHighlightCircle.radius / METERS_PER_DEGREE_LATITUDE;
-    const diameter = radiusDegrees * pixelsPerDegreeLat * 2;
+    const fillProgress = Math.max(0, (selectedZoneTraceProgress - 0.72) / 0.28);
+    return fillProgress * 0.18;
+  }, [selectedZoneCoverage.kind, selectedZoneTraceProgress]);
+  const selectedZoneOutlinePolylines = useMemo(
+    () => [
+      ...selectedZonePolygons.map((coordinates) => buildTracePath(coordinates, true)),
+      ...selectedZoneLineCoverage.map((coordinates) => buildTracePath(coordinates)),
+    ],
+    [selectedZoneLineCoverage, selectedZonePolygons],
+  );
+  const selectedZoneTracePolylines = useMemo(
+    () => [
+      ...selectedZonePolygons
+        .map((coordinates) =>
+          buildTraceCoordinates(coordinates, selectedZoneTraceProgress, {
+            closePath: true,
+          }),
+        )
+        .filter((coordinates) => coordinates.length >= 2),
+      ...selectedZoneLineCoverage
+        .map((coordinates) => buildTraceCoordinates(coordinates, selectedZoneTraceProgress))
+        .filter((coordinates) => coordinates.length >= 2),
+    ],
+    [selectedZoneLineCoverage, selectedZonePolygons, selectedZoneTraceProgress],
+  );
+  const selectedZoneApproximateRadius = useMemo(() => {
+    if (!selectedZoneApproximateCircle?.radius) {
+      return 0;
+    }
 
-    return Math.max(72, Math.min(diameter, 220));
-  }, [
-    insets.top,
-    mapRegion?.latitudeDelta,
-    selectedZoneHighlightCircle,
-    tabBarHeight,
-    windowHeight,
-  ]);
+    return selectedZoneApproximateCircle.radius * (0.88 + selectedZoneTraceProgress * 0.12);
+  }, [selectedZoneApproximateCircle?.radius, selectedZoneTraceProgress]);
+  const selectedZoneTraceCompleted = selectedZoneTraceProgress >= 0.999;
 
   useEffect(() => {
-    if (selectedZonePolygons.length === 0) {
+    if (
+      selectedZoneCoverage.kind === "pin" ||
+      (selectedZonePolygons.length === 0 &&
+        selectedZoneLineCoverage.length === 0 &&
+        !selectedZoneApproximateCircle)
+    ) {
       setSelectedZoneTraceProgress(0);
       return undefined;
     }
@@ -1062,50 +1088,12 @@ function ParkMateContent() {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [selectedZone?.id, selectedZonePolygons]);
-
-  useEffect(() => {
-    if (Platform.OS !== "ios" || !selectedZoneHighlightCircle?.center || !mapRef.current) {
-      setSelectedZoneScreenPoint(null);
-      return;
-    }
-
-    let cancelled = false;
-    const updateScreenPoint = async () => {
-      try {
-        const point = await mapRef.current?.pointForCoordinate?.(
-          selectedZoneHighlightCircle.center,
-        );
-
-        if (
-          cancelled ||
-          !point ||
-          !Number.isFinite(point.x) ||
-          !Number.isFinite(point.y)
-        ) {
-          return;
-        }
-
-        setSelectedZoneScreenPoint({ x: point.x, y: point.y });
-      } catch {
-        if (!cancelled) {
-          setSelectedZoneScreenPoint(null);
-        }
-      }
-    };
-
-    const timeoutId = setTimeout(updateScreenPoint, 0);
-    return () => {
-      cancelled = true;
-      clearTimeout(timeoutId);
-    };
   }, [
-    mapOverlayRevision,
-    mapRegion?.latitude,
-    mapRegion?.latitudeDelta,
-    mapRegion?.longitude,
-    mapRegion?.longitudeDelta,
-    selectedZoneHighlightCircle,
+    selectedZone?.id,
+    selectedZoneApproximateCircle,
+    selectedZoneCoverage.kind,
+    selectedZoneLineCoverage.length,
+    selectedZonePolygons.length,
   ]);
 
   useEffect(() => {
@@ -1145,6 +1133,7 @@ function ParkMateContent() {
 
   const reportMutation = useReportSpot(location, (data) => {
     setShowReportModal(false);
+    setSuggestedAreaName("");
     if (!data?.report) return;
 
     const latitude = normalizeCoordinate(data.report.latitude);
@@ -1179,6 +1168,15 @@ function ParkMateContent() {
         600,
       );
     }
+  });
+  const suggestZoneMutation = useSuggestParkingZone(location, (data) => {
+    setShowReportModal(false);
+    setSuggestedAreaName("");
+    Alert.alert(
+      "Zone suggestion received",
+      data?.message ||
+        "Thanks. Your parking zone suggestion has been sent for review.",
+    );
   });
 
   const claimMutation = useClaimSpot(
@@ -1559,16 +1557,8 @@ function ParkMateContent() {
     }
 
     const preferredZoneOption = getPreferredReportZoneOption();
-
-    if (!preferredZoneOption) {
-    Alert.alert(
-      "No Parking Zone Nearby",
-      "You can only report a spot when your current location is inside a mapped parking zone area.",
-    );
-      return;
-    }
-
-    setSelectedZoneOption(preferredZoneOption);
+    setSelectedZoneOption(preferredZoneOption || null);
+    setSuggestedAreaName("");
 
     console.log("[report.ui] Opening report modal", {
       latitude: location.latitude,
@@ -1598,7 +1588,7 @@ function ParkMateContent() {
 
     if (!zoneOptionToReport) {
       Alert.alert(
-        "No Parking Zone Nearby",
+        "Inside Parking Zone Required",
         "You can only report a spot when your current location is inside a mapped parking zone area.",
       );
       return;
@@ -1657,10 +1647,36 @@ function ParkMateContent() {
     detectionRadius,
     effectiveReportZoneOptions,
     location,
+    reportMutation,
     selectedZoneOption,
     spotQuantity,
-    reportMutation,
   ]);
+
+  const handleSuggestParkingZone = useCallback(() => {
+    if (!location || suggestZoneMutation.isPending) {
+      return;
+    }
+
+    Alert.alert(
+      "Suggest Missing Parking Zone",
+      "Send this location as a parking zone suggestion for review? It will stay pending until it has been checked.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send",
+          onPress: () => {
+            suggestZoneMutation.mutate({
+              coords: {
+                latitude: location.latitude,
+                longitude: location.longitude,
+              },
+              areaName: suggestedAreaName,
+            });
+          },
+        },
+      ],
+    );
+  }, [location, suggestedAreaName, suggestZoneMutation]);
 
   const logSpotSelection = useCallback((label, payload) => {
     if (!payload) {
@@ -1890,6 +1906,19 @@ function ParkMateContent() {
     }
   }, [focusUserRadiusView, location, stopInAppNavigation]);
 
+  const selectedZoneModalPayload = useMemo(() => {
+    if (!selectedZone) {
+      return null;
+    }
+
+    return {
+      ...selectedZone,
+      coverage_label: selectedZoneCoverageSummary.label,
+      coverage_accuracy_label: selectedZoneCoverageSummary.accuracyLabel,
+      coverage_kind: selectedZoneCoverageSummary.kind,
+    };
+  }, [selectedZone, selectedZoneCoverageSummary]);
+
   const brandingHeaderOffset = 0;
   const brandingHeaderHeight = 88;
   const currentZoneTopOffset = brandingHeaderHeight;
@@ -1945,29 +1974,61 @@ function ParkMateContent() {
             />
           )}
 
-          {Platform.OS !== "ios" &&
+          {selectedZoneCoverage.kind === "polygon" &&
             selectedZonePolygons.map((coordinates, index) => (
               <Polygon
                 key={`selected-zone-boundary-${selectedZone?.id ?? "active"}-${index}`}
                 coordinates={coordinates}
-                strokeColor="rgba(16, 185, 129, 0.3)"
-                fillColor="rgba(16, 185, 129, 0.18)"
-                strokeWidth={1}
+                strokeColor="rgba(16, 185, 129, 0.14)"
+                fillColor={`rgba(16, 185, 129, ${selectedZoneFillOpacity})`}
+                strokeWidth={0.75}
                 zIndex={2}
               />
             ))}
 
-          {selectedZonePolygons.map((coordinates, index) => (
-            <Polyline
-              key={`selected-zone-outline-${selectedZone?.id ?? "active"}-${index}`}
-              coordinates={closeBoundaryRing(coordinates)}
-              strokeColor="rgba(16, 185, 129, 0.42)"
-              strokeWidth={1}
-              lineCap="round"
-              lineJoin="round"
-              zIndex={3}
-            />
-          ))}
+          {selectedZoneCoverage.kind === "approximate" &&
+            selectedZoneApproximateCircle?.center &&
+            selectedZoneApproximateRadius > 0 && (
+              <>
+                <Circle
+                  center={selectedZoneApproximateCircle.center}
+                  radius={selectedZoneApproximateRadius * 1.22}
+                  strokeColor="rgba(16, 185, 129, 0.08)"
+                  strokeWidth={1}
+                  fillColor={`rgba(16, 185, 129, ${0.03 + selectedZoneTraceProgress * 0.02})`}
+                  zIndex={1}
+                />
+                <Circle
+                  center={selectedZoneApproximateCircle.center}
+                  radius={selectedZoneApproximateRadius}
+                  strokeColor="rgba(52, 211, 153, 0.18)"
+                  strokeWidth={1}
+                  fillColor={`rgba(16, 185, 129, ${0.07 + selectedZoneTraceProgress * 0.04})`}
+                  zIndex={2}
+                />
+                <Circle
+                  center={selectedZoneApproximateCircle.center}
+                  radius={selectedZoneApproximateRadius * 0.7}
+                  strokeColor="rgba(52, 211, 153, 0.12)"
+                  strokeWidth={0.5}
+                  fillColor={`rgba(52, 211, 153, ${0.04 + selectedZoneTraceProgress * 0.03})`}
+                  zIndex={2}
+                />
+              </>
+            )}
+
+          {selectedZoneTraceCompleted &&
+            selectedZoneOutlinePolylines.map((coordinates, index) => (
+              <Polyline
+                key={`selected-zone-outline-${selectedZone?.id ?? "active"}-${index}`}
+                coordinates={coordinates}
+                strokeColor="rgba(52, 211, 153, 0.96)"
+                strokeWidth={2}
+                lineCap="round"
+                lineJoin="round"
+                zIndex={4}
+              />
+            ))}
 
           {selectedZoneTracePolylines.map((coordinates, index) => (
             <Polyline
@@ -1977,7 +2038,6 @@ function ParkMateContent() {
               strokeWidth={2}
               lineCap="round"
               lineJoin="round"
-              lineDashPattern={[10, 8]}
               zIndex={4}
             />
           ))}
@@ -2010,23 +2070,6 @@ function ParkMateContent() {
             </>
           )}
         </MapView>
-
-        {Platform.OS === "ios" && selectedZoneScreenPoint && selectedZoneHighlightDiameter > 0 && (
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              left: selectedZoneScreenPoint.x - selectedZoneHighlightDiameter / 2,
-              top: selectedZoneScreenPoint.y - selectedZoneHighlightDiameter / 2,
-              width: selectedZoneHighlightDiameter,
-              height: selectedZoneHighlightDiameter,
-              borderRadius: selectedZoneHighlightDiameter / 2,
-              backgroundColor: "rgba(16, 185, 129, 0.16)",
-              borderWidth: 3,
-              borderColor: "rgba(16, 185, 129, 0.92)",
-            }}
-          />
-        )}
 
         {Platform.OS === "android" && (
           <>
@@ -2195,11 +2238,15 @@ function ParkMateContent() {
         detectionRadius={detectionRadius}
         spotQuantity={spotQuantity}
         isReporting={reportMutation.isPending}
+        isSuggestingZone={suggestZoneMutation.isPending}
+        suggestedAreaName={suggestedAreaName}
         insets={insets}
         onClose={() => setShowReportModal(false)}
         onSelectType={setSelectedZoneOption}
+        onChangeSuggestedAreaName={setSuggestedAreaName}
         onSetQuantity={setSpotQuantity}
         onConfirm={handleConfirmReport}
+        onSuggestZone={handleSuggestParkingZone}
       />
 
       <SpotDetailsModal
@@ -2219,8 +2266,8 @@ function ParkMateContent() {
       />
 
       <ZoneDetailsModal
-        visible={!!selectedZone}
-        zone={selectedZone}
+        visible={!!selectedZoneModalPayload}
+        zone={selectedZoneModalPayload}
         availableReports={selectedZoneReports}
         insets={insets}
         onClose={() => {

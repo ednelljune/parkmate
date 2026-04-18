@@ -34,6 +34,7 @@ import * as zonesAtLocationRoute from '../src/app/api/zones/at-location/route.js
 import * as zonesImportVictoriaPublicRoute from '../src/app/api/zones/import-victoria-public/route.js';
 import * as zonesListRoute from '../src/app/api/zones/list/route.js';
 import * as zonesSeedSampleRoute from '../src/app/api/zones/seed-sample/route.js';
+import * as zonesSuggestRoute from '../src/app/api/zones/suggest/route.js';
 
 const als = new AsyncLocalStorage<{ requestId: string }>();
 
@@ -158,6 +159,7 @@ mountRoute('get', '/api/zones/list', zonesListRoute.GET);
 mountRoute('post', '/api/zones/list', zonesListRoute.POST);
 mountRoute('post', '/api/zones/import-victoria-public', zonesImportVictoriaPublicRoute.POST);
 mountRoute('post', '/api/zones/seed-sample', zonesSeedSampleRoute.POST);
+mountRoute('post', '/api/zones/suggest', zonesSuggestRoute.POST);
 
 app.route(API_BASENAME, api);
 

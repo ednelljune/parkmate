@@ -102,7 +102,7 @@ export default () => {
           isSending && styles.badgeBusy,
         ]}
       >
-        <Image source={require("../../assets/images/parkmate-logo.png")} style={styles.logo} />
+        <Image source={require("../../assets/images/parkmate-logo-current.png")} style={styles.logo} />
         <View>
           <Text style={styles.eyebrow}>{isExpoGo ? "PARKMATE PREVIEW" : "PARKMATE"}</Text>
           <Text style={styles.title}>

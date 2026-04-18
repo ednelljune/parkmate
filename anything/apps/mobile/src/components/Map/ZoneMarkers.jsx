@@ -22,6 +22,19 @@ const areCoordinatesEqual = (left, right) =>
   Number(left?.latitude) === Number(right?.latitude) &&
   Number(left?.longitude) === Number(right?.longitude);
 
+const isZoneWithinUserRadius = (zone, userLocation, radius, isSelected) => {
+  if (isSelected) {
+    return true;
+  }
+
+  if (!userLocation || !Number.isFinite(radius)) {
+    return false;
+  }
+
+  const distance = getApiZoneEffectiveDistanceMeters(zone, userLocation);
+  return distance !== null && distance <= radius;
+};
+
 const NativeZoneMarker = React.memo(
   ({
     zone,
@@ -222,10 +235,19 @@ export const ZoneMarkers = React.memo(
           const latitude = Number(zone?.center_lat);
           const longitude = Number(zone?.center_lng);
           const hasValidId = zone?.id != null && String(zone.id).trim().length > 0;
+          const isSelected =
+            selectedZone?.id != null &&
+            zone?.id != null &&
+            String(selectedZone.id) === String(zone.id);
 
-          return hasValidId && Number.isFinite(latitude) && Number.isFinite(longitude);
+          return (
+            hasValidId &&
+            Number.isFinite(latitude) &&
+            Number.isFinite(longitude) &&
+            isZoneWithinUserRadius(zone, userLocation, radius, isSelected)
+          );
         }),
-      [zones],
+      [radius, selectedZone?.id, userLocation, zones],
     );
     const selectedZoneId =
       selectedZone?.id != null ? String(selectedZone.id) : null;
@@ -289,6 +311,9 @@ export const AndroidZoneOverlay = ({
             selectedZone?.id != null &&
             zone?.id != null &&
             String(selectedZone.id) === String(zone.id);
+          if (!isZoneWithinUserRadius(zone, userLocation, radius, isSelected)) {
+            return null;
+          }
           const distance = getApiZoneEffectiveDistanceMeters(zone, userLocation);
           const isNearby = distance !== null && distance <= radius;
           const availableSpots = Math.max(0, getAvailabilityCount?.(zone) || 0);

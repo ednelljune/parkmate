@@ -72,6 +72,19 @@ CREATE TABLE IF NOT EXISTS user_hidden_notifications (
   CONSTRAINT user_hidden_notifications_user_feed_item_key UNIQUE (user_id, feed_type, notification_id)
 );
 
+CREATE TABLE IF NOT EXISTS suggested_parking_zones (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  location geometry(Point, 4326) NOT NULL,
+  area_name TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  confirmation_count INTEGER NOT NULL DEFAULT 0,
+  false_flag_count INTEGER NOT NULL DEFAULT 0,
+  source TEXT NOT NULL DEFAULT 'mobile',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE OR REPLACE FUNCTION public.sync_supabase_auth_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -138,3 +151,9 @@ CREATE INDEX IF NOT EXISTS idx_parking_zones_boundary_gist ON parking_zones USIN
 CREATE INDEX IF NOT EXISTS idx_live_reports_location_gist ON live_reports USING GIST (location);
 CREATE INDEX IF NOT EXISTS idx_user_hidden_notifications_user_feed_created
 ON user_hidden_notifications (user_id, feed_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_suggested_parking_zones_user_created
+ON suggested_parking_zones (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_suggested_parking_zones_status_created
+ON suggested_parking_zones (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_suggested_parking_zones_location_gist
+ON suggested_parking_zones USING GIST (location);

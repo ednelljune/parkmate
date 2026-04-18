@@ -1,0 +1,44 @@
+diff --git a/node_modules/@expo/ngrok/src/client.js b/node_modules/@expo/ngrok/src/client.js
+index 41492b2..43bf08b 100644
+--- a/node_modules/@expo/ngrok/src/client.js
++++ b/node_modules/@expo/ngrok/src/client.js
+@@ -24,18 +24,19 @@ class NgrokClient {
+         return await this.internalApi[method](path, { json: options }).json();
+       }
+     } catch (error) {
++      const rawBody = error?.response?.body;
+       let clientError;
+       try {
+-        const response = JSON.parse(error.response.body);
++        const response = typeof rawBody === "string" ? JSON.parse(rawBody) : rawBody;
+         clientError = new NgrokClientError(
+-          response.msg,
++          response?.msg || error.message,
+           error.response,
+           response
+         );
+       } catch (e) {
+         clientError = new NgrokClientError(
+-          error.response.body,
++          rawBody || error.message,
+           error.response,
+-          error.response.body
++          rawBody || error
+         );
+       }
+       throw clientError;
+@@ -49,8 +50,12 @@ class NgrokClient {
+       return await this.internalApi[method](path, { json: options }).then(
+         (response) => response.statusCode === 204
+       );
+     } catch (error) {
+-      const response = JSON.parse(error.response.body);
+-      throw new NgrokClientError(response.msg, error.response, response);
++      const rawBody = error?.response?.body;
++      if (typeof rawBody === "string") {
++        const response = JSON.parse(rawBody);
++        throw new NgrokClientError(response.msg, error.response, response);
++      }
++      throw new NgrokClientError(rawBody || error.message, error.response, rawBody || error);
+     }
+   }

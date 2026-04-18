@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkMate Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        .animate-dash-line {
+            animation: dash 2s linear infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .animate-floating {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .fade-in-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .delay-100 {
+            transition-delay: 100ms;
+        }
+
+        .delay-200 {
+            transition-delay: 200ms;
+        }
+
+        .delay-300 {
+            transition-delay: 300ms;
+        }
+
+        .delay-400 {
+            transition-delay: 400ms;
+        }
+
+        .delay-500 {
+            transition-delay: 500ms;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-[#0b1f33] text-slate-100 selection:bg-blue-500/30 selection:text-white overflow-x-hidden">
+
+    <!-- Navigation -->
+    <nav
+        class="fixed top-0 left-0 right-0 z-50 bg-[#0b1f33]/80 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex items-center justify-between h-20">
+            <!-- Logo -->
+            <a href="parkmate-marketing-preview.html" class="flex-shrink-0 flex items-center gap-2 cursor-pointer transition-transform hover:scale-105">
+                <img src="./parkmate-logo.svg" alt="ParkMate Logo"
+                    class="w-10 h-10 shadow-lg shadow-emerald-500/20 rounded-xl" />
+                <span class="text-2xl font-bold tracking-tight text-white">ParkMate</span>
+            </a>
+
+            <!-- Desktop Nav -->
+            <div class="hidden md:flex items-center gap-8">
+                <a href="parkmate-marketing-preview.html#features"
+                    class="text-sm font-medium text-slate-300 hover:text-white transition-colors">Features</a>
+                <a href="parkmate-marketing-preview.html#how-it-works"
+                    class="text-sm font-medium text-slate-300 hover:text-white transition-colors">How it Works</a>
+                <a href="parkmate-marketing-preview.html#problem" class="text-sm font-medium text-slate-300 hover:text-white transition-colors">The
+                    Problem</a>
+            </div>
+
+            <!-- Mobile menu button -->
+            <div class="md:hidden">
+                <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')"
+                    class="text-slate-300 hover:text-white p-2">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Nav -->
+        <div id="mobile-menu" class="hidden md:hidden bg-[#0c233d] border-b border-white/5 py-4 flex flex-col gap-4">
+            <a href="parkmate-marketing-preview.html#features" class="px-4 text-base font-medium text-slate-300 hover:text-white">Features</a>
+            <a href="parkmate-marketing-preview.html#how-it-works" class="px-4 text-base font-medium text-slate-300 hover:text-white">How it Works</a>
+            <a href="parkmate-marketing-preview.html#problem" class="px-4 text-base font-medium text-slate-300 hover:text-white">The Problem</a>
+        </div>
+    </nav>
+    <section class="py-32 relative min-h-screen">
+        <div class="absolute inset-0 bg-[#0b1f33]"></div>
+        <div class="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none translate-x-1/2 translate-y-1/2"></div>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 bg-slate-900/50 p-8 md:p-14 rounded-[40px] border border-white/5 mt-10 shadow-2xl backdrop-blur-sm">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-8">Terms of Service</h1>
+<p class="text-slate-300 leading-relaxed mb-4"><b class="text-white">Effective Date:</b> 14 April 2026</p>
+<p class="text-slate-300 leading-relaxed mb-4"><b class="text-white">Last Updated:</b> 14 April 2026</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">Terms of Service for ParkMate</h2>
+<p class="text-slate-300 leading-relaxed mb-4">These Terms of Service ("<b class="text-white">Terms</b>") govern your use of the ParkMate mobile app and related services provided by <b class="text-white">ParkMate</b> ("<b class="text-white">ParkMate</b>," "<b class="text-white">we</b>," "<b class="text-white">our</b>," or "<b class="text-white">us</b>").</p>
+<p class="text-slate-300 leading-relaxed mb-4">By using ParkMate, you agree to these Terms.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">1. Eligibility</h2>
+<p class="text-slate-300 leading-relaxed mb-4">You must be at least the age of legal majority required to use the service in your jurisdiction, or have permission from a parent or legal guardian where allowed by law.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">2. Your Account</h2>
+<p class="text-slate-300 leading-relaxed mb-4">To use some ParkMate features, you may need to create an account. You agree to:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Provide accurate information</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Keep your login credentials secure</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Be responsible for activity under your account</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Notify us promptly of unauthorized access or suspected misuse</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">We may suspend or terminate accounts that violate these Terms.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">3. Description of the Service</h2>
+<p class="text-slate-300 leading-relaxed mb-4">ParkMate provides tools and information related to parking, including features such as:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Parking zone discovery</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Live or recent parking spot reports</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Community-submitted parking activity</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Spot claim and verification features</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Parking timers and reminders</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Activity feeds, profiles, and leaderboards</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Notifications and map-based directions</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">ParkMate is an informational tool only. It does not guarantee that parking is available, lawful, safe, accurate, current, or suitable for your needs.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">4. No Guarantee of Availability or Accuracy</h2>
+<p class="text-slate-300 leading-relaxed mb-4">Parking information in ParkMate may be:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">User-generated</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Delayed</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Incomplete</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Inaccurate</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Outdated</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">You are solely responsible for:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Checking signage, restrictions, permits, meter rules, and local laws</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Confirming parking conditions before acting</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Using your own judgment when relying on app information</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">ParkMate is not responsible for fines, towing, penalties, missed time limits, permit violations, or any parking-related loss.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">5. User Content and Community Reports</h2>
+<p class="text-slate-300 leading-relaxed mb-4">If you submit reports, claims, flags, or other content through ParkMate, you represent that:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Your submission is accurate to the best of your knowledge</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">You have the right to submit it</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">It does not violate any law or third-party right</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">It is not misleading, abusive, fraudulent, or spam</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">You grant us a non-exclusive, worldwide, royalty-free license to use, host, store, reproduce, adapt, display, and distribute your submitted content as needed to operate, improve, and promote ParkMate.</p>
+<p class="text-slate-300 leading-relaxed mb-4">We may remove or moderate content at our discretion.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">6. Acceptable Use</h2>
+<p class="text-slate-300 leading-relaxed mb-4">You agree not to:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Use the service for unlawful purposes</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Submit false, misleading, abusive, or manipulated parking reports</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Interfere with the app, servers, or networks</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Attempt unauthorized access to accounts, systems, or data</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Reverse engineer, scrape, or exploit the service except as permitted by law</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Use bots, scripts, or automation to abuse rankings, reports, or notifications</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Harass, impersonate, or harm other users</li>
+</ul>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">7. Notifications, Location, and Device Features</h2>
+<p class="text-slate-300 leading-relaxed mb-4">Certain features may require access to:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Location</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Notifications</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Camera</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Photo library</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Contacts</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Microphone</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">You can control many of these permissions in your device settings. If you disable required permissions, some features may not work properly.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">8. Suspension and Termination</h2>
+<p class="text-slate-300 leading-relaxed mb-4">We may suspend, restrict, or terminate your access at any time, with or without notice, if:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">You violate these Terms</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">We believe your conduct creates risk for users or the service</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">We are required to do so by law</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">We discontinue the service or part of it</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">You may stop using ParkMate at any time.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">9. Disclaimers</h2>
+<p class="text-slate-300 leading-relaxed mb-4">To the maximum extent permitted by law, ParkMate is provided <b class="text-white">"as is"</b> and <b class="text-white">"as available."</b> We make no warranties, express or implied, including warranties of:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Accuracy</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Reliability</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Availability</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Fitness for a particular purpose</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Non-infringement</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Merchantability</li>
+</ul>
+<p class="text-slate-300 leading-relaxed mb-4">We do not warrant that the app will be uninterrupted, error-free, secure, or free of harmful components.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">10. Limitation of Liability</h2>
+<p class="text-slate-300 leading-relaxed mb-4">To the maximum extent permitted by law, <b class="text-white">ParkMate</b> and its affiliates, officers, employees, contractors, and partners will not be liable for any indirect, incidental, special, consequential, exemplary, or punitive damages, or any loss of profits, revenue, data, goodwill, or business opportunity arising from or related to your use of ParkMate.</p>
+<p class="text-slate-300 leading-relaxed mb-4">Our total liability for any claim relating to the service will not exceed the greater of:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">the amount you paid us for the service in the 12 months before the claim, or</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">AUD $100.</li>
+</ul>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">11. Indemnity</h2>
+<p class="text-slate-300 leading-relaxed mb-4">You agree to indemnify and hold harmless <b class="text-white">ParkMate</b> and its affiliates, personnel, and service providers from claims, losses, liabilities, damages, costs, and expenses arising out of:</p>
+<ul class="mb-4">
+<li class="text-slate-300 ml-6 list-disc mb-2">Your use of ParkMate</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Your content or submissions</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Your violation of these Terms</li>
+<li class="text-slate-300 ml-6 list-disc mb-2">Your violation of any law or third-party rights</li>
+</ul>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">12. Changes to the Service or Terms</h2>
+<p class="text-slate-300 leading-relaxed mb-4">We may modify, suspend, or discontinue any part of ParkMate at any time. We may also update these Terms from time to time. Continued use after updated Terms take effect means you accept the revised Terms.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">13. Governing Law</h2>
+<p class="text-slate-300 leading-relaxed mb-4">These Terms are governed by the laws of <b class="text-white">Victoria, Australia</b>, without regard to conflict of law principles. Any disputes will be handled in the courts located in <b class="text-white">Victoria, Australia</b>, unless applicable law requires otherwise.</p>
+<h2 class="text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">14. Contact Us</h2>
+<p class="text-slate-300 leading-relaxed mb-4">If you have questions about these Terms, contact us at:</p>
+<p class="text-slate-300 leading-relaxed mb-4">ParkMate </p>
+<p class="text-slate-300 leading-relaxed mb-4">support@parkmate.com </p>
+<p class="text-slate-300 leading-relaxed mb-4">Melbourne VIC, Australia</p>
+        </div>
+    </section>
+<!-- 8. Footer -->
+    <footer class="border-t border-white/10 bg-[#071524] py-12">
+        <div
+            class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <i data-lucide="map-pin" class="text-blue-500 w-6 h-6"></i>
+                <span class="text-xl font-bold text-white tracking-tight">ParkMate</span>
+            </div>
+            <div class="flex flex-wrap justify-center gap-6 md:gap-8">
+                <a href="privacy-policy.html" class="text-sm text-slate-400 hover:text-white transition-colors">Privacy Policy</a>
+                <a href="terms-of-service.html" class="text-sm text-slate-400 hover:text-white transition-colors">Terms of Service</a>
+                <a href="contact.html" class="text-sm text-slate-400 hover:text-white transition-colors">Contact Support</a>
+                <a href="#" class="text-sm text-slate-400 hover:text-white transition-colors">Twitter</a>
+                <a href="#" class="text-sm text-slate-400 hover:text-white transition-colors">Instagram</a>
+            </div>
+            <p class="text-slate-500 text-sm">© 2026 ParkMate. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTopBtn" class="fixed bottom-8 right-8 md:bottom-12 md:right-12 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/50 text-white w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-600/30 transition-all duration-300 opacity-0 translate-y-10 pointer-events-none z-50">
+        <i data-lucide="arrow-up" class="w-5 h-5 md:w-6 md:h-6"></i>
+    </button>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Simple Intersection Observer API for scroll animations
+        document.addEventListener("DOMContentLoaded", function () {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("visible");
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: "0px 0px -50px 0px"
+            });
+
+            document.querySelectorAll(".fade-in-up").forEach((el) => {
+                observer.observe(el);
+            });
+
+            // App Flow Mockup Animation
+            const state0 = document.getElementById('mock-state-0');
+            const state1 = document.getElementById('mock-state-1');
+            const state2 = document.getElementById('mock-state-2');
+            const sheet2 = document.getElementById('mock-sheet-2');
+            const state3 = document.getElementById('mock-state-3');
+            const state4 = document.getElementById('mock-state-4');
+            const sheet4 = document.getElementById('mock-sheet-4');
+            const marker = document.getElementById('mock-marker');
+            const staticMarker = document.getElementById('mock-static-marker');
+
+            let timerInterval;
+
+            async function runAnimationLoop() {
+                while (true) {
+                    // Reset to State 0
+                    state0.style.opacity = '1';
+                    state1.style.opacity = '0';
+                    state2.style.opacity = '0';
+                    state3.style.opacity = '0';
+                    state4.style.opacity = '0';
+                    sheet2.style.transform = 'translateY(100%)';
+                    sheet4.style.transform = 'translateY(100%)';
+                    marker.style.opacity = '0';
+                    marker.style.transform = 'scale(0.5)';
+                    marker.classList.remove('animate-bounce');
+                    if (staticMarker) staticMarker.style.opacity = '0.6';
+                    document.getElementById('mock-timer-min').innerText = '59';
+                    document.getElementById('mock-timer-sec').innerText = '59';
+                    if (timerInterval) clearInterval(timerInterval);
+
+                    // State 0: Scanning 
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    // State 1: Alert
+                    state0.style.opacity = '0';
+                    state1.style.opacity = '1';
+                    await new Promise(r => setTimeout(r, 2500));
+
+                    // State 2: Claim spot
+                    state1.style.opacity = '0';
+                    state2.style.opacity = '1';
+                    marker.style.opacity = '1';
+                    marker.style.transform = 'scale(1)';
+                    marker.classList.add('animate-bounce');
+                    if (staticMarker) staticMarker.style.opacity = '0';
+                    await new Promise(r => setTimeout(r, 400));
+                    sheet2.style.transform = 'translateY(0)';
+                    await new Promise(r => setTimeout(r, 2500));
+
+                    // State 3: Park and Timer
+                    sheet2.style.transform = 'translateY(100%)';
+                    await new Promise(r => setTimeout(r, 300));
+                    state2.style.opacity = '0';
+                    state3.style.opacity = '1';
+
+                    let timeRemaining = 3599; // 59m 59s
+                    timerInterval = setInterval(() => {
+                        timeRemaining--;
+                        let minutes = Math.floor(timeRemaining / 60);
+                        let seconds = timeRemaining % 60;
+                        document.getElementById('mock-timer-min').innerText = minutes < 10 ? '0' + minutes : minutes;
+                        document.getElementById('mock-timer-sec').innerText = seconds < 10 ? '0' + seconds : seconds;
+                    }, 1000);
+
+                    await new Promise(r => setTimeout(r, 3500));
+
+                    // State 4: Report Spot
+                    state3.style.opacity = '0';
+                    state4.style.opacity = '1';
+                    await new Promise(r => setTimeout(r, 200));
+                    sheet4.style.transform = 'translateY(0)';
+
+                    await new Promise(r => setTimeout(r, 4000));
+                }
+            }
+
+            if (document.getElementById('app-flow-mockup')) {
+                runAnimationLoop();
+            }
+            // Scroll to Top Logic
+            const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+            if (scrollToTopBtn) {
+                window.addEventListener('scroll', () => {
+                    if (window.scrollY > 400) {
+                        scrollToTopBtn.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+                        scrollToTopBtn.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                    } else {
+                        scrollToTopBtn.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+                        scrollToTopBtn.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                    }
+                });
+
+                scrollToTopBtn.addEventListener('click', () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

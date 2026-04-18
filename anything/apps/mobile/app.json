@@ -6,7 +6,8 @@
     "version": "1.0.0",
     "autolinking": {
       "exclude": [
-        "@sentry/react-native"
+        "@sentry/react-native",
+        "expo-speech-recognition"
       ]
     },
     "orientation": "portrait",
@@ -79,7 +80,7 @@
       "favicon": "./assets/images/parkmate-logo.png"
     },
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": false
     },
     "extra": {
       "router": {

@@ -21,6 +21,13 @@ import {
 export const ACTIVITY_NOTIFICATIONS_QUERY_KEY = ["activity_notifications"];
 const ACTIVITY_FEED_TIMEOUT_MS = 15000;
 const DEFAULT_ACTIVITY_FEED_REFETCH_INTERVAL_MS = 10000;
+const ACTIVITY_FEED_RETRY_DELAY_MS = 1200;
+const ACTIVITY_FEED_ATTEMPTS = 3;
+
+const sleep = (durationMs) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, durationMs);
+  });
 
 const readActivityResponse = async (response) => {
   const responseText = await response.text();
@@ -42,34 +49,56 @@ const readActivityResponse = async (response) => {
 };
 
 const fetchActivityNotifications = async (activityFeedUrl) => {
-  let timeoutId;
+  let lastError = null;
 
-  try {
-    const response = await Promise.race([
-      fetch(activityFeedUrl),
-      new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(
-            new Error(
-              `Activity feed request timed out after ${Math.round(ACTIVITY_FEED_TIMEOUT_MS / 1000)}s`,
-            ),
-          );
-        }, ACTIVITY_FEED_TIMEOUT_MS);
-      }),
-    ]);
+  for (let attempt = 1; attempt <= ACTIVITY_FEED_ATTEMPTS; attempt += 1) {
+    let timeoutId;
 
-    const notifications = await readActivityResponse(response);
-    console.log("[activity.fetch] Activity received", {
-      count: notifications.length,
-      systemUpdates: notifications.filter(isSystemUpdateActivity).length,
-    });
+    try {
+      const response = await Promise.race([
+        fetch(activityFeedUrl),
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(
+              new Error(
+                `Activity feed request timed out after ${Math.round(ACTIVITY_FEED_TIMEOUT_MS / 1000)}s`,
+              ),
+            );
+          }, ACTIVITY_FEED_TIMEOUT_MS);
+        }),
+      ]);
 
-    return notifications;
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
+      const notifications = await readActivityResponse(response);
+      console.log("[activity.fetch] Activity received", {
+        count: notifications.length,
+        systemUpdates: notifications.filter(isSystemUpdateActivity).length,
+        attempt,
+      });
+
+      return notifications;
+    } catch (error) {
+      lastError = error;
+      const canRetry = attempt < ACTIVITY_FEED_ATTEMPTS;
+
+      console.warn("[activity.fetch] Activity request failed", {
+        message: error?.message || String(error),
+        url: activityFeedUrl,
+        attempt,
+        attempts: ACTIVITY_FEED_ATTEMPTS,
+        canRetry,
+      });
+
+      if (canRetry) {
+        await sleep(ACTIVITY_FEED_RETRY_DELAY_MS);
+      }
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
   }
+
+  throw lastError || new Error("Failed to fetch activity");
 };
 
 export const fetchActivityNotificationsQuery = async (limit = 100) => {

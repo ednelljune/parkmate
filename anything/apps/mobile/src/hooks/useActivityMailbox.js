@@ -6,6 +6,13 @@ import { resolveBackendUrl } from "@/utils/backend";
 export const ACTIVITY_MAILBOX_QUERY_KEY = ["activity_mailbox"];
 const ACTIVITY_MAILBOX_TIMEOUT_MS = 15000;
 const DEFAULT_ACTIVITY_MAILBOX_REFETCH_INTERVAL_MS = 10000;
+const ACTIVITY_MAILBOX_RETRY_DELAY_MS = 1200;
+const ACTIVITY_MAILBOX_ATTEMPTS = 3;
+
+const sleep = (durationMs) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, durationMs);
+  });
 
 const readMailboxResponse = async (response) => {
   const responseText = await response.text();
@@ -30,32 +37,54 @@ const readMailboxResponse = async (response) => {
 };
 
 const fetchActivityMailboxFromUrl = async (mailboxUrl) => {
-  let timeoutId;
+  let lastError = null;
 
-  console.log("[system-updates.fetch] Requesting system updates", {
-    url: mailboxUrl,
-  });
+  for (let attempt = 1; attempt <= ACTIVITY_MAILBOX_ATTEMPTS; attempt += 1) {
+    let timeoutId;
 
-  try {
-    const response = await Promise.race([
-      fetch(mailboxUrl),
-      new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(
-            new Error(
-              `System updates request timed out after ${Math.round(ACTIVITY_MAILBOX_TIMEOUT_MS / 1000)}s`,
-            ),
-          );
-        }, ACTIVITY_MAILBOX_TIMEOUT_MS);
-      }),
-    ]);
+    console.log("[system-updates.fetch] Requesting system updates", {
+      url: mailboxUrl,
+      attempt,
+    });
 
-    return await readMailboxResponse(response);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
+    try {
+      const response = await Promise.race([
+        fetch(mailboxUrl),
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(
+              new Error(
+                `System updates request timed out after ${Math.round(ACTIVITY_MAILBOX_TIMEOUT_MS / 1000)}s`,
+              ),
+            );
+          }, ACTIVITY_MAILBOX_TIMEOUT_MS);
+        }),
+      ]);
+
+      return await readMailboxResponse(response);
+    } catch (error) {
+      lastError = error;
+      const canRetry = attempt < ACTIVITY_MAILBOX_ATTEMPTS;
+
+      console.warn("[system-updates.fetch] System updates request failed", {
+        message: error?.message || String(error),
+        url: mailboxUrl,
+        attempt,
+        attempts: ACTIVITY_MAILBOX_ATTEMPTS,
+        canRetry,
+      });
+
+      if (canRetry) {
+        await sleep(ACTIVITY_MAILBOX_RETRY_DELAY_MS);
+      }
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
   }
+
+  throw lastError || new Error("Failed to fetch system updates");
 };
 
 const fetchActivityMailbox = async (mailboxUrls) => {

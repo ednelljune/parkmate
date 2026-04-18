@@ -1,0 +1,81 @@
+diff --git a/node_modules/expo/src/async-require/hmr.ts b/node_modules/expo/src/async-require/hmr.ts
+index 1111111..2222222 100644
+--- a/node_modules/expo/src/async-require/hmr.ts
++++ b/node_modules/expo/src/async-require/hmr.ts
+@@ -111,8 +111,10 @@ const HMRClient: HMRClientNativeInterface = {
+   registerBundle(requestUrl: string) {
+-    assert(hmrClient, 'Expected HMRClient.setup() call at startup.');
+     pendingEntryPoints.push(requestUrl);
++    if (!hmrClient) {
++      return;
++    }
+     registerBundleEntryPoints(hmrClient);
+   },
+
+@@ -157,15 +157,22 @@ const hmr = {
+   setup({ isEnabled }: { isEnabled: boolean }) {
+     assert(!hmrClient, 'Cannot initialize hmrClient twice');
+ 
+-    const serverScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+-    const client = new MetroHMRClient(`${serverScheme}://${window.location.host}/hot`);
++    const locationRef =
++      typeof window !== 'undefined' ? window.location ?? globalThis.location : globalThis.location;
++
++    if (!locationRef?.protocol || !locationRef?.host) {
++      console.warn('[expo.hmr] Skipping HMR setup because window.location is unavailable');
++      return;
++    }
++
++    const serverScheme = locationRef.protocol === 'https:' ? 'wss' : 'ws';
++    const client = new MetroHMRClient(`${serverScheme}://${locationRef.host}/hot`);
+     hmrClient = client;
+ 
+     const fullBundleUrl = (() => {
+       const currentScript = document?.currentScript;
+       const bundleUrl = new URL(
+-        currentScript && 'src' in currentScript ? currentScript.src : location.href,
+-        location.href
++        currentScript && 'src' in currentScript ? currentScript.src : locationRef.href,
++        locationRef.href
+       );
+ 
+       if (!bundleUrl.searchParams.has('platform')) {
+@@ -189,7 +196,7 @@ const hmr = {
+  Try the following to fix the issue:
+  - Ensure the Metro dev server is running and available on the same network as this device`;
+       error += `
+ 
+- URL: ${window.location.host}
++ URL: ${locationRef.host}
+  
+  Error: ${e.message}`;
+ 
+diff --git a/node_modules/expo/src/async-require/messageSocket.ts b/node_modules/expo/src/async-require/messageSocket.ts
+index 3333333..4444444 100644
+--- a/node_modules/expo/src/async-require/messageSocket.ts
++++ b/node_modules/expo/src/async-require/messageSocket.ts
+@@ -7,9 +7,16 @@ declare namespace globalThis {
+ }
+ 
+ if (__DEV__) {
+-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+-  const messageSocket = new WebSocket(`${protocol}://${window.location.host}/message`);
+-  messageSocket.onmessage = (message) => {
++  const locationRef =
++    typeof window !== 'undefined' ? window.location ?? globalThis.location : globalThis.location;
++
++  if (!locationRef?.protocol || !locationRef?.host) {
++    console.warn('[expo.hmr] Skipping message socket because window.location is unavailable');
++  } else {
++    const protocol = locationRef.protocol === 'https:' ? 'wss' : 'ws';
++    const messageSocket = new WebSocket(`${protocol}://${locationRef.host}/message`);
++    messageSocket.onmessage = (message) => {
+     const data = JSON.parse(String(message.data));
+     switch (data.method) {
+       case 'sendDevCommand':
+@@ -50,4 +57,5 @@ if (__DEV__) {
+         break;
+     }
+   };
++  }
+ }

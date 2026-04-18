@@ -14,6 +14,10 @@ const DEFAULT_LEGAL_JURISDICTION = "Victoria, Australia";
 const DEFAULT_LEGAL_EFFECTIVE_DATE = "14 April 2026";
 const DEFAULT_LEGAL_LAST_UPDATED = "14 April 2026";
 const DEFAULT_LEGAL_LIABILITY_CAP = "AUD $100";
+const PARKMATE_LOGO_PNG_PATH = path.relative(
+  process.cwd(),
+  path.join(__dirname, "assets/images/parkmate-logo.png"),
+);
 
 const getExpoPublicEnvironment = () =>
   Object.fromEntries(
@@ -78,8 +82,13 @@ module.exports = () => {
 
   return {
     ...appJson,
+    icon: PARKMATE_LOGO_PNG_PATH,
     android: {
       ...appJson.android,
+      adaptiveIcon: {
+        ...(appJson.android?.adaptiveIcon ?? {}),
+        foregroundImage: PARKMATE_LOGO_PNG_PATH,
+      },
       ...(hasGoogleServicesFile ? { googleServicesFile: GOOGLE_SERVICES_FILE } : {}),
       config: {
         ...(appJson.android?.config ?? {}),
@@ -109,6 +118,25 @@ module.exports = () => {
         EXPO_PUBLIC_LEGAL_LAST_UPDATED: legalLastUpdated,
         EXPO_PUBLIC_LEGAL_LIABILITY_CAP: legalLiabilityCap,
       },
+    },
+    plugins: Array.isArray(appJson.plugins)
+      ? appJson.plugins.map((plugin) => {
+          if (Array.isArray(plugin) && plugin[0] === "expo-splash-screen") {
+            return [
+              plugin[0],
+              {
+                ...(plugin[1] ?? {}),
+                image: PARKMATE_LOGO_PNG_PATH,
+              },
+            ];
+          }
+
+          return plugin;
+        })
+      : appJson.plugins,
+    web: {
+      ...(appJson.web ?? {}),
+      favicon: PARKMATE_LOGO_PNG_PATH,
     },
   };
 };

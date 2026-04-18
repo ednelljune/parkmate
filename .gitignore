@@ -40,3 +40,4 @@ temp-export-review/
 
 # iOS CocoaPods dependencies
 anything/apps/mobile/ios/Pods/
+anything/apps/mobile/android/.gradle-home/

@@ -68,7 +68,7 @@ export async function POST(request, context) {
           status = 'reviewing',
           reviewed_by = ${auth.user.id},
           reviewed_at = CURRENT_TIMESTAMP,
-          review_notes = ${reviewNotes},
+          review_notes = COALESCE(${reviewNotes}, review_notes),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${suggestionId}
         RETURNING id, status, reviewed_at, review_notes;
@@ -88,7 +88,7 @@ export async function POST(request, context) {
           status = 'rejected',
           reviewed_by = ${auth.user.id},
           reviewed_at = CURRENT_TIMESTAMP,
-          review_notes = ${reviewNotes},
+          review_notes = COALESCE(${reviewNotes}, review_notes),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${suggestionId}
         RETURNING id, status, reviewed_at, review_notes;
@@ -120,6 +120,20 @@ export async function POST(request, context) {
       );
     }
 
+    if (!zoneName) {
+      return Response.json(
+        { success: false, error: "Zone name is required." },
+        { status: 400 },
+      );
+    }
+
+    if (capacitySpaces !== null && capacitySpaces < 0) {
+      return Response.json(
+        { success: false, error: "Capacity must be zero or a positive number." },
+        { status: 400 },
+      );
+    }
+
     if (suggestion.status === "approved" && suggestion.approved_zone_id) {
       return Response.json(
         { success: false, error: "Suggestion is already approved." },
@@ -128,6 +142,25 @@ export async function POST(request, context) {
     }
 
     const polygon = createBoxPolygon(latitude, longitude, latOffset, lngOffset);
+
+    const existingZoneRows = await sql`
+      SELECT id, name, zone_type
+      FROM parking_zones
+      WHERE LOWER(name) = LOWER(${zoneName})
+        AND LOWER(zone_type) = LOWER(${zoneType})
+      LIMIT 1;
+    `;
+
+    if (existingZoneRows[0]) {
+      return Response.json(
+        {
+          success: false,
+          error: "A parking zone with this name and type already exists. Use a different zone name before approving.",
+          existingZone: existingZoneRows[0],
+        },
+        { status: 409 },
+      );
+    }
 
     const insertedZoneRows = await sql`
       INSERT INTO parking_zones (
@@ -144,11 +177,6 @@ export async function POST(request, context) {
         ${capacitySpaces},
         ${rulesDescription}
       )
-      ON CONFLICT (name, zone_type) DO UPDATE
-      SET
-        boundary = EXCLUDED.boundary,
-        capacity_spaces = EXCLUDED.capacity_spaces,
-        rules_description = EXCLUDED.rules_description
       RETURNING id, name, zone_type, capacity_spaces, rules_description;
     `;
 
@@ -160,7 +188,7 @@ export async function POST(request, context) {
         status = 'approved',
         reviewed_by = ${auth.user.id},
         reviewed_at = CURRENT_TIMESTAMP,
-        review_notes = ${reviewNotes},
+        review_notes = COALESCE(${reviewNotes}, review_notes),
         approved_zone_id = ${approvedZone?.id || null},
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ${suggestionId}

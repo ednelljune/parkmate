@@ -35,16 +35,24 @@ const getConfiguredAdminEmails = () => {
   return Array.from(configuredEmails);
 };
 
+export const isConfiguredAdminEmail = (value) => {
+  const userEmail = normalizeEmail(value);
+  if (!userEmail) {
+    return false;
+  }
+
+  return getConfiguredAdminEmails().includes(userEmail);
+};
+
 export async function requireAdminUser(request) {
   const auth = await requireAuthenticatedUser(request);
   if (auth.response) {
     return auth;
   }
 
-  const configuredAdminEmails = getConfiguredAdminEmails();
   const userEmail = normalizeEmail(auth.user?.email);
 
-  if (!userEmail || configuredAdminEmails.length === 0 || !configuredAdminEmails.includes(userEmail)) {
+  if (!isConfiguredAdminEmail(userEmail)) {
     return {
       user: null,
       response: Response.json(

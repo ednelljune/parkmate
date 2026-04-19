@@ -6,7 +6,7 @@ This folder is a static site bundle ready for drag-and-drop hosting.
 
 - `index.html`
 - `privacy-policy.html`
-- `terms-of-service.html`
+- `terms-and-conditions.html`
 - `parkmate-logo.svg`
 - `pakenham-map-bg.jpg`
 - `testflight-qr.svg`

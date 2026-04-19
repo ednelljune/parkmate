@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,9 +13,9 @@ import { Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 
+import fetch from "@/__create/fetch";
 import { useAuth } from "@/utils/auth/useAuth";
 
-const ADMIN_EMAIL = "admin@getparkmate.app";
 const STATUS_OPTIONS = ["pending", "reviewing", "approved", "rejected"];
 const DEFAULT_FORM = {
   zoneName: "",
@@ -27,7 +27,10 @@ const DEFAULT_FORM = {
   lngOffset: "0.00055",
 };
 
-const normalizeEmail = (value) => (typeof value === "string" ? value.trim().toLowerCase() : "");
+const formatCoordinate = (value) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric.toFixed(6) : "Unknown";
+};
 
 const formatDate = (value) => {
   if (!value) {
@@ -44,12 +47,44 @@ const formatDate = (value) => {
 
 export default function MissingZoneReviewScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [status, setStatus] = useState("pending");
   const [activeSuggestionId, setActiveSuggestionId] = useState(null);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
-  const isAdminUser = normalizeEmail(user?.email) === ADMIN_EMAIL;
+  const userId = user?.id || null;
+  const canUseProfileApi = Boolean(userId && session?.access_token);
+
+  const profileQuery = useQuery({
+    queryKey: ["user_profile", userId],
+    queryFn: async () => {
+      const response = await fetch("/api/users/profile");
+      const result = await response.json();
+
+      if (!response.ok || result?.success === false) {
+        throw new Error(result?.message || result?.error || "Failed to load profile.");
+      }
+
+      return result.user || null;
+    },
+    enabled: canUseProfileApi,
+  });
+
+  const isAdminUser = Boolean(profileQuery.data?.is_admin);
+
+  if (canUseProfileApi && profileQuery.isLoading) {
+    return (
+      <>
+        <Stack.Screen options={{ title: "Missing Zone Review" }} />
+        <View style={[styles.centeredScreen, styles.loadingCenteredScreen, { paddingTop: insets.top + 32 }]}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="small" color="#0EA5E9" />
+            <Text style={styles.loadingText}>Checking admin access...</Text>
+          </View>
+        </View>
+      </>
+    );
+  }
 
   const suggestionsQuery = useQuery({
     queryKey: ["admin_zone_suggestions", status],
@@ -63,10 +98,11 @@ export default function MissingZoneReviewScreen() {
 
       return Array.isArray(result?.suggestions) ? result.suggestions : [];
     },
-    enabled: isAdminUser,
+    enabled: canUseProfileApi && isAdminUser,
   });
 
   const suggestions = suggestionsQuery.data || [];
+  const refetchSuggestions = suggestionsQuery.refetch;
 
   const activeSuggestion = useMemo(
     () => suggestions.find((item) => item.id === activeSuggestionId) || null,
@@ -77,6 +113,12 @@ export default function MissingZoneReviewScreen() {
     setActiveSuggestionId(null);
     setForm(DEFAULT_FORM);
   }, []);
+
+  useEffect(() => {
+    if (activeSuggestionId && !activeSuggestion) {
+      resetSelection();
+    }
+  }, [activeSuggestion, activeSuggestionId, resetSelection]);
 
   const selectSuggestion = useCallback((suggestion) => {
     setActiveSuggestionId(suggestion.id);
@@ -106,15 +148,88 @@ export default function MissingZoneReviewScreen() {
         }
 
         resetSelection();
-        await suggestionsQuery.refetch();
+        await refetchSuggestions();
       } catch (error) {
         Alert.alert("Action failed", error?.message || "Please try again.");
       } finally {
         setSubmitting(false);
       }
     },
-    [resetSelection, suggestionsQuery],
+    [refetchSuggestions, resetSelection],
   );
+
+  const confirmAndRunAction = useCallback(
+    (suggestionId, payload) => {
+      const actionLabel =
+        payload.action === "approve"
+          ? "approve and publish"
+          : payload.action === "reject"
+            ? "reject"
+            : payload.action;
+
+      Alert.alert(
+        `Confirm ${actionLabel}`,
+        `Are you sure you want to ${actionLabel} this suggestion?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Confirm",
+            style: payload.action === "reject" ? "destructive" : "default",
+            onPress: () => {
+              runAction(suggestionId, payload);
+            },
+          },
+        ],
+      );
+    },
+    [runAction],
+  );
+
+  const handleApprove = useCallback(() => {
+    if (!activeSuggestion) {
+      return;
+    }
+
+    const normalizedZoneName = form.zoneName.trim();
+    if (!normalizedZoneName) {
+      Alert.alert("Validation Error", "Zone name is required.");
+      return;
+    }
+
+    const normalizedZoneType = form.zoneType.trim() || "Public";
+    const normalizedCapacity = form.capacitySpaces.trim();
+    const parsedCapacity = normalizedCapacity ? Number.parseInt(normalizedCapacity, 10) : null;
+
+    if (normalizedCapacity && (!Number.isFinite(parsedCapacity) || parsedCapacity < 0)) {
+      Alert.alert("Validation Error", "Capacity must be a valid positive number.");
+      return;
+    }
+
+    const normalizedLatOffset = form.latOffset.trim();
+    const parsedLatOffset = normalizedLatOffset ? Number.parseFloat(normalizedLatOffset) : null;
+    if (normalizedLatOffset && !Number.isFinite(parsedLatOffset)) {
+      Alert.alert("Validation Error", "Latitude offset must be a valid number.");
+      return;
+    }
+
+    const normalizedLngOffset = form.lngOffset.trim();
+    const parsedLngOffset = normalizedLngOffset ? Number.parseFloat(normalizedLngOffset) : null;
+    if (normalizedLngOffset && !Number.isFinite(parsedLngOffset)) {
+      Alert.alert("Validation Error", "Longitude offset must be a valid number.");
+      return;
+    }
+
+    confirmAndRunAction(activeSuggestion.id, {
+      action: "approve",
+      zoneName: normalizedZoneName,
+      zoneType: normalizedZoneType,
+      capacitySpaces: parsedCapacity,
+      rulesDescription: form.rulesDescription.trim(),
+      reviewNotes: form.reviewNotes.trim(),
+      latOffset: parsedLatOffset,
+      lngOffset: parsedLngOffset,
+    });
+  }, [activeSuggestion, confirmAndRunAction, form]);
 
   if (!isAdminUser) {
     return (
@@ -174,7 +289,14 @@ export default function MissingZoneReviewScreen() {
           <View style={styles.panel}>
             <View style={styles.panelHeaderRow}>
               <Text style={styles.sectionTitle}>{status} suggestions</Text>
-              <Pressable style={styles.refreshButton} onPress={() => suggestionsQuery.refetch()}>
+              <Pressable
+                disabled={suggestionsQuery.isFetching}
+                style={[
+                  styles.refreshButton,
+                  suggestionsQuery.isFetching && styles.disabledButton,
+                ]}
+                onPress={() => suggestionsQuery.refetch()}
+              >
                 <Text style={styles.refreshButtonText}>Refresh</Text>
               </Pressable>
             </View>
@@ -219,8 +341,8 @@ export default function MissingZoneReviewScreen() {
                         </View>
                       </View>
                       <Text style={styles.coordinatesText}>
-                        {Number(suggestion.latitude).toFixed(6)},{" "}
-                        {Number(suggestion.longitude).toFixed(6)}
+                        {formatCoordinate(suggestion.latitude)},{" "}
+                        {formatCoordinate(suggestion.longitude)}
                       </Text>
                     </View>
 
@@ -264,8 +386,8 @@ export default function MissingZoneReviewScreen() {
                     {activeSuggestion.area_name || `Suggestion #${activeSuggestion.id}`}
                   </Text>
                   <Text style={styles.selectionMeta}>
-                    {Number(activeSuggestion.latitude).toFixed(6)},{" "}
-                    {Number(activeSuggestion.longitude).toFixed(6)}
+                    {formatCoordinate(activeSuggestion.latitude)},{" "}
+                    {formatCoordinate(activeSuggestion.longitude)}
                   </Text>
                 </View>
 
@@ -336,18 +458,7 @@ export default function MissingZoneReviewScreen() {
                   <Pressable
                     disabled={submitting}
                     style={[styles.actionButton, styles.approveButton, submitting && styles.disabledButton]}
-                    onPress={() =>
-                      runAction(activeSuggestion.id, {
-                        action: "approve",
-                        zoneName: form.zoneName,
-                        zoneType: form.zoneType,
-                        capacitySpaces: form.capacitySpaces,
-                        rulesDescription: form.rulesDescription,
-                        reviewNotes: form.reviewNotes,
-                        latOffset: form.latOffset,
-                        lngOffset: form.lngOffset,
-                      })
-                    }
+                    onPress={handleApprove}
                   >
                     <Text style={styles.approveButtonText}>
                       {submitting ? "Working..." : "Approve and publish"}
@@ -372,7 +483,7 @@ export default function MissingZoneReviewScreen() {
                       disabled={submitting}
                       style={[styles.secondaryButton, styles.rejectButton, submitting && styles.disabledButton]}
                       onPress={() =>
-                        runAction(activeSuggestion.id, {
+                        confirmAndRunAction(activeSuggestion.id, {
                           action: "reject",
                           reviewNotes: form.reviewNotes,
                         })
@@ -408,6 +519,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
     paddingHorizontal: 18,
+  },
+  loadingCenteredScreen: {
+    justifyContent: "center",
   },
   lockedCard: {
     borderRadius: 24,

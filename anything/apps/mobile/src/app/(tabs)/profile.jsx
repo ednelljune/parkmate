@@ -33,7 +33,6 @@ import { useAuth } from "@/utils/auth/useAuth";
 
 const PRIVACY_POLICY_URL = "https://getparkmate.app/privacy-policy";
 const TERMS_OF_SERVICE_URL = "https://getparkmate.app/terms-of-service";
-const ADMIN_EMAIL = "admin@getparkmate.app";
 
 const PROFILE_TIERS = [
   {
@@ -581,7 +580,7 @@ export default function ProfileScreen() {
   const nextTier = getNextTierMeta(points);
   const tierProgress = getTierProgress(points);
   const progressWidth = `${Math.max(6, Math.round(tierProgress.progress * 100))}%`;
-  const isAdminUser = String(authUser?.email || "").trim().toLowerCase() === ADMIN_EMAIL;
+  const isAdminUser = Boolean(profileData?.is_admin);
 
   const handleSignOut = async () => {
     if (isSigningOut) {

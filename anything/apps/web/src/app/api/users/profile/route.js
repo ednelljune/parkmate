@@ -1,6 +1,7 @@
 import sql from '@/app/api/utils/sql';
 import { requireAuthenticatedUser } from '@/app/api/utils/supabase-auth';
 import { ensureActivityLogSchema } from '@/app/api/utils/activity-log';
+import { isConfiguredAdminEmail } from '@/app/api/utils/admin-auth';
 
 function getDisplayNameFallback(user) {
   const metadataName =
@@ -71,7 +72,10 @@ export async function GET(request) {
 
     return Response.json({
       success: true,
-      user: users[0],
+      user: {
+        ...users[0],
+        is_admin: isConfiguredAdminEmail(auth.user?.email),
+      },
     });
   } catch (error) {
     console.error('Error fetching user profile:', error);
@@ -109,7 +113,10 @@ export async function POST(request) {
 
     return Response.json({
       success: true,
-      user: users[0],
+      user: {
+        ...users[0],
+        is_admin: isConfiguredAdminEmail(auth.user?.email),
+      },
     });
   } catch (error) {
     console.error('Error updating user profile:', error);

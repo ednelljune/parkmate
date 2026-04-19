@@ -10,7 +10,7 @@ declare module '*.jsx' {
 	export const HydrateFallback: any;
 	export const headers: any;
 }
-module 'virtual:load-fonts.jsx' {
+declare module 'virtual:load-fonts.jsx' {
 	export function LoadFonts(): null;
 }
 declare module 'react-router' {

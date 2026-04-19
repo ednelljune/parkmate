@@ -72,6 +72,8 @@
 		"zustand": "^5.0.3"
 	},
 	"devDependencies": {
+		"@netlify/vite-plugin": "^2.6.4",
+		"@netlify/vite-plugin-react-router": "^3.1.0",
 		"@babel/core": "^7.27.1",
 		"@babel/plugin-transform-react-jsx": "^7.27.1",
 		"@babel/preset-react": "^7.27.1",

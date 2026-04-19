@@ -318,7 +318,6 @@ function ParkMateContent() {
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedZoneOption, setSelectedZoneOption] = useState(null);
-  const [suggestedAreaName, setSuggestedAreaName] = useState("");
   const [spotQuantity, setSpotQuantity] = useState(1);
   const [selectedZone, setSelectedZone] = useState(null);
   const [activeNavigationTarget, setActiveNavigationTarget] = useState(null);
@@ -1133,7 +1132,6 @@ function ParkMateContent() {
 
   const reportMutation = useReportSpot(location, (data) => {
     setShowReportModal(false);
-    setSuggestedAreaName("");
     if (!data?.report) return;
 
     const latitude = normalizeCoordinate(data.report.latitude);
@@ -1171,7 +1169,6 @@ function ParkMateContent() {
   });
   const suggestZoneMutation = useSuggestParkingZone(location, (data) => {
     setShowReportModal(false);
-    setSuggestedAreaName("");
     Alert.alert(
       "Zone suggestion received",
       data?.message ||
@@ -1558,7 +1555,6 @@ function ParkMateContent() {
 
     const preferredZoneOption = getPreferredReportZoneOption();
     setSelectedZoneOption(preferredZoneOption || null);
-    setSuggestedAreaName("");
 
     console.log("[report.ui] Opening report modal", {
       latitude: location.latitude,
@@ -1670,13 +1666,12 @@ function ParkMateContent() {
                 latitude: location.latitude,
                 longitude: location.longitude,
               },
-              areaName: suggestedAreaName,
             });
           },
         },
       ],
     );
-  }, [location, suggestedAreaName, suggestZoneMutation]);
+  }, [location, suggestZoneMutation]);
 
   const logSpotSelection = useCallback((label, payload) => {
     if (!payload) {
@@ -2226,7 +2221,9 @@ function ParkMateContent() {
         insets={insets}
         location={location}
         isReporting={reportMutation.isPending}
+        isSuggestingZone={suggestZoneMutation.isPending}
         onReportPress={handleReport}
+        onSuggestZonePress={handleSuggestParkingZone}
         onRecenterPress={handleRecenter}
         tabBarHeight={tabBarHeight}
       />
@@ -2238,15 +2235,11 @@ function ParkMateContent() {
         detectionRadius={detectionRadius}
         spotQuantity={spotQuantity}
         isReporting={reportMutation.isPending}
-        isSuggestingZone={suggestZoneMutation.isPending}
-        suggestedAreaName={suggestedAreaName}
         insets={insets}
         onClose={() => setShowReportModal(false)}
         onSelectType={setSelectedZoneOption}
-        onChangeSuggestedAreaName={setSuggestedAreaName}
         onSetQuantity={setSpotQuantity}
         onConfirm={handleConfirmReport}
-        onSuggestZone={handleSuggestParkingZone}
       />
 
       <SpotDetailsModal

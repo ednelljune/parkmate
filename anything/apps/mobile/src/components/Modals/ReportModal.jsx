@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Modal, ScrollView, TextInput } from "react-native";
+import { View, Text, TouchableOpacity, Modal, ScrollView } from "react-native";
 import { X, Plus, Minus } from "lucide-react-native";
 
 export const ReportModal = ({
@@ -9,15 +9,11 @@ export const ReportModal = ({
   detectionRadius,
   spotQuantity,
   isReporting,
-  isSuggestingZone,
-  suggestedAreaName,
   insets,
   onClose,
   onSelectType,
   onSetQuantity,
   onConfirm,
-  onChangeSuggestedAreaName,
-  onSuggestZone,
 }) => {
   const nearbyZoneOptions = availableZoneOptions.filter(
     (option) => option.distanceMeters <= detectionRadius,
@@ -140,47 +136,10 @@ export const ReportModal = ({
                   <Text style={{ fontSize: 13, color: "#4B5563" }}>
                     Reporting is only available when your current location is inside a mapped parking zone boundary.
                   </Text>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: "#6B7280",
-                      marginTop: 10,
-                      marginBottom: 6,
-                    }}
-                  >
-                    Missing a parking zone here? Suggest it for review.
+                  <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 10 }}>
+                    If this area should be reviewed as a new parking zone, use the separate
+                    missing-zone button on the map.
                   </Text>
-                  <TextInput
-                    placeholder="Street or suburb name"
-                    placeholderTextColor="#9CA3AF"
-                    value={suggestedAreaName}
-                    onChangeText={onChangeSuggestedAreaName}
-                    style={{
-                      borderWidth: 1,
-                      borderColor: "#D1D5DB",
-                      borderRadius: 8,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      fontSize: 13,
-                      color: "#111827",
-                      backgroundColor: "#FFF",
-                    }}
-                  />
-                  <TouchableOpacity
-                    style={{
-                      marginTop: 10,
-                      backgroundColor: isSuggestingZone ? "#93C5FD" : "#0F766E",
-                      paddingVertical: 10,
-                      borderRadius: 9,
-                      alignItems: "center",
-                    }}
-                    onPress={onSuggestZone}
-                    disabled={isSuggestingZone}
-                  >
-                    <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>
-                      {isSuggestingZone ? "Sending suggestion..." : "Suggest Missing Zone"}
-                    </Text>
-                  </TouchableOpacity>
                 </View>
               )}
             </View>

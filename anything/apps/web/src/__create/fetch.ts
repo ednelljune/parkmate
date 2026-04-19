@@ -1,5 +1,6 @@
 const originalFetch = fetch;
 const isBackend = () => typeof window === 'undefined';
+const consoleMethodNames = new Set(['debug', 'error', 'info', 'log', 'trace', 'warn']);
 
 const safeStringify = (value: unknown) =>
   JSON.stringify(value, (_k, v) => {
@@ -12,7 +13,13 @@ const safeStringify = (value: unknown) =>
 const postToParent = (level: string, text: string, extra: unknown) => {
   try {
     if (isBackend() || !window.parent || window.parent === window) {
-      ('level' in console ? console[level] : console.log)(text, extra);
+      const methodName = consoleMethodNames.has(level) ? level : 'log';
+      const consoleMethod = (console as unknown as Record<string, (...args: unknown[]) => void>)[methodName];
+      if (typeof consoleMethod === 'function') {
+        consoleMethod(text, extra);
+      } else {
+        console.log(text, extra);
+      }
       return;
     }
     window.parent.postMessage(

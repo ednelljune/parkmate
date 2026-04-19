@@ -9,13 +9,56 @@
     <meta name="theme-color" content="#0b1f33" />
     <link rel="icon" href="./parkmate-logo.svg" type="image/svg+xml" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        }
+    </style>
 </head>
 
 <body class="bg-[#0b1f33] text-slate-100">
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        <a href="./index.html"
-            class="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10">Back
-            to ParkMate</a>
+    <!-- Navigation -->
+    <nav
+        class="fixed top-0 left-0 right-0 z-50 bg-[#0b1f33]/80 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex items-center justify-between h-20">
+            <!-- Logo -->
+            <a href="./index.html" class="flex-shrink-0 flex items-center gap-2 cursor-pointer">
+                <img src="./parkmate-logo.svg" alt="ParkMate Logo"
+                    class="w-10 h-10 shadow-lg shadow-emerald-500/20 rounded-xl" />
+                <span class="text-2xl font-bold tracking-tight text-white">ParkMate</span>
+            </a>
+
+            <!-- Desktop Nav -->
+            <div class="hidden md:flex items-center gap-8">
+                <a href="./index.html#features"
+                    class="text-sm font-medium text-slate-300 hover:text-white transition-colors">Features</a>
+                <a href="./index.html#how-it-works"
+                    class="text-sm font-medium text-slate-300 hover:text-white transition-colors">How it Works</a>
+                <a href="./index.html#problem" class="text-sm font-medium text-slate-300 hover:text-white transition-colors">The
+                    Problem</a>
+                <a href="./index.html#contact" class="text-sm font-medium text-slate-300 hover:text-white transition-colors">Contact</a>
+            </div>
+
+            <!-- Mobile menu button -->
+            <div class="md:hidden">
+                <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')"
+                    class="text-slate-300 hover:text-white p-2">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Nav -->
+        <div id="mobile-menu" class="hidden md:hidden bg-[#0c233d] border-b border-white/5 py-4 flex flex-col gap-4">
+            <a href="./index.html#features" class="px-4 text-base font-medium text-slate-300 hover:text-white">Features</a>
+            <a href="./index.html#how-it-works" class="px-4 text-base font-medium text-slate-300 hover:text-white">How it Works</a>
+            <a href="./index.html#problem" class="px-4 text-base font-medium text-slate-300 hover:text-white">The Problem</a>
+            <a href="./index.html#contact" class="px-4 text-base font-medium text-slate-300 hover:text-white">Contact</a>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
 
         <div class="mt-6 rounded-[32px] border border-white/10 bg-slate-900/70 p-8 sm:p-10 shadow-2xl">
             <div class="mb-8">
@@ -81,11 +124,15 @@
                 <section>
                     <h2 class="text-xl font-bold text-white">6. Contact Us</h2>
                     <p class="mt-4">If you have questions or requests about this Privacy Policy, contact us at:</p>
-                    <p class="mt-4 font-semibold text-white">ParkMate<br />support@parkmate.com<br />Melbourne VIC, Australia</p>
+                    <p class="mt-4 font-semibold text-white">ParkMate<br />support@getparkmate.app<br />Melbourne VIC, Australia</p>
                 </section>
             </div>
         </div>
     </main>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
 </body>
 
 </html>

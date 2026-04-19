@@ -1,0 +1,3 @@
+window.PARKMATE_SUPABASE_URL = "https://tkjqredjgkijcrrfewbj.supabase.co";
+window.PARKMATE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRranFyZWRqZ2tpamNycmZld2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNDcyNDUsImV4cCI6MjA4OTcyMzI0NX0.Cdt66imgQ9IjgqQYs6KVVGLt3P2hZkeAriVRl1eG8Xw";
+window.PARKMATE_ADMIN_API_BASE = "";

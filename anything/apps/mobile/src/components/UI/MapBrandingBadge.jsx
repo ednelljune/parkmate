@@ -1,6 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
-import { AnimatedParkMateLogo } from "@/components/AnimatedParkMateLogo";
+import { Image, View, Text } from "react-native";
 
 const formatCoordinate = (value, positiveLabel, negativeLabel) => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -43,9 +42,9 @@ export const MapBrandingBadge = ({ insets, topOffset = 0, location }) => {
           alignItems: "center",
         }}
       >
-        <AnimatedParkMateLogo
-          size={42}
-          staticOnly
+        <Image
+          resizeMode="contain"
+          source={require("../../../assets/images/parkmate-logo-current.png")}
           style={{
             width: 42,
             height: 42,

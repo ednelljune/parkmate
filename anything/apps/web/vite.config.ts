@@ -1,4 +1,6 @@
 import path from 'node:path';
+import netlify from '@netlify/vite-plugin';
+import netlifyReactRouter from '@netlify/vite-plugin-react-router';
 import { reactRouter } from '@react-router/dev/vite';
 import { reactRouterHonoServer } from 'react-router-hono-server/dev';
 import { defineConfig } from 'vite';
@@ -74,6 +76,8 @@ export default defineConfig(({ isSsrBuild }) => ({
     loadFontsFromTailwindSource(),
     addRenderIds(),
     reactRouter(),
+    netlifyReactRouter(),
+    netlify(),
     tsconfigPaths(),
     aliases(),
     layoutWrapperPlugin(),

@@ -4,6 +4,8 @@ import {
   Alert,
   Animated,
   Easing,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +14,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowUpRight,
@@ -27,6 +30,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import useUser from "@/utils/auth/useUser";
 import { useAuth } from "@/utils/auth/useAuth";
+
+const PRIVACY_POLICY_URL = "https://getparkmate.app/privacy-policy";
+const TERMS_OF_SERVICE_URL = "https://getparkmate.app/terms-of-service";
 
 const PROFILE_TIERS = [
   {
@@ -112,18 +118,56 @@ const PLAYBOOK_ITEMS = [
     title: "Report a spot",
     detail: "Add clean parking intel for the next driver.",
     accent: "#0EA5E9",
+    modalTitle: "Report a spot",
+    modalBody:
+      "Submit a real open parking spot inside the correct zone so other drivers can trust what they see on the map.",
+    bullets: [
+      "Report only spots you can clearly see are available.",
+      "Choose the right parking type and quantity before submitting.",
+      "Fresh and accurate reports are more likely to be claimed.",
+    ],
   },
   {
     points: "+10",
     title: "Get your report claimed",
     detail: "Useful reports earn the biggest reputation jump.",
     accent: "#14B8A6",
+    modalTitle: "Get your report claimed",
+    modalBody:
+      "A claimed report means another driver actually used your intel to get a park. That is the strongest positive reputation signal.",
+    bullets: [
+      "High-quality reports can turn into claims quickly.",
+      "Claims validate that your report was useful and timely.",
+      "Consistent claimed reports help build trust in your profile.",
+    ],
   },
   {
     points: "+2",
     title: "Claim an opening",
     detail: "Confirm availability and keep the map moving.",
     accent: "#F59E0B",
+    modalTitle: "Claim an opening",
+    modalBody:
+      "Claim an opening when you successfully take a reported spot. This confirms the report worked and keeps live parking intel moving.",
+    bullets: [
+      "Claim the opening only if you actually took that reported spot.",
+      "Claims close the loop between the reporter and the driver.",
+      "Fast claims help the map stay current and credible.",
+    ],
+  },
+  {
+    points: "+1",
+    title: "False report spot",
+    detail: "Flag inaccurate reports and protect map quality.",
+    accent: "#EF4444",
+    modalTitle: "False report spot",
+    modalBody:
+      "Mark a report as false when the reported opening is no longer real. This helps remove bad intel and keeps the map honest.",
+    bullets: [
+      "Use this when the reported opening is clearly unavailable.",
+      "False reports help clean up stale or inaccurate parking intel.",
+      "Repeated false reports can affect the original reporter's trust score.",
+    ],
   },
 ];
 
@@ -260,9 +304,13 @@ function MetricCard({
   );
 }
 
-function PlaybookCard({ item }) {
+function PlaybookCard({ item, onPress }) {
   return (
-    <View style={styles.playbookCard}>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={styles.playbookCard}
+      onPress={() => onPress(item)}
+    >
       <View style={[styles.playbookPointsBubble, { backgroundColor: `${item.accent}1A` }]}>
         <Text style={[styles.playbookPointsText, { color: item.accent }]}>{item.points}</Text>
       </View>
@@ -275,7 +323,7 @@ function PlaybookCard({ item }) {
       <View style={[styles.playbookArrowWrap, { borderColor: `${item.accent}33` }]}>
         <ArrowUpRight size={16} color={item.accent} />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -462,6 +510,7 @@ export default function ProfileScreen() {
   const { data: authUser } = useUser();
   const { session, signOut } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [activePlaybookItem, setActivePlaybookItem] = useState(null);
   const heroDrift = useRef(new Animated.Value(0)).current;
   const userId = authUser?.id || null;
   const canUseProfileApi = Boolean(userId && session?.access_token);
@@ -531,6 +580,28 @@ export default function ProfileScreen() {
       Alert.alert("Error", error?.message || "Failed to sign out");
       setIsSigningOut(false);
     }
+  };
+
+  const openLegalPreview = async (url) => {
+    try {
+      await WebBrowser.openBrowserAsync(url, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+        controlsColor: "#0F766E",
+        readerMode: false,
+        showTitle: true,
+        enableBarCollapsing: true,
+      });
+    } catch (error) {
+      Alert.alert("Unable to open page", error?.message || "Please try again.");
+    }
+  };
+
+  const openPlaybookDetails = (item) => {
+    setActivePlaybookItem(item);
+  };
+
+  const closePlaybookDetails = () => {
+    setActivePlaybookItem(null);
   };
 
   if (!profileData && !authUser && isLoading && canUseProfileApi) {
@@ -744,7 +815,7 @@ export default function ProfileScreen() {
 
           <View style={[styles.playbookStack, styles.playbookStackCompact]}>
             {PLAYBOOK_ITEMS.map((item) => (
-              <PlaybookCard key={item.title} item={item} />
+              <PlaybookCard key={item.title} item={item} onPress={openPlaybookDetails} />
             ))}
           </View>
         </View>
@@ -763,12 +834,12 @@ export default function ProfileScreen() {
             <LegalLinkCard
               title="Privacy Policy"
               detail="See what information ParkMate collects and how it is used."
-              onPress={() => router.push("/legal/privacy-policy")}
+              onPress={() => openLegalPreview(PRIVACY_POLICY_URL)}
             />
             <LegalLinkCard
               title="Terms of Service"
               detail="Review the main rules, disclaimers, and account responsibilities."
-              onPress={() => router.push("/legal/terms-of-service")}
+              onPress={() => openLegalPreview(TERMS_OF_SERVICE_URL)}
             />
           </View>
         </View>
@@ -791,6 +862,67 @@ export default function ProfileScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={Boolean(activePlaybookItem)}
+        transparent
+        animationType="fade"
+        onRequestClose={closePlaybookDetails}
+      >
+        <Pressable style={styles.playbookModalBackdrop} onPress={closePlaybookDetails}>
+          <Pressable
+            style={styles.playbookModalSheet}
+            onPress={(event) => event.stopPropagation()}
+          >
+            {activePlaybookItem ? (
+              <>
+                <View style={styles.playbookModalTopRow}>
+                  <View
+                    style={[
+                      styles.playbookModalPointsBubble,
+                      { backgroundColor: `${activePlaybookItem.accent}1A` },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.playbookModalPointsText,
+                        { color: activePlaybookItem.accent },
+                      ]}
+                    >
+                      {activePlaybookItem.points}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.playbookModalClose}
+                    onPress={closePlaybookDetails}
+                  >
+                    <Text style={styles.playbookModalCloseText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.playbookModalTitle}>{activePlaybookItem.modalTitle}</Text>
+                <Text style={styles.playbookModalBody}>{activePlaybookItem.modalBody}</Text>
+
+                <View style={styles.playbookModalBulletStack}>
+                  {activePlaybookItem.bullets.map((bullet) => (
+                    <View key={bullet} style={styles.playbookModalBulletRow}>
+                      <View
+                        style={[
+                          styles.playbookModalBulletDot,
+                          { backgroundColor: activePlaybookItem.accent },
+                        ]}
+                      />
+                      <Text style={styles.playbookModalBulletText}>{bullet}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -1306,6 +1438,89 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: "#D9F2FF",
+  },
+  playbookModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.48)",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+  playbookModalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 18,
+    borderWidth: 1,
+    borderColor: "#D9F2FF",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+  playbookModalTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  playbookModalPointsBubble: {
+    minWidth: 64,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  playbookModalPointsText: {
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  playbookModalClose: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  playbookModalCloseText: {
+    color: "#334155",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  playbookModalTitle: {
+    color: "#0F172A",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  playbookModalBody: {
+    color: "#475569",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 10,
+  },
+  playbookModalBulletStack: {
+    marginTop: 16,
+    gap: 12,
+  },
+  playbookModalBulletRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  playbookModalBulletDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    marginTop: 6,
+  },
+  playbookModalBulletText: {
+    flex: 1,
+    color: "#334155",
+    fontSize: 13,
+    lineHeight: 19,
   },
   playbookPointsBubble: {
     minWidth: 52,

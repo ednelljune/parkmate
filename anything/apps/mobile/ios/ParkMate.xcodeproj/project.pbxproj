@@ -21,13 +21,11 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = ParkMate/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = ParkMate/Info.plist; sourceTree = "<group>"; };
 		2607C1827F40BB9D262351DB /* Pods-ParkMates.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ParkMates.debug.xcconfig"; path = "Target Support Files/Pods-ParkMates/Pods-ParkMates.debug.xcconfig"; sourceTree = "<group>"; };
-		79C6F751BED3DF1704D39893 /* Pods-ParkMate.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ParkMate.release.xcconfig"; path = "Target Support Files/Pods-ParkMate/Pods-ParkMate.release.xcconfig"; sourceTree = "<group>"; };
 		890C5FBF72B8D9F2EB8C7448 /* Pods-ParkMates.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ParkMates.release.xcconfig"; path = "Target Support Files/Pods-ParkMates/Pods-ParkMates.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = ParkMate/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BAB80B76153AF466BC0E2DC3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = ParkMate/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		C0F72C51B8BA477001CF7760 /* libPods-ParkMates.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ParkMates.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		DDB85977302E8A5951C16452 /* Pods-ParkMate.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ParkMate.debug.xcconfig"; path = "Target Support Files/Pods-ParkMate/Pods-ParkMate.debug.xcconfig"; sourceTree = "<group>"; };
 		DF77C8203F76BF41D8933239 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ParkMates/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = ParkMate/AppDelegate.swift; sourceTree = "<group>"; };
@@ -63,8 +61,6 @@
 		211477A1E3501B0C8CEB83F2 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				DDB85977302E8A5951C16452 /* Pods-ParkMate.debug.xcconfig */,
-				79C6F751BED3DF1704D39893 /* Pods-ParkMate.release.xcconfig */,
 				2607C1827F40BB9D262351DB /* Pods-ParkMates.debug.xcconfig */,
 				890C5FBF72B8D9F2EB8C7448 /* Pods-ParkMates.release.xcconfig */,
 			);

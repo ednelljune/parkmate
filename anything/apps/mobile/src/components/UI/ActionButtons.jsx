@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { View, TouchableOpacity, Animated } from "react-native";
-import { MapPinPlus, LocateFixed } from "lucide-react-native";
+import { CircleParking, Flag, LocateFixed } from "lucide-react-native";
 
 export const FLOATING_ACTION_BUTTON_SIZE = 56;
 export const FLOATING_ACTION_BUTTON_SIDE_OFFSET = 20;
@@ -10,7 +10,9 @@ export const ActionButtons = ({
   insets,
   location,
   isReporting,
+  isSuggestingZone,
   onReportPress,
+  onSuggestZonePress,
   onRecenterPress,
   tabBarHeight = 0,
 }) => {
@@ -73,6 +75,11 @@ export const ActionButtons = ({
     onRecenterPress();
   };
 
+  const handleSuggestZonePress = () => {
+    resetIdleTimer();
+    onSuggestZonePress();
+  };
+
   return (
     <View
       style={{
@@ -111,6 +118,28 @@ export const ActionButtons = ({
             width: FLOATING_ACTION_BUTTON_SIZE,
             height: FLOATING_ACTION_BUTTON_SIZE,
             borderRadius: FLOATING_ACTION_BUTTON_SIZE / 2,
+            backgroundColor: isSuggestingZone ? "#0F766E99" : "#0F766E",
+            justifyContent: "center",
+            alignItems: "center",
+            elevation: 7,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.28,
+            shadowRadius: 5,
+          }}
+          onPress={handleSuggestZonePress}
+          disabled={isSuggestingZone}
+        >
+          <Flag size={22} color="#fff" />
+        </TouchableOpacity>
+      </Animated.View>
+
+      <Animated.View style={{ opacity: opacityAnim }}>
+        <TouchableOpacity
+          style={{
+            width: FLOATING_ACTION_BUTTON_SIZE,
+            height: FLOATING_ACTION_BUTTON_SIZE,
+            borderRadius: FLOATING_ACTION_BUTTON_SIZE / 2,
             backgroundColor: isReporting ? "#2563EB" : "#3B82F6",
             justifyContent: "center",
             alignItems: "center",
@@ -123,7 +152,7 @@ export const ActionButtons = ({
           onPress={handleReportPress}
           disabled={isReporting}
         >
-          <MapPinPlus size={24} color="#fff" />
+          <CircleParking size={24} color="#fff" />
         </TouchableOpacity>
       </Animated.View>
     </View>

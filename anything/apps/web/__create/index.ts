@@ -13,6 +13,8 @@ import { API_BASENAME, api, routesReady } from './route-builder';
 import * as notificationsActivityRoute from '../src/app/api/notifications/activity/route.js';
 import * as notificationsActivityDeleteRoute from '../src/app/api/notifications/activity/delete/route.js';
 import * as notificationsActivityVersionRoute from '../src/app/api/notifications/activity/version/route.js';
+import * as adminZonesSuggestionsRoute from '../src/app/api/admin/zones/suggestions/route.js';
+import * as adminZonesSuggestionsActionRoute from '../src/app/api/admin/zones/suggestions/[id]/action/route.js';
 import * as notificationsCreateRoute from '../src/app/api/notifications/create/route.js';
 import * as notificationsListRoute from '../src/app/api/notifications/list/route.js';
 import * as notificationsMailboxRoute from '../src/app/api/notifications/mailbox/route.js';
@@ -129,6 +131,9 @@ app.all('/integrations/:path{.+}', async (c, next) => {
     },
   });
 });
+
+mountRoute('get', '/api/admin/zones/suggestions', adminZonesSuggestionsRoute.GET);
+mountRoute('post', '/api/admin/zones/suggestions/:id/action', adminZonesSuggestionsActionRoute.POST);
 
 mountRoute('get', '/api/notifications/activity', notificationsActivityRoute.GET);
 mountRoute('post', '/api/notifications/activity/delete', notificationsActivityDeleteRoute.POST);

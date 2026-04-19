@@ -33,6 +33,7 @@ import { useAuth } from "@/utils/auth/useAuth";
 
 const PRIVACY_POLICY_URL = "https://getparkmate.app/privacy-policy";
 const TERMS_OF_SERVICE_URL = "https://getparkmate.app/terms-of-service";
+const ADMIN_EMAIL = "admin@getparkmate.app";
 
 const PROFILE_TIERS = [
   {
@@ -504,6 +505,21 @@ function LegalLinkCard({ title, detail, onPress }) {
   );
 }
 
+function AdminLinkCard({ title, detail, onPress }) {
+  return (
+    <TouchableOpacity style={styles.adminLinkCard} onPress={onPress} activeOpacity={0.88}>
+      <View style={styles.adminLinkCardIconWrap}>
+        <ShieldCheck size={18} color="#0F766E" />
+      </View>
+      <View style={styles.adminLinkCardCopy}>
+        <Text style={styles.adminLinkCardTitle}>{title}</Text>
+        <Text style={styles.adminLinkCardDetail}>{detail}</Text>
+      </View>
+      <ArrowUpRight size={18} color="#0F766E" />
+    </TouchableOpacity>
+  );
+}
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
@@ -565,6 +581,7 @@ export default function ProfileScreen() {
   const nextTier = getNextTierMeta(points);
   const tierProgress = getTierProgress(points);
   const progressWidth = `${Math.max(6, Math.round(tierProgress.progress * 100))}%`;
+  const isAdminUser = String(authUser?.email || "").trim().toLowerCase() === ADMIN_EMAIL;
 
   const handleSignOut = async () => {
     if (isSigningOut) {
@@ -843,6 +860,25 @@ export default function ProfileScreen() {
             />
           </View>
         </View>
+
+        {isAdminUser ? (
+          <View style={[styles.panel, styles.adminPanelCard]}>
+            <View style={styles.sectionHeaderRow}>
+              <View>
+                <Text style={styles.sectionEyebrow}>Admin</Text>
+                <Text style={[styles.sectionTitle, styles.adminSectionTitle]}>
+                  Missing zone review
+                </Text>
+              </View>
+            </View>
+
+            <AdminLinkCard
+              title="Review missing zones"
+              detail="Approve, reject, or mark reported missing public parking zones as reviewing."
+              onPress={() => router.push("/admin/missing-zone-review")}
+            />
+          </View>
+        ) : null}
 
         <TouchableOpacity
           style={[styles.signOutButton, isSigningOut && styles.signOutButtonDisabled]}
@@ -1571,6 +1607,45 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: "#D9F2FF",
+  },
+  adminPanelCard: {
+    backgroundColor: "#ECFDF5",
+  },
+  adminSectionTitle: {
+    color: "#0F172A",
+  },
+  adminLinkCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(15, 118, 110, 0.12)",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  adminLinkCardIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: "#CCFBF1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adminLinkCardCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  adminLinkCardTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  adminLinkCardDetail: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#475569",
   },
   legalLinkIconWrap: {
     width: 36,

@@ -100,7 +100,23 @@ export default function AdminZoneSuggestionsPage() {
 
     setApprovalForm((current) => ({
       ...current,
-      zoneName: activeSuggestion.area_name || current.zoneName || '',
+      zoneName:
+        activeSuggestion.zone_name ||
+        activeSuggestion.street_name ||
+        activeSuggestion.area_name ||
+        current.zoneName ||
+        '',
+      zoneType:
+        activeSuggestion.zone_type ||
+        activeSuggestion.suggested_zone_type ||
+        current.zoneType ||
+        DEFAULT_APPROVAL_FORM.zoneType,
+      capacitySpaces:
+        activeSuggestion.capacity_spaces != null
+          ? String(activeSuggestion.capacity_spaces)
+          : activeSuggestion.estimated_capacity_spaces != null
+            ? String(activeSuggestion.estimated_capacity_spaces)
+            : current.capacitySpaces || '',
     }));
   }, [activeSuggestion]);
 
@@ -108,7 +124,21 @@ export default function AdminZoneSuggestionsPage() {
     setActiveSuggestionId(suggestion.id);
     setApprovalForm({
       ...DEFAULT_APPROVAL_FORM,
-      zoneName: suggestion.area_name || '',
+      zoneName:
+        suggestion.zone_name ||
+        suggestion.street_name ||
+        suggestion.area_name ||
+        '',
+      zoneType:
+        suggestion.zone_type ||
+        suggestion.suggested_zone_type ||
+        DEFAULT_APPROVAL_FORM.zoneType,
+      capacitySpaces:
+        suggestion.capacity_spaces != null
+          ? String(suggestion.capacity_spaces)
+          : suggestion.estimated_capacity_spaces != null
+            ? String(suggestion.estimated_capacity_spaces)
+            : '',
     });
   };
 
@@ -252,11 +282,20 @@ export default function AdminZoneSuggestionsPage() {
                         </div>
 
                         <h3 className="mt-3 text-lg font-bold text-white">
-                          {suggestion.area_name || 'Unnamed suggestion'}
+                          {suggestion.zone_name || suggestion.street_name || suggestion.area_name || 'Unnamed suggestion'}
                         </h3>
                         <p className="mt-1 text-sm text-slate-300">
                           {Number(suggestion.latitude).toFixed(6)}, {Number(suggestion.longitude).toFixed(6)}
                         </p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-200">
+                          <span className="rounded-full border border-white/10 bg-slate-900/70 px-2.5 py-1">
+                            Type: {suggestion.zone_type || suggestion.suggested_zone_type || 'Not set'}
+                          </span>
+                          <span className="rounded-full border border-white/10 bg-slate-900/70 px-2.5 py-1">
+                            Capacity:{' '}
+                            {suggestion.capacity_spaces ?? suggestion.estimated_capacity_spaces ?? 'Not set'}
+                          </span>
+                        </div>
                         <p className="mt-2 text-xs text-slate-400">
                           Submitted by {suggestion.submitter_name || suggestion.submitter_email || 'Unknown'} on{' '}
                           {formatDate(suggestion.created_at)}
@@ -333,10 +372,19 @@ export default function AdminZoneSuggestionsPage() {
                   <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                     <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Selected suggestion</div>
                     <div className="mt-2 text-base font-bold text-white">
-                      {activeSuggestion.area_name || `Suggestion #${activeSuggestion.id}`}
+                      {activeSuggestion.zone_name || activeSuggestion.street_name || activeSuggestion.area_name || `Suggestion #${activeSuggestion.id}`}
                     </div>
                     <div className="mt-1 text-sm text-slate-300">
                       {Number(activeSuggestion.latitude).toFixed(6)}, {Number(activeSuggestion.longitude).toFixed(6)}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-200">
+                      <span className="rounded-full border border-white/10 bg-slate-900/70 px-2.5 py-1">
+                        Type: {activeSuggestion.zone_type || activeSuggestion.suggested_zone_type || 'Not set'}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-slate-900/70 px-2.5 py-1">
+                        Capacity:{' '}
+                        {activeSuggestion.capacity_spaces ?? activeSuggestion.estimated_capacity_spaces ?? 'Not set'}
+                      </span>
                     </div>
                   </div>
 
@@ -471,4 +519,3 @@ export default function AdminZoneSuggestionsPage() {
     </div>
   );
 }
-

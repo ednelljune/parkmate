@@ -112,11 +112,20 @@ export default function MissingZoneReviewScreen() {
     setActiveSuggestionId(suggestion.id);
     setForm({
       ...DEFAULT_FORM,
-      zoneName: suggestion.area_name || "",
-      zoneType: suggestion.suggested_zone_type || DEFAULT_FORM.zoneType,
+      zoneName:
+        suggestion.zone_name ||
+        suggestion.street_name ||
+        suggestion.area_name ||
+        "",
+      zoneType:
+        suggestion.zone_type ||
+        suggestion.suggested_zone_type ||
+        DEFAULT_FORM.zoneType,
       capacitySpaces:
-        suggestion.estimated_capacity_spaces != null
-          ? String(suggestion.estimated_capacity_spaces)
+        suggestion.capacity_spaces != null
+          ? String(suggestion.capacity_spaces)
+          : suggestion.estimated_capacity_spaces != null
+            ? String(suggestion.estimated_capacity_spaces)
           : "",
       reviewNotes: suggestion.review_notes || "",
     });
@@ -271,7 +280,7 @@ export default function MissingZoneReviewScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.pagePadding}>
-          <Pressable style={styles.backButton} onPress={() => router.replace("/(tabs)/profile")}>
+          <Pressable style={styles.backButton} onPress={() => router.replace("/profile")}>
             <Text style={styles.backButtonText}>Back</Text>
           </Pressable>
 
@@ -363,7 +372,7 @@ export default function MissingZoneReviewScreen() {
                     </View>
 
                     <Text style={styles.suggestionTitle}>
-                      {suggestion.area_name || "Unnamed suggestion"}
+                      {suggestion.zone_name || suggestion.street_name || suggestion.area_name || "Unnamed suggestion"}
                     </Text>
                     <Text style={styles.suggestionMeta}>
                       Submitted by {suggestion.submitter_name || suggestion.submitter_email || "Unknown"} on{" "}
@@ -372,10 +381,10 @@ export default function MissingZoneReviewScreen() {
 
                     <View style={styles.metricRow}>
                       <Text style={styles.metricText}>
-                        Type: {suggestion.suggested_zone_type || "Unknown"}
+                        Type: {suggestion.zone_type || suggestion.suggested_zone_type || "Unknown"}
                       </Text>
                       <Text style={styles.metricText}>
-                        Approx spaces: {Number(suggestion.estimated_capacity_spaces) || 0}
+                        Approx spaces: {suggestion.capacity_spaces ?? suggestion.estimated_capacity_spaces ?? 0}
                       </Text>
                       <Text style={styles.metricText}>
                         Confirmations: {Number(suggestion.confirmation_count) || 0}
@@ -407,7 +416,7 @@ export default function MissingZoneReviewScreen() {
                   <View style={styles.selectionHeaderRow}>
                     <View style={styles.selectionHeaderCopy}>
                       <Text style={styles.selectionTitle}>
-                        {activeSuggestion.area_name || `Suggestion #${activeSuggestion.id}`}
+                        {activeSuggestion.zone_name || activeSuggestion.street_name || activeSuggestion.area_name || `Suggestion #${activeSuggestion.id}`}
                       </Text>
                       <Text style={styles.selectionMeta}>
                         {formatCoordinate(activeSuggestion.latitude)},{" "}

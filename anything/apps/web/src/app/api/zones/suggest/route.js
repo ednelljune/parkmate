@@ -4,6 +4,8 @@ import { logUserActivity } from "@/app/api/utils/activity-log";
 import {
   ensureSuggestedZonesAdminSchema,
   normalizeCoordinate,
+  normalizeInteger,
+  normalizeSuggestedZoneType,
   normalizeText,
 } from "@/app/api/admin/zones/suggestions/shared";
 
@@ -41,12 +43,16 @@ export async function POST(request) {
       latitude,
       longitude,
       streetName,
+      estimatedCapacitySpaces,
+      suggestedZoneType,
     } =
       await request.json();
     const userId = auth.user.id;
     const normalizedLatitude = normalizeCoordinate(latitude);
     const normalizedLongitude = normalizeCoordinate(longitude);
     const normalizedStreetName = normalizeText(streetName, STREET_NAME_MAX_LENGTH);
+    const normalizedEstimatedCapacitySpaces = normalizeInteger(estimatedCapacitySpaces);
+    const normalizedSuggestedZoneType = normalizeSuggestedZoneType(suggestedZoneType);
     const fullName = getDisplayNameFallback(auth.user);
     const email = auth.user.email || "";
 
@@ -60,6 +66,23 @@ export async function POST(request) {
     if (!normalizedStreetName) {
       return Response.json(
         { success: false, message: "Street name is required for missing zone suggestions." },
+        { status: 400 },
+      );
+    }
+
+    if (!normalizedSuggestedZoneType) {
+      return Response.json(
+        { success: false, message: "Parking type is required for missing zone suggestions." },
+        { status: 400 },
+      );
+    }
+
+    if (
+      normalizedEstimatedCapacitySpaces !== null &&
+      normalizedEstimatedCapacitySpaces < 0
+    ) {
+      return Response.json(
+        { success: false, message: "Estimated capacity must be zero or a positive number." },
         { status: 400 },
       );
     }
@@ -166,6 +189,8 @@ export async function POST(request) {
         location,
         area_name,
         street_name,
+        estimated_capacity_spaces,
+        suggested_zone_type,
         status,
         source
       )
@@ -174,6 +199,8 @@ export async function POST(request) {
         ST_SetSRID(ST_Point(${normalizedLongitude}, ${normalizedLatitude}), 4326),
         ${normalizedStreetName},
         ${normalizedStreetName},
+        ${normalizedEstimatedCapacitySpaces},
+        ${normalizedSuggestedZoneType},
         'pending',
         'mobile'
       )
@@ -201,11 +228,11 @@ export async function POST(request) {
         userId,
         reportId: insertedSuggestion.id,
         activityType: "zone_suggested",
-        parkingType: "Public",
+        parkingType: insertedSuggestion.suggested_zone_type || "Public",
         quantity: 1,
         longitude: insertedSuggestion.longitude,
         latitude: insertedSuggestion.latitude,
-        zoneType: "Public",
+        zoneType: insertedSuggestion.suggested_zone_type || "Public",
         zoneName: insertedSuggestion.street_name || "Missing public zone",
         spotStatus: insertedSuggestion.status,
         occurredAt: insertedSuggestion.created_at,

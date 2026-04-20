@@ -144,7 +144,7 @@ export default function AuthCallback() {
   }
 
   if (isReady && isAuthenticated) {
-    return <Redirect href="/(tabs)/index" />;
+    return <Redirect href="/" />;
   }
 
   if (callbackError) {

@@ -161,6 +161,7 @@ const PARKING_TYPE_ORDER = [
   "Permit",
   "No Parking",
 ];
+const SUGGESTED_ZONE_TYPE_OPTIONS = ["P1", "P2", "P3", "P4", "FH"];
 
 const DEFAULT_MAP_DELTA = 0.005;
 const FOLLOW_ANIMATION_DISTANCE_METERS = 12;
@@ -321,6 +322,8 @@ function ParkMateContent() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSuggestZoneModal, setShowSuggestZoneModal] = useState(false);
   const [suggestedZoneStreetName, setSuggestedZoneStreetName] = useState("");
+  const [suggestedZoneCapacity, setSuggestedZoneCapacity] = useState("");
+  const [suggestedZoneType, setSuggestedZoneType] = useState("");
   const [selectedZoneOption, setSelectedZoneOption] = useState(null);
   const [spotQuantity, setSpotQuantity] = useState(1);
   const [selectedZone, setSelectedZone] = useState(null);
@@ -1175,6 +1178,8 @@ function ParkMateContent() {
     setShowReportModal(false);
     setShowSuggestZoneModal(false);
     setSuggestedZoneStreetName("");
+    setSuggestedZoneCapacity("");
+    setSuggestedZoneType("");
     Alert.alert(
       "Zone suggestion received",
       data?.message ||
@@ -1659,6 +1664,8 @@ function ParkMateContent() {
       return;
     }
     setSuggestedZoneStreetName("");
+    setSuggestedZoneCapacity("");
+    setSuggestedZoneType("");
     setShowSuggestZoneModal(true);
   }, [location, suggestZoneMutation]);
 
@@ -1676,6 +1683,27 @@ function ParkMateContent() {
       return;
     }
 
+    if (!SUGGESTED_ZONE_TYPE_OPTIONS.includes(suggestedZoneType)) {
+      Alert.alert(
+        "Select parking type",
+        "Choose the parking type for this missing zone before sending it for review.",
+      );
+      return;
+    }
+
+    const normalizedCapacity = suggestedZoneCapacity.trim();
+    const parsedCapacity = normalizedCapacity
+      ? Number.parseInt(normalizedCapacity, 10)
+      : null;
+
+    if (normalizedCapacity && (!Number.isFinite(parsedCapacity) || parsedCapacity < 0)) {
+      Alert.alert(
+        "Invalid capacity",
+        "Approximate capacity must be a non-negative number.",
+      );
+      return;
+    }
+
     setShowSuggestZoneModal(false);
     suggestZoneMutation.mutate({
       coords: {
@@ -1683,9 +1711,19 @@ function ParkMateContent() {
         longitude: location.longitude,
       },
       streetName: normalizedStreetName,
+      estimatedCapacitySpaces: parsedCapacity,
+      suggestedZoneType,
     });
     setSuggestedZoneStreetName("");
-  }, [location, suggestZoneMutation, suggestedZoneStreetName]);
+    setSuggestedZoneCapacity("");
+    setSuggestedZoneType("");
+  }, [
+    location,
+    suggestZoneMutation,
+    suggestedZoneCapacity,
+    suggestedZoneStreetName,
+    suggestedZoneType,
+  ]);
 
   const logSpotSelection = useCallback((label, payload) => {
     if (!payload) {
@@ -2264,6 +2302,8 @@ function ParkMateContent() {
           if (!suggestZoneMutation.isPending) {
             setShowSuggestZoneModal(false);
             setSuggestedZoneStreetName("");
+            setSuggestedZoneCapacity("");
+            setSuggestedZoneType("");
           }
         }}
       >
@@ -2288,7 +2328,8 @@ function ParkMateContent() {
               Suggest Missing Parking Zone
             </Text>
             <Text style={{ marginTop: 8, fontSize: 14, lineHeight: 21, color: "#475569" }}>
-              Send this location for review using your current coordinates and the street name.
+              Send this location for review using your current coordinates, street name,
+              parking type, and estimated capacity.
             </Text>
 
             <Text
@@ -2325,6 +2366,88 @@ function ParkMateContent() {
               We will use your current map location and this street name for review.
             </Text>
 
+            <Text
+              style={{
+                marginTop: 16,
+                marginBottom: 8,
+                fontSize: 14,
+                fontWeight: "700",
+                color: "#0F172A",
+              }}
+            >
+              Parking type
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              {SUGGESTED_ZONE_TYPE_OPTIONS.map((option) => {
+                const isSelected = suggestedZoneType === option;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    onPress={() => setSuggestedZoneType(option)}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      borderColor: isSelected ? "#0F766E" : "#CBD5E1",
+                      backgroundColor: isSelected ? "#CCFBF1" : "#F8FAFC",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "700",
+                        color: isSelected ? "#115E59" : "#334155",
+                      }}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
+              Required. This helps review the expected parking rule for the area.
+            </Text>
+
+            <Text
+              style={{
+                marginTop: 16,
+                marginBottom: 6,
+                fontSize: 14,
+                fontWeight: "700",
+                color: "#0F172A",
+              }}
+            >
+              Approximate spaces
+            </Text>
+            <TextInput
+              value={suggestedZoneCapacity}
+              onChangeText={setSuggestedZoneCapacity}
+              placeholder="e.g. 20"
+              placeholderTextColor="#94A3B8"
+              keyboardType="numeric"
+              style={{
+                borderWidth: 1,
+                borderColor: "#CBD5E1",
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                fontSize: 15,
+                color: "#0F172A",
+                backgroundColor: "#F8FAFC",
+              }}
+            />
+            <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
+              Optional, but helpful for review.
+            </Text>
+
             <View
               style={{
                 flexDirection: "row",
@@ -2338,6 +2461,8 @@ function ParkMateContent() {
                   if (!suggestZoneMutation.isPending) {
                     setShowSuggestZoneModal(false);
                     setSuggestedZoneStreetName("");
+                    setSuggestedZoneCapacity("");
+                    setSuggestedZoneType("");
                   }
                 }}
                 style={{

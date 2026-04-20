@@ -4,6 +4,7 @@ let suggestedZonesAdminSchemaPromise = null;
 
 export const DEFAULT_APPROVAL_LAT_OFFSET = 0.00045;
 export const DEFAULT_APPROVAL_LNG_OFFSET = 0.00055;
+export const SUGGESTED_ZONE_TYPE_OPTIONS = ["P1", "P2", "P3", "P4", "FH"];
 
 export const normalizeCoordinate = (value) => {
   const parsed = typeof value === "number" ? value : Number.parseFloat(value);
@@ -30,6 +31,13 @@ export const normalizeText = (value, maxLength = 240) => {
   }
 
   return trimmed.slice(0, maxLength);
+};
+
+export const normalizeSuggestedZoneType = (value) => {
+  const normalized = normalizeText(value, 16)?.toUpperCase() || null;
+  return normalized && SUGGESTED_ZONE_TYPE_OPTIONS.includes(normalized)
+    ? normalized
+    : null;
 };
 
 export const createBoxPolygon = (
@@ -87,6 +95,21 @@ export const ensureSuggestedZonesAdminSchema = () => {
       `;
 
       await sql`
+        ALTER TABLE suggested_parking_zones
+        ADD COLUMN IF NOT EXISTS estimated_capacity_spaces INTEGER;
+      `;
+
+      await sql`
+        ALTER TABLE suggested_parking_zones
+        ADD COLUMN IF NOT EXISTS suggested_zone_type TEXT;
+      `;
+
+      await sql`
+        ALTER TABLE suggested_parking_zones
+        ADD COLUMN IF NOT EXISTS street_name TEXT;
+      `;
+
+      await sql`
         CREATE INDEX IF NOT EXISTS idx_suggested_parking_zones_status_created
         ON suggested_parking_zones (status, created_at DESC);
       `;
@@ -103,4 +126,3 @@ export const ensureSuggestedZonesAdminSchema = () => {
 
   return suggestedZonesAdminSchemaPromise;
 };
-

@@ -40,7 +40,7 @@ export async function GET(request) {
           ual.occurred_at
         FROM user_activity_logs ual
         WHERE ual.user_id = $1
-          AND ual.activity_type IN ('reported', 'claimed', 'false_reported', 'report_claimed')
+          AND ual.activity_type IN ('reported', 'claimed', 'false_reported', 'report_claimed', 'expired', 'zone_suggested', 'zone_reviewing', 'zone_approved', 'zone_rejected')
           AND LOWER(COALESCE(ual.zone_type, ual.parking_type, '')) NOT LIKE '%' || $2 || '%'
 
         UNION ALL

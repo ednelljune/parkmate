@@ -139,6 +139,27 @@ const buildSystemUpdateNotificationPayload = (item) => {
     };
   }
 
+  if (item?.mailbox_type === "zone_reviewing") {
+    return {
+      title: "Missing zone under review",
+      body: `Your missing public zone suggestion in ${zoneName} is now under review.`,
+    };
+  }
+
+  if (item?.mailbox_type === "zone_approved") {
+    return {
+      title: "Missing zone approved",
+      body: `Your missing public zone suggestion in ${zoneName} was approved and added to the map.`,
+    };
+  }
+
+  if (item?.mailbox_type === "zone_rejected") {
+    return {
+      title: "Missing zone not approved",
+      body: `Your missing public zone suggestion in ${zoneName} was not approved.`,
+    };
+  }
+
   return {
     title: "Your reported spot was flagged",
     body:

@@ -9,17 +9,19 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react-native";
 
 import fetch from "@/__create/fetch";
 import { useAuth } from "@/utils/auth/useAuth";
 
 const STATUS_OPTIONS = ["pending", "reviewing", "approved", "rejected"];
+const ZONE_TYPE_OPTIONS = ["P1", "P2", "P3", "P4", "FH"];
 const DEFAULT_FORM = {
   zoneName: "",
-  zoneType: "Public",
+  zoneType: "",
   capacitySpaces: "",
   rulesDescription: "",
   reviewNotes: "",
@@ -72,20 +74,6 @@ export default function MissingZoneReviewScreen() {
 
   const isAdminUser = Boolean(profileQuery.data?.is_admin);
 
-  if (canUseProfileApi && profileQuery.isLoading) {
-    return (
-      <>
-        <Stack.Screen options={{ title: "Missing Zone Review" }} />
-        <View style={[styles.centeredScreen, styles.loadingCenteredScreen, { paddingTop: insets.top + 32 }]}>
-          <View style={styles.loadingCard}>
-            <ActivityIndicator size="small" color="#0EA5E9" />
-            <Text style={styles.loadingText}>Checking admin access...</Text>
-          </View>
-        </View>
-      </>
-    );
-  }
-
   const suggestionsQuery = useQuery({
     queryKey: ["admin_zone_suggestions", status],
     queryFn: async () => {
@@ -125,6 +113,11 @@ export default function MissingZoneReviewScreen() {
     setForm({
       ...DEFAULT_FORM,
       zoneName: suggestion.area_name || "",
+      zoneType: suggestion.suggested_zone_type || DEFAULT_FORM.zoneType,
+      capacitySpaces:
+        suggestion.estimated_capacity_spaces != null
+          ? String(suggestion.estimated_capacity_spaces)
+          : "",
       reviewNotes: suggestion.review_notes || "",
     });
   }, []);
@@ -196,12 +189,17 @@ export default function MissingZoneReviewScreen() {
       return;
     }
 
-    const normalizedZoneType = form.zoneType.trim() || "Public";
+    const normalizedZoneType = form.zoneType.trim().toUpperCase();
+    if (!ZONE_TYPE_OPTIONS.includes(normalizedZoneType)) {
+      Alert.alert("Validation Error", "Select a parking type before approving.");
+      return;
+    }
+
     const normalizedCapacity = form.capacitySpaces.trim();
     const parsedCapacity = normalizedCapacity ? Number.parseInt(normalizedCapacity, 10) : null;
 
     if (normalizedCapacity && (!Number.isFinite(parsedCapacity) || parsedCapacity < 0)) {
-      Alert.alert("Validation Error", "Capacity must be a valid positive number.");
+      Alert.alert("Validation Error", "Capacity must be a non-negative number.");
       return;
     }
 
@@ -247,6 +245,20 @@ export default function MissingZoneReviewScreen() {
     );
   }
 
+  if (canUseProfileApi && profileQuery.isLoading) {
+    return (
+      <>
+        <Stack.Screen options={{ title: "Missing Zone Review" }} />
+        <View style={[styles.centeredScreen, styles.loadingCenteredScreen, { paddingTop: insets.top + 32 }]}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="small" color="#0EA5E9" />
+            <Text style={styles.loadingText}>Checking admin access...</Text>
+          </View>
+        </View>
+      </>
+    );
+  }
+
   return (
     <>
       <Stack.Screen options={{ title: "Missing Zone Review" }} />
@@ -259,6 +271,10 @@ export default function MissingZoneReviewScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.pagePadding}>
+          <Pressable style={styles.backButton} onPress={() => router.replace("/(tabs)/profile")}>
+            <Text style={styles.backButtonText}>Back</Text>
+          </Pressable>
+
           <View style={styles.heroCard}>
             <Text style={styles.heroEyebrow}>Admin Review</Text>
             <Text style={styles.heroTitle}>Missing public zone suggestions</Text>
@@ -356,6 +372,12 @@ export default function MissingZoneReviewScreen() {
 
                     <View style={styles.metricRow}>
                       <Text style={styles.metricText}>
+                        Type: {suggestion.suggested_zone_type || "Unknown"}
+                      </Text>
+                      <Text style={styles.metricText}>
+                        Approx spaces: {Number(suggestion.estimated_capacity_spaces) || 0}
+                      </Text>
+                      <Text style={styles.metricText}>
                         Confirmations: {Number(suggestion.confirmation_count) || 0}
                       </Text>
                       <Text style={styles.metricText}>
@@ -382,13 +404,29 @@ export default function MissingZoneReviewScreen() {
             ) : (
               <View style={styles.formStack}>
                 <View style={styles.selectionCard}>
-                  <Text style={styles.selectionTitle}>
-                    {activeSuggestion.area_name || `Suggestion #${activeSuggestion.id}`}
-                  </Text>
-                  <Text style={styles.selectionMeta}>
-                    {formatCoordinate(activeSuggestion.latitude)},{" "}
-                    {formatCoordinate(activeSuggestion.longitude)}
-                  </Text>
+                  <View style={styles.selectionHeaderRow}>
+                    <View style={styles.selectionHeaderCopy}>
+                      <Text style={styles.selectionTitle}>
+                        {activeSuggestion.area_name || `Suggestion #${activeSuggestion.id}`}
+                      </Text>
+                      <Text style={styles.selectionMeta}>
+                        {formatCoordinate(activeSuggestion.latitude)},{" "}
+                        {formatCoordinate(activeSuggestion.longitude)}
+                      </Text>
+                    </View>
+
+                    <Pressable
+                      disabled={submitting}
+                      style={[styles.deleteIconButton, submitting && styles.disabledButton]}
+                      onPress={() =>
+                        confirmAndRunAction(activeSuggestion.id, {
+                          action: "delete",
+                        })
+                      }
+                    >
+                      <Trash2 size={18} color="#DC2626" />
+                    </Pressable>
+                  </View>
                 </View>
 
                 <TextInput
@@ -398,13 +436,23 @@ export default function MissingZoneReviewScreen() {
                   placeholderTextColor="#94A3B8"
                   style={styles.input}
                 />
-                <TextInput
-                  value={form.zoneType}
-                  onChangeText={(value) => setForm((current) => ({ ...current, zoneType: value }))}
-                  placeholder="Zone type"
-                  placeholderTextColor="#94A3B8"
-                  style={styles.input}
-                />
+                <Text style={styles.inputLabel}>Zone type</Text>
+                <View style={styles.chipRow}>
+                  {ZONE_TYPE_OPTIONS.map((option) => {
+                    const active = form.zoneType === option;
+                    return (
+                      <Pressable
+                        key={option}
+                        onPress={() => setForm((current) => ({ ...current, zoneType: option }))}
+                        style={[styles.chip, active && styles.chipActive]}
+                      >
+                        <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                          {option}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
                 <TextInput
                   value={form.capacitySpaces}
                   onChangeText={(value) =>
@@ -514,6 +562,18 @@ const styles = StyleSheet.create({
   pagePadding: {
     paddingHorizontal: 18,
     gap: 16,
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  backButtonText: {
+    color: "#0F172A",
+    fontSize: 13,
+    fontWeight: "800",
   },
   centeredScreen: {
     flex: 1,
@@ -740,6 +800,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     padding: 14,
   },
+  selectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  selectionHeaderCopy: {
+    flex: 1,
+  },
   selectionTitle: {
     fontSize: 16,
     fontWeight: "800",
@@ -750,6 +819,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#64748B",
   },
+  deleteIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FEE2E2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   input: {
     borderRadius: 16,
     borderWidth: 1,
@@ -759,6 +838,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: "#0F172A",
+  },
+  inputLabel: {
+    marginBottom: -4,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#334155",
   },
   inlineRow: {
     flexDirection: "row",

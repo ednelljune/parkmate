@@ -47,6 +47,33 @@ export async function GET(request) {
         UNION ALL
 
         SELECT
+          CONCAT('zone-reviewing-', COALESCE(ual.event_key, ual.id::text, ual.report_id::text)) AS event_id,
+          ual.occurred_at
+        FROM user_activity_logs ual
+        WHERE ual.user_id = $1
+          AND ual.activity_type = 'zone_reviewing'
+
+        UNION ALL
+
+        SELECT
+          CONCAT('zone-approved-', COALESCE(ual.event_key, ual.id::text, ual.report_id::text)) AS event_id,
+          ual.occurred_at
+        FROM user_activity_logs ual
+        WHERE ual.user_id = $1
+          AND ual.activity_type = 'zone_approved'
+
+        UNION ALL
+
+        SELECT
+          CONCAT('zone-rejected-', COALESCE(ual.event_key, ual.id::text, ual.report_id::text)) AS event_id,
+          ual.occurred_at
+        FROM user_activity_logs ual
+        WHERE ual.user_id = $1
+          AND ual.activity_type = 'zone_rejected'
+
+        UNION ALL
+
+        SELECT
           CONCAT('claimed-', lr.id) AS event_id,
           COALESCE(lr.claimed_at, lr.created_at) AS occurred_at
         FROM live_reports lr

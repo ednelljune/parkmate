@@ -61,7 +61,7 @@ export default function Login() {
   }
 
   if (session) {
-    return <Redirect href="/" />;
+    return <Redirect href="/(tabs)/index" />;
   }
 
   const onSubmit = async () => {
@@ -84,7 +84,7 @@ export default function Login() {
       });
 
       setSession(data.session);
-      router.replace('/');
+      router.replace('/(tabs)/index');
     } catch (submitError) {
       setError(
         errorMessages[submitError?.message] ||

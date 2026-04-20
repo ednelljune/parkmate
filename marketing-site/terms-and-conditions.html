@@ -42,9 +42,12 @@
 
             <!-- Mobile menu button -->
             <div class="md:hidden">
-                <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')"
+                <button onclick="toggleMobileMenu()"
+                    aria-controls="mobile-menu"
+                    aria-expanded="false"
+                    aria-label="Open main menu"
                     class="text-slate-300 hover:text-white p-2">
-                    <i data-lucide="menu" class="w-6 h-6"></i>
+                    <i data-lucide="menu" aria-hidden="true" class="w-6 h-6"></i>
                 </button>
             </div>
         </div>
@@ -141,6 +144,15 @@
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            const button = event.target.closest('button');
+            const isExpanded = button.getAttribute('aria-expanded') === 'true';
+            menu.classList.toggle('hidden');
+            button.setAttribute('aria-expanded', !isExpanded);
+            button.setAttribute('aria-label', isExpanded ? 'Open main menu' : 'Close main menu');
+        }
     </script>
 </body>
 

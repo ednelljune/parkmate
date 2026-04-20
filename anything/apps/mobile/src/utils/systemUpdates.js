@@ -52,6 +52,42 @@ const normalizeSystemUpdateFromActivity = (item) => {
     };
   }
 
+  if (isSystemUpdate && activityType === "zone_reviewing") {
+    return {
+      ...item,
+      id: `system-${itemId}`,
+      mailbox_type: "zone_reviewing",
+      claim_points_awarded: 0,
+      false_report_count: 0,
+      trust_score_threshold: FALSE_REPORT_TRUST_THRESHOLD,
+      trust_score_affected: false,
+    };
+  }
+
+  if (isSystemUpdate && activityType === "zone_approved") {
+    return {
+      ...item,
+      id: `system-${itemId}`,
+      mailbox_type: "zone_approved",
+      claim_points_awarded: 0,
+      false_report_count: 0,
+      trust_score_threshold: FALSE_REPORT_TRUST_THRESHOLD,
+      trust_score_affected: false,
+    };
+  }
+
+  if (isSystemUpdate && activityType === "zone_rejected") {
+    return {
+      ...item,
+      id: `system-${itemId}`,
+      mailbox_type: "zone_rejected",
+      claim_points_awarded: 0,
+      false_report_count: 0,
+      trust_score_threshold: FALSE_REPORT_TRUST_THRESHOLD,
+      trust_score_affected: false,
+    };
+  }
+
   return null;
 };
 

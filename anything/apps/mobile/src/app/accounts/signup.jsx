@@ -93,7 +93,7 @@ export default function Signup() {
   }
 
   if (session) {
-    return <Redirect href="/" />;
+    return <Redirect href="/(tabs)/index" />;
   }
 
   const onSubmit = async () => {
@@ -124,7 +124,7 @@ export default function Signup() {
       if (data.session) {
         allowScreenExitRef.current = true;
         setSession(data.session);
-        router.replace('/');
+        router.replace('/(tabs)/index');
       } else {
         setSuccess('Check your email to confirm your account, then sign in.');
         routeToLogin();

@@ -28,6 +28,18 @@ const buildSystemUpdateMessage = (item) => {
     return `${quantityLabel} in ${zoneName} expired without being claimed.`;
   }
 
+  if (item.mailbox_type === "zone_reviewing") {
+    return `Your missing public zone suggestion in ${zoneName} is now under review.`;
+  }
+
+  if (item.mailbox_type === "zone_approved") {
+    return `Your missing public zone suggestion in ${zoneName} was approved and added to the live map.`;
+  }
+
+  if (item.mailbox_type === "zone_rejected") {
+    return `Your missing public zone suggestion in ${zoneName} was not approved.`;
+  }
+
   const falseReportCount = Math.max(1, Number(item?.false_report_count) || 1);
   const reporterLabel = falseReportCount === 1 ? "driver" : "drivers";
   const trustLabel =
@@ -93,6 +105,75 @@ export async function GET(request) {
         LEFT JOIN live_reports lr ON lr.id = ual.report_id
         WHERE ual.user_id = $1
           AND ual.activity_type = 'report_claimed'
+
+        UNION ALL
+
+        SELECT
+          CONCAT('zone-reviewing-', COALESCE(ual.event_key, ual.id::text, ual.report_id::text)) AS id,
+          'zone_reviewing' AS mailbox_type,
+          ual.report_id,
+          ual.spot_status,
+          ual.parking_type,
+          ual.quantity,
+          ual.occurred_at,
+          NULL::timestamptz AS expires_at,
+          ual.longitude,
+          ual.latitude,
+          ual.zone_type,
+          ual.zone_name,
+          NULL::int AS claim_points_awarded,
+          NULL::int AS false_report_count,
+          $3::int AS trust_score_threshold,
+          false AS trust_score_affected
+        FROM user_activity_logs ual
+        WHERE ual.user_id = $1
+          AND ual.activity_type = 'zone_reviewing'
+
+        UNION ALL
+
+        SELECT
+          CONCAT('zone-approved-', COALESCE(ual.event_key, ual.id::text, ual.report_id::text)) AS id,
+          'zone_approved' AS mailbox_type,
+          ual.report_id,
+          ual.spot_status,
+          ual.parking_type,
+          ual.quantity,
+          ual.occurred_at,
+          NULL::timestamptz AS expires_at,
+          ual.longitude,
+          ual.latitude,
+          ual.zone_type,
+          ual.zone_name,
+          NULL::int AS claim_points_awarded,
+          NULL::int AS false_report_count,
+          $3::int AS trust_score_threshold,
+          false AS trust_score_affected
+        FROM user_activity_logs ual
+        WHERE ual.user_id = $1
+          AND ual.activity_type = 'zone_approved'
+
+        UNION ALL
+
+        SELECT
+          CONCAT('zone-rejected-', COALESCE(ual.event_key, ual.id::text, ual.report_id::text)) AS id,
+          'zone_rejected' AS mailbox_type,
+          ual.report_id,
+          ual.spot_status,
+          ual.parking_type,
+          ual.quantity,
+          ual.occurred_at,
+          NULL::timestamptz AS expires_at,
+          ual.longitude,
+          ual.latitude,
+          ual.zone_type,
+          ual.zone_name,
+          NULL::int AS claim_points_awarded,
+          NULL::int AS false_report_count,
+          $3::int AS trust_score_threshold,
+          false AS trust_score_affected
+        FROM user_activity_logs ual
+        WHERE ual.user_id = $1
+          AND ual.activity_type = 'zone_rejected'
 
         UNION ALL
 
@@ -204,11 +285,17 @@ export async function GET(request) {
           accumulator.expired += 1;
         } else if (item.mailbox_type === "false_reported") {
           accumulator.falseReported += 1;
+        } else if (item.mailbox_type === "zone_reviewing") {
+          accumulator.reviewing = (accumulator.reviewing || 0) + 1;
+        } else if (item.mailbox_type === "zone_approved") {
+          accumulator.approved = (accumulator.approved || 0) + 1;
+        } else if (item.mailbox_type === "zone_rejected") {
+          accumulator.rejected = (accumulator.rejected || 0) + 1;
         }
 
         return accumulator;
       },
-      { total: 0, claimed: 0, expired: 0, falseReported: 0 },
+      { total: 0, claimed: 0, expired: 0, falseReported: 0, reviewing: 0, approved: 0, rejected: 0 },
     );
 
     console.log("[notifications.system-updates] System updates fetched", {

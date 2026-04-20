@@ -22,6 +22,12 @@ export async function GET(request) {
         spz.id,
         spz.user_id,
         spz.area_name,
+        spz.street_name,
+        spz.estimated_capacity_spaces,
+        spz.estimated_capacity_spaces AS capacity_spaces,
+        spz.suggested_zone_type,
+        spz.suggested_zone_type AS zone_type,
+        COALESCE(spz.street_name, spz.area_name) AS zone_name,
         spz.status,
         spz.confirmation_count,
         spz.false_flag_count,
@@ -61,4 +67,3 @@ export async function GET(request) {
     );
   }
 }
-

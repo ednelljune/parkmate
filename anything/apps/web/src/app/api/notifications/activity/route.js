@@ -33,6 +33,22 @@ const buildActivityMessage = (activity) => {
     return `Your reported ${quantityLabel}${zoneLabel} expired before it was claimed.`;
   }
 
+  if (activity.activity_type === "zone_suggested") {
+    return `You suggested a missing public zone${zoneLabel}.`;
+  }
+
+  if (activity.activity_type === "zone_reviewing") {
+    return `Your missing public zone suggestion${zoneLabel} is now under review.`;
+  }
+
+  if (activity.activity_type === "zone_approved") {
+    return `Your missing public zone suggestion${zoneLabel} was approved and added to the map.`;
+  }
+
+  if (activity.activity_type === "zone_rejected") {
+    return `Your missing public zone suggestion${zoneLabel} was not approved.`;
+  }
+
   if (activity.activity_type === "false_reported") {
     if (activity.is_system_update) {
       const falseReportCount = Math.max(1, Number(activity.false_report_count) || 1);
@@ -293,14 +309,14 @@ const loadPersistedActivities = async (userId, limit) =>
         ELSE false
       END AS trust_score_affected,
       CASE
-        WHEN ual.activity_type IN ('report_claimed', 'expired') THEN true
+        WHEN ual.activity_type IN ('report_claimed', 'expired', 'zone_reviewing', 'zone_approved', 'zone_rejected') THEN true
         WHEN ual.activity_type = 'false_reported' AND ual.event_key IS NOT NULL THEN true
         ELSE false
       END AS is_system_update
     FROM user_activity_logs ual
     LEFT JOIN false_report_summary frs ON frs.report_id = ual.report_id
     WHERE ual.user_id = ${userId}
-    AND ual.activity_type IN ('reported', 'claimed', 'false_reported', 'report_claimed', 'expired')
+    AND ual.activity_type IN ('reported', 'claimed', 'false_reported', 'report_claimed', 'expired', 'zone_suggested', 'zone_reviewing', 'zone_approved', 'zone_rejected')
     AND LOWER(COALESCE(ual.zone_type, ual.parking_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'
     ORDER BY ual.occurred_at DESC
     LIMIT ${limit}

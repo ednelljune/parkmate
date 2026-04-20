@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { requireAdminUser } from "@/app/api/utils/admin-auth";
+import { logUserActivity } from "@/app/api/utils/activity-log";
 import {
   createBoxPolygon,
   DEFAULT_APPROVAL_LAT_OFFSET,
@@ -7,6 +8,7 @@ import {
   ensureSuggestedZonesAdminSchema,
   normalizeCoordinate,
   normalizeInteger,
+  normalizeSuggestedZoneType,
   normalizeText,
 } from "../../shared";
 
@@ -33,7 +35,7 @@ export async function POST(request, context) {
     const action = normalizeAction(body.action);
     const reviewNotes = normalizeText(body.reviewNotes, 600);
 
-    if (!action || !["approve", "reject", "review"].includes(action)) {
+    if (!action || !["approve", "reject", "review", "delete"].includes(action)) {
       return Response.json(
         { success: false, error: "A valid action is required." },
         { status: 400 },
@@ -43,7 +45,11 @@ export async function POST(request, context) {
     const suggestionRows = await sql`
       SELECT
         id,
+        user_id,
         area_name,
+        street_name,
+        suggested_zone_type,
+        estimated_capacity_spaces,
         status,
         approved_zone_id,
         ST_Y(location::geometry) AS latitude,
@@ -61,6 +67,9 @@ export async function POST(request, context) {
       );
     }
 
+    const latitude = normalizeCoordinate(suggestion.latitude);
+    const longitude = normalizeCoordinate(suggestion.longitude);
+
     if (action === "review") {
       const updatedRows = await sql`
         UPDATE suggested_parking_zones
@@ -73,6 +82,22 @@ export async function POST(request, context) {
         WHERE id = ${suggestionId}
         RETURNING id, status, reviewed_at, review_notes;
       `;
+
+      if (suggestion.user_id) {
+        await logUserActivity({
+          userId: suggestion.user_id,
+          reportId: suggestion.id,
+          activityType: "zone_reviewing",
+          parkingType: suggestion.suggested_zone_type || "Public",
+          quantity: 1,
+          longitude,
+          latitude,
+          zoneType: suggestion.suggested_zone_type || "Public",
+          zoneName: suggestion.street_name || suggestion.area_name || "Missing public zone",
+          spotStatus: "reviewing",
+          eventKey: `zone-suggestion-${suggestion.id}-reviewing`,
+        });
+      }
 
       return Response.json({
         success: true,
@@ -94,6 +119,22 @@ export async function POST(request, context) {
         RETURNING id, status, reviewed_at, review_notes;
       `;
 
+      if (suggestion.user_id) {
+        await logUserActivity({
+          userId: suggestion.user_id,
+          reportId: suggestion.id,
+          activityType: "zone_rejected",
+          parkingType: suggestion.suggested_zone_type || "Public",
+          quantity: 1,
+          longitude,
+          latitude,
+          zoneType: suggestion.suggested_zone_type || "Public",
+          zoneName: suggestion.street_name || suggestion.area_name || "Missing public zone",
+          spotStatus: "rejected",
+          eventKey: `zone-suggestion-${suggestion.id}-rejected`,
+        });
+      }
+
       return Response.json({
         success: true,
         message: "Suggestion rejected.",
@@ -101,17 +142,38 @@ export async function POST(request, context) {
       });
     }
 
+    if (action === "delete") {
+      await sql`
+        DELETE FROM suggested_parking_zones
+        WHERE id = ${suggestionId};
+      `;
+
+      return Response.json({
+        success: true,
+        message: "Suggestion deleted.",
+        deletedSuggestionId: suggestionId,
+      });
+    }
+
+    if (!body.zoneName || !normalizeText(body.zoneName, 180)) {
+      return Response.json(
+        { success: false, error: "Zone name is required." },
+        { status: 400 },
+      );
+    }
+
     const zoneName =
       normalizeText(body.zoneName, 180) ||
+      normalizeText(suggestion.street_name, 180) ||
       normalizeText(suggestion.area_name, 180) ||
       `Suggested public zone ${suggestion.id}`;
-    const zoneType = normalizeText(body.zoneType, 60) || "Public";
+    const zoneType = normalizeSuggestedZoneType(body.zoneType);
     const rulesDescription = normalizeText(body.rulesDescription, 600);
-    const capacitySpaces = normalizeInteger(body.capacitySpaces);
+    const capacitySpaces =
+      normalizeInteger(body.capacitySpaces) ??
+      normalizeInteger(suggestion.estimated_capacity_spaces);
     const latOffset = normalizeCoordinate(body.latOffset) ?? DEFAULT_APPROVAL_LAT_OFFSET;
     const lngOffset = normalizeCoordinate(body.lngOffset) ?? DEFAULT_APPROVAL_LNG_OFFSET;
-    const latitude = normalizeCoordinate(suggestion.latitude);
-    const longitude = normalizeCoordinate(suggestion.longitude);
 
     if (latitude === null || longitude === null) {
       return Response.json(
@@ -120,9 +182,9 @@ export async function POST(request, context) {
       );
     }
 
-    if (!zoneName) {
+    if (!zoneType) {
       return Response.json(
-        { success: false, error: "Zone name is required." },
+        { success: false, error: "A valid parking type is required to approve this zone." },
         { status: 400 },
       );
     }
@@ -194,6 +256,22 @@ export async function POST(request, context) {
       WHERE id = ${suggestionId}
       RETURNING id, status, reviewed_at, review_notes, approved_zone_id;
     `;
+
+    if (suggestion.user_id) {
+      await logUserActivity({
+        userId: suggestion.user_id,
+        reportId: suggestion.id,
+        activityType: "zone_approved",
+        parkingType: zoneType,
+        quantity: 1,
+        longitude,
+        latitude,
+        zoneType,
+        zoneName,
+        spotStatus: "approved",
+        eventKey: `zone-suggestion-${suggestion.id}-approved`,
+      });
+    }
 
     return Response.json({
       success: true,

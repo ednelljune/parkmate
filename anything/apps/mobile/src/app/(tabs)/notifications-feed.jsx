@@ -98,6 +98,38 @@ const ACTIVITY_META = {
     chipBackground: "#FFF0C2",
     chipText: "#B45309",
   },
+  zone_suggested: {
+    label: "Zone Suggested",
+    icon: MapPin,
+    accent: BRAND_PALETTE.accentBold,
+    soft: "#DFF5FF",
+    chipBackground: "#E0F2FE",
+    chipText: "#075985",
+  },
+  zone_reviewing: {
+    label: "Under Review",
+    icon: Eye,
+    accent: "#7C3AED",
+    soft: "#F3E8FF",
+    chipBackground: "#EDE9FE",
+    chipText: "#6D28D9",
+  },
+  zone_approved: {
+    label: "Zone Approved",
+    icon: CheckCircle2,
+    accent: BRAND_PALETTE.success,
+    soft: "#E7FFF5",
+    chipBackground: "#DDF8EC",
+    chipText: "#047857",
+  },
+  zone_rejected: {
+    label: "Zone Rejected",
+    icon: X,
+    accent: BRAND_PALETTE.error || "#D64545",
+    soft: "#FFF1F2",
+    chipBackground: "#FFE4E6",
+    chipText: "#BE123C",
+  },
 };
 
 const MAILBOX_META = {
@@ -128,6 +160,33 @@ const MAILBOX_META = {
     panel: "#FFFBF2",
     border: "rgba(245, 158, 11, 0.18)",
   },
+  zone_reviewing: {
+    label: "Under Review",
+    icon: Eye,
+    accent: "#7C3AED",
+    chipBackground: "#EDE9FE",
+    chipText: "#6D28D9",
+    panel: "#FAF5FF",
+    border: "rgba(124, 58, 237, 0.18)",
+  },
+  zone_approved: {
+    label: "Approved",
+    icon: CheckCircle2,
+    accent: BRAND_PALETTE.success,
+    chipBackground: "#DDF8EC",
+    chipText: "#047857",
+    panel: "#F5FFFA",
+    border: "rgba(16, 185, 129, 0.18)",
+  },
+  zone_rejected: {
+    label: "Rejected",
+    icon: X,
+    accent: BRAND_PALETTE.error || "#D64545",
+    chipBackground: "#FFE4E6",
+    chipText: "#BE123C",
+    panel: "#FFF7F8",
+    border: "rgba(214, 69, 69, 0.18)",
+  },
 };
 
 const getDeleteErrorMessage = (error, fallbackMessage) => {
@@ -144,6 +203,7 @@ const getDeleteErrorMessage = (error, fallbackMessage) => {
 };
 
 const INITIAL_ACTIVITY_LOAD_TIMEOUT_MS = 20000;
+const ACTIVITY_LIFECYCLE_REFRESH_STALE_MS = 30000;
 
 const getEmptyStateMessage = () => {
   return "Your parking activity will appear here as you use the app.";
@@ -174,6 +234,22 @@ const getActivitySummary = (item) => {
     return `Your reported ${getQuantityLabel(item)} at ${zoneName} was flagged as false`;
   }
 
+  if (item.activity_type === "zone_suggested") {
+    return `You suggested a missing public zone at ${zoneName}`;
+  }
+
+  if (item.activity_type === "zone_reviewing") {
+    return `Your missing public zone suggestion at ${zoneName} is under review`;
+  }
+
+  if (item.activity_type === "zone_approved") {
+    return `Your missing public zone suggestion at ${zoneName} was approved`;
+  }
+
+  if (item.activity_type === "zone_rejected") {
+    return `Your missing public zone suggestion at ${zoneName} was rejected`;
+  }
+
   return `${activityLabel} ${getQuantityLabel(item)} at ${zoneName}`;
 };
 
@@ -200,6 +276,22 @@ const getActivityDetail = (item) => {
     return "Marked as false report";
   }
 
+  if (item.activity_type === "zone_suggested") {
+    return "Missing public zone suggestion submitted";
+  }
+
+  if (item.activity_type === "zone_reviewing") {
+    return "Admin update: this suggestion is being reviewed";
+  }
+
+  if (item.activity_type === "zone_approved") {
+    return "Admin update: this suggestion was approved and added to the map";
+  }
+
+  if (item.activity_type === "zone_rejected") {
+    return "Admin update: this suggestion was not approved";
+  }
+
   return "Spot reported";
 };
 
@@ -215,6 +307,18 @@ const getMailboxSummary = (item) => {
     return `${quantityLabel} at ${zoneName} expired unclaimed`;
   }
 
+  if (item?.mailbox_type === "zone_reviewing") {
+    return `Missing public zone at ${zoneName} is under review`;
+  }
+
+  if (item?.mailbox_type === "zone_approved") {
+    return `Missing public zone at ${zoneName} was approved`;
+  }
+
+  if (item?.mailbox_type === "zone_rejected") {
+    return `Missing public zone at ${zoneName} was rejected`;
+  }
+
   return `${quantityLabel} at ${zoneName} was flagged as false`;
 };
 
@@ -228,6 +332,18 @@ const getMailboxDetail = (item) => {
 
   if (item?.mailbox_type === "expired") {
     return "This report expired before another driver claimed it.";
+  }
+
+  if (item?.mailbox_type === "zone_reviewing") {
+    return "Your missing zone suggestion is currently being reviewed by the admin team.";
+  }
+
+  if (item?.mailbox_type === "zone_approved") {
+    return "Your missing zone suggestion was approved and published to the live map.";
+  }
+
+  if (item?.mailbox_type === "zone_rejected") {
+    return "Your missing zone suggestion was reviewed but not approved.";
   }
 
   const falseReportCount = Math.max(1, Number(item?.false_report_count) || 1);
@@ -1100,7 +1216,8 @@ export default function NotificationsScreen() {
     refetch,
     isRefetching,
     refetchActivityVersion,
-  } = useActivityNotifications(100, Boolean(session?.access_token), {
+    dataUpdatedAt: notificationsUpdatedAt,
+  } = useActivityNotifications(60, Boolean(session?.access_token), {
     refetchIntervalMs: false,
     refetchOnMount: false,
     staleTimeMs: Infinity,
@@ -1112,7 +1229,8 @@ export default function NotificationsScreen() {
     refetch: refetchMailbox,
     isLoading: isMailboxLoading,
     isRefetching: isMailboxRefetching,
-  } = useActivityMailbox(50, Boolean(session?.access_token), {
+    dataUpdatedAt: mailboxUpdatedAt,
+  } = useActivityMailbox(30, Boolean(session?.access_token), {
     refetchIntervalMs: false,
     refetchOnMount: false,
     staleTimeMs: Infinity,
@@ -1146,6 +1264,15 @@ export default function NotificationsScreen() {
           return;
         }
 
+        const freshestDataAt = Math.max(
+          Number(notificationsUpdatedAt) || 0,
+          Number(mailboxUpdatedAt) || 0,
+        );
+
+        if (freshestDataAt && now - freshestDataAt < ACTIVITY_LIFECYCLE_REFRESH_STALE_MS) {
+          return;
+        }
+
         if (now - lastLifecycleRefreshAtRef.current < 5000) {
           return;
         }
@@ -1174,7 +1301,7 @@ export default function NotificationsScreen() {
         }
       }
     },
-    [refetch, refetchActivityVersion, refetchMailbox],
+    [mailboxUpdatedAt, notificationsUpdatedAt, refetch, refetchActivityVersion, refetchMailbox],
   );
 
   useFocusEffect(

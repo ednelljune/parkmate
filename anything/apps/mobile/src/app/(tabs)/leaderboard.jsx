@@ -328,7 +328,7 @@ function RankedRow({ item, rank }) {
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
-  const leaderboardLimit = 50;
+  const leaderboardLimit = 30;
   const leaderboardUrl = resolveBackendUrl(`/api/users/leaderboard?limit=${leaderboardLimit}`);
   const { refetch: refetchLeaderboardVersion } = useLeaderboardVersion(
     leaderboardLimit,

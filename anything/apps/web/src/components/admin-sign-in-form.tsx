@@ -4,9 +4,9 @@ import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import useAuth from '@/utils/useAuth';
 import { formatAuthError } from '@/utils/auth-errors';
-import logo from '@/__create/parkmate-logo.png';
 import { useSupabaseAuth } from '@/utils/supabase-auth';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
+import AdminAuthShell from '@/components/admin-auth-shell';
 
 type AdminSignInFormProps = {
 	defaultCallbackUrl?: string;
@@ -69,23 +69,15 @@ export default function AdminSignInForm({
 	};
 
 	return (
-		<div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-3">
-			<form
-				noValidate
-				onSubmit={onSubmit}
-				className="w-full max-w-sm rounded-3xl border border-white/10 bg-white p-6 shadow-2xl"
-			>
-				<div className="mb-5 text-center">
-					<img src={logo} alt="ParkMate logo" className="mx-auto h-14 w-14" />
-					<h1 className="mt-4 text-2xl font-black tracking-tight text-slate-950">Admin sign in</h1>
-					<p className="mt-2 text-sm leading-6 text-slate-600">
-						Use your ParkMate admin account to access the dashboard and parking zone review tools.
-					</p>
-				</div>
-
-				<div className="space-y-3.5">
+		<AdminAuthShell
+			eyebrow="Sign In"
+			title="Admin sign in"
+			description="Use your ParkMate admin account to access the dashboard and review suggested parking zones."
+		>
+			<form noValidate onSubmit={onSubmit} className="rounded-[28px] border border-white/10 bg-white p-6 shadow-2xl shadow-slate-950/20 sm:p-7">
+				<div className="space-y-4">
 					<div className="space-y-2">
-						<label className="block text-sm font-semibold text-gray-700">
+						<label className="block text-sm font-semibold text-slate-700">
 							Email
 						</label>
 						<input
@@ -95,12 +87,12 @@ export default function AdminSignInForm({
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							placeholder="admin@getparkmate.app"
-							className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+							className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-cyan-500/10"
 						/>
 					</div>
 
 					<div className="space-y-2">
-						<label className="block text-sm font-semibold text-gray-700">
+						<label className="block text-sm font-semibold text-slate-700">
 							Password
 						</label>
 						<input
@@ -110,18 +102,18 @@ export default function AdminSignInForm({
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							placeholder="Enter your password"
-							className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+							className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-cyan-500/10"
 						/>
 					</div>
 
 					{error && (
-						<div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+						<div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
 							{error}
 						</div>
 					)}
 
 					{!isSupabaseConfigured && !error && (
-						<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+						<div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
 							Supabase Auth is not configured for this deployment yet.
 						</div>
 					)}
@@ -129,12 +121,12 @@ export default function AdminSignInForm({
 					<button
 						type="submit"
 						disabled={loading || !isSupabaseConfigured}
-						className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-sky-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+						className="w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-sky-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-950/20 transition-all hover:scale-[1.01] hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
 					>
 						{loading ? 'Signing in...' : 'Sign in'}
 					</button>
 
-					<p className="mt-3 text-center text-sm text-gray-600">
+					<p className="pt-1 text-center text-sm text-slate-600">
 						Need an account?{' '}
 						<a
 							href={`/account/signup${typeof window !== 'undefined' ? window.location.search : ''}`}
@@ -145,6 +137,6 @@ export default function AdminSignInForm({
 					</p>
 				</div>
 			</form>
-		</div>
+		</AdminAuthShell>
 	);
 }

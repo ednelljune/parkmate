@@ -7,8 +7,13 @@ import {
   Platform,
   TextInput,
   TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  ScrollView,
   useWindowDimensions,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as ExpoLocation from "expo-location";
 import MapView, { Circle, Polygon, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -162,12 +167,59 @@ const PARKING_TYPE_ORDER = [
   "No Parking",
 ];
 const SUGGESTED_ZONE_TYPE_OPTIONS = ["P1", "P2", "P3", "P4", "FH"];
+const SUGGESTED_PARKING_CATEGORY_OPTIONS = [
+  "On-street",
+  "Open-air lot",
+  "Multi-storey",
+  "Underground",
+  "Other",
+];
+const formatSuggestedZoneCoordinateLabel = (location) => {
+  if (!location) return "";
+
+  const latitude = Number(location.latitude);
+  const longitude = Number(location.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return "";
+  }
+
+  return `${Math.abs(latitude).toFixed(5)}${latitude >= 0 ? "N" : "S"}, ${Math.abs(longitude).toFixed(5)}${longitude >= 0 ? "E" : "W"}`;
+};
+
+const getSuggestedZoneStreetLabel = (placemark, location) => {
+  const nameParts = [
+    placemark?.name,
+    placemark?.street,
+  ]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+
+  const uniqueNameParts = [...new Set(nameParts)];
+  if (uniqueNameParts.length > 0) {
+    return uniqueNameParts.join(", ");
+  }
+
+  const areaParts = [
+    placemark?.district,
+    placemark?.subregion,
+    placemark?.city,
+    placemark?.region,
+  ]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+
+  if (areaParts.length > 0) {
+    return areaParts.join(", ");
+  }
+
+  return formatSuggestedZoneCoordinateLabel(location);
+};
 
 const DEFAULT_MAP_DELTA = 0.005;
-const FOLLOW_ANIMATION_DISTANCE_METERS = 12;
-const FOLLOW_ANIMATION_INTERVAL_MS = 2500;
-const ACTIVE_NAVIGATION_REROUTE_DISTANCE_METERS = 20;
-const ACTIVE_NAVIGATION_REROUTE_INTERVAL_MS = 8000;
+const FOLLOW_ANIMATION_DISTANCE_METERS = 3;
+const FOLLOW_ANIMATION_INTERVAL_MS = 750;
+const ACTIVE_NAVIGATION_REROUTE_DISTANCE_METERS = 8;
+const ACTIVE_NAVIGATION_REROUTE_INTERVAL_MS = 3000;
 const ACTIVE_NAVIGATION_ARRIVAL_METERS = 25;
 const MAP_PROVIDER = Platform.OS === "android" ? PROVIDER_GOOGLE : undefined;
 const MAP_GOOGLE_RENDERER = Platform.OS === "android" ? "LEGACY" : undefined;
@@ -321,9 +373,15 @@ function ParkMateContent() {
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSuggestZoneModal, setShowSuggestZoneModal] = useState(false);
-  const [suggestedZoneStreetName, setSuggestedZoneStreetName] = useState("");
   const [suggestedZoneCapacity, setSuggestedZoneCapacity] = useState("");
   const [suggestedZoneType, setSuggestedZoneType] = useState("");
+  const [suggestedZoneStreetName, setSuggestedZoneStreetName] = useState("");
+  const [isResolvingSuggestedZoneStreetName, setIsResolvingSuggestedZoneStreetName] = useState(false);
+  const [suggestedZoneEvidence, setSuggestedZoneEvidence] = useState(null);
+  const [isUploadingSuggestZoneEvidence, setIsUploadingSuggestZoneEvidence] = useState(false);
+  const [suggestedParkingCategory, setSuggestedParkingCategory] = useState("");
+  const [suggestedZoneDescription, setSuggestedZoneDescription] = useState("");
+  const [isPublicParkingConfirmed, setIsPublicParkingConfirmed] = useState(false);
   const [selectedZoneOption, setSelectedZoneOption] = useState(null);
   const [spotQuantity, setSpotQuantity] = useState(1);
   const [selectedZone, setSelectedZone] = useState(null);
@@ -395,6 +453,56 @@ function ParkMateContent() {
       mapRef.current.animateToRegion(nextRegion, duration);
     } catch (e) {
       // Not supported on web preview — initialRegion handles it
+    }
+  }, []);
+
+  const updateFollowCamera = useCallback((coordinate, duration = 0) => {
+    if (!mapRef.current || !coordinate) {
+      return;
+    }
+
+    const nextRegion = {
+      latitude: coordinate.latitude,
+      longitude: coordinate.longitude,
+      latitudeDelta: mapRegionRef.current?.latitudeDelta || DEFAULT_MAP_DELTA,
+      longitudeDelta: mapRegionRef.current?.longitudeDelta || DEFAULT_MAP_DELTA,
+    };
+
+    mapRegionRef.current = nextRegion;
+    setMapRegion(nextRegion);
+    setOverlayMapRegion(nextRegion);
+
+    try {
+      if (typeof mapRef.current.animateCamera === "function") {
+        mapRef.current.animateCamera(
+          {
+            center: {
+              latitude: coordinate.latitude,
+              longitude: coordinate.longitude,
+            },
+          },
+          { duration },
+        );
+        return;
+      }
+
+      if (typeof mapRef.current.setCamera === "function") {
+        mapRef.current.setCamera({
+          center: {
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+          },
+        });
+        return;
+      }
+
+      mapRef.current.animateToRegion(nextRegion, duration);
+    } catch (error) {
+      try {
+        mapRef.current.animateToRegion(nextRegion, duration);
+      } catch (fallbackError) {
+        // Not supported on web preview — initialRegion handles it
+      }
     }
   }, []);
 
@@ -1180,6 +1288,10 @@ function ParkMateContent() {
     setSuggestedZoneStreetName("");
     setSuggestedZoneCapacity("");
     setSuggestedZoneType("");
+    setSuggestedZoneEvidence(null);
+    setSuggestedParkingCategory("");
+    setSuggestedZoneDescription("");
+    setIsPublicParkingConfirmed(false);
     Alert.alert(
       "Zone suggestion received",
       data?.message ||
@@ -1339,22 +1451,12 @@ function ParkMateContent() {
       timestamp: now,
     };
 
-    safeAnimateToRegion(
-      {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta:
-          mapRegionRef.current?.latitudeDelta || DEFAULT_MAP_DELTA,
-        longitudeDelta:
-          mapRegionRef.current?.longitudeDelta || DEFAULT_MAP_DELTA,
-      },
-      500,
-    );
+    updateFollowCamera(nextCoordinate, 120);
   }, [
     isFollowingLiveLocation,
     location?.latitude,
     location?.longitude,
-    safeAnimateToRegion,
+    updateFollowCamera,
   ]);
 
   // Keep passive report updates framed around the full user radius instead of zooming into pins.
@@ -1666,19 +1768,28 @@ function ParkMateContent() {
     setSuggestedZoneStreetName("");
     setSuggestedZoneCapacity("");
     setSuggestedZoneType("");
+    setSuggestedZoneEvidence(null);
+    setSuggestedParkingCategory("");
+    setSuggestedZoneDescription("");
+    setIsPublicParkingConfirmed(false);
     setShowSuggestZoneModal(true);
   }, [location, suggestZoneMutation]);
 
+  const handleSuggestParkingZoneFromReport = useCallback(() => {
+    setShowReportModal(false);
+    handleSuggestParkingZone();
+  }, [handleSuggestParkingZone]);
+
   const handleConfirmSuggestParkingZone = useCallback(() => {
-    if (!location || suggestZoneMutation.isPending) {
+    if (!location || suggestZoneMutation.isPending || isUploadingSuggestZoneEvidence) {
       return;
     }
 
     const normalizedStreetName = suggestedZoneStreetName.trim();
     if (!normalizedStreetName) {
       Alert.alert(
-        "Street name required",
-        "Add the street name for this missing zone before sending it for review.",
+        "Location required",
+        "Wait for ParkMate to detect the street for this missing zone before sending it for review.",
       );
       return;
     }
@@ -1704,26 +1815,186 @@ function ParkMateContent() {
       return;
     }
 
-    setShowSuggestZoneModal(false);
-    suggestZoneMutation.mutate({
-      coords: {
-        latitude: location.latitude,
-        longitude: location.longitude,
+    if (!suggestedZoneEvidence?.base64) {
+      Alert.alert(
+        "Photo evidence required",
+        "Upload a photo of the parking area before sending this missing zone for review.",
+      );
+      return;
+    }
+
+    if (!suggestedParkingCategory) {
+      Alert.alert(
+        "Parking category required",
+        "Choose the parking category for this missing parking zone before sending it for review.",
+      );
+      return;
+    }
+
+    if (!isPublicParkingConfirmed) {
+      Alert.alert(
+        "Public parking confirmation required",
+        "Confirm that this location is public parking before submitting it for review.",
+      );
+      return;
+    }
+
+    setIsUploadingSuggestZoneEvidence(true);
+
+    const evidencePhotoDataUrl = `data:${suggestedZoneEvidence.mimeType || "image/jpeg"};base64,${suggestedZoneEvidence.base64}`;
+
+    suggestZoneMutation.mutate(
+      {
+        coords: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+        streetName: normalizedStreetName,
+        estimatedCapacitySpaces: parsedCapacity,
+        suggestedZoneType,
+        evidencePhotoUrl: evidencePhotoDataUrl,
+        parkingCategory: suggestedParkingCategory,
+        description: suggestedZoneDescription,
+        publicParkingConfirmed: isPublicParkingConfirmed,
       },
-      streetName: normalizedStreetName,
-      estimatedCapacitySpaces: parsedCapacity,
-      suggestedZoneType,
-    });
-    setSuggestedZoneStreetName("");
-    setSuggestedZoneCapacity("");
-    setSuggestedZoneType("");
+      {
+        onSettled: () => {
+          setIsUploadingSuggestZoneEvidence(false);
+        },
+      },
+    );
   }, [
+    isUploadingSuggestZoneEvidence,
     location,
     suggestZoneMutation,
     suggestedZoneCapacity,
+    suggestedParkingCategory,
+    suggestedZoneDescription,
+    suggestedZoneEvidence,
     suggestedZoneStreetName,
     suggestedZoneType,
+    isPublicParkingConfirmed,
   ]);
+
+  const handlePickSuggestZoneEvidence = useCallback(async () => {
+    if (suggestZoneMutation.isPending || isUploadingSuggestZoneEvidence) {
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Photo access required",
+        "Allow photo library access so you can attach evidence for the missing parking zone.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets?.[0];
+    if (!asset?.uri || !asset?.base64) {
+      Alert.alert("Photo unavailable", "Please choose a valid photo and try again.");
+      return;
+    }
+
+    setSuggestedZoneEvidence({
+      uri: asset.uri,
+      base64: asset.base64,
+      mimeType: asset.mimeType || "image/jpeg",
+      fileName: asset.fileName || asset.uri.split("/").pop() || "parking-zone.jpg",
+    });
+  }, [isUploadingSuggestZoneEvidence, suggestZoneMutation.isPending]);
+
+  const handleCaptureSuggestZoneEvidence = useCallback(async () => {
+    if (suggestZoneMutation.isPending || isUploadingSuggestZoneEvidence) {
+      return;
+    }
+
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Camera access required",
+        "Allow camera access so you can take evidence photos for the missing parking zone.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets?.[0];
+    if (!asset?.uri || !asset?.base64) {
+      Alert.alert("Photo unavailable", "Please take a valid photo and try again.");
+      return;
+    }
+
+    setSuggestedZoneEvidence({
+      uri: asset.uri,
+      base64: asset.base64,
+      mimeType: asset.mimeType || "image/jpeg",
+      fileName: asset.fileName || asset.uri.split("/").pop() || "parking-zone.jpg",
+    });
+  }, [isUploadingSuggestZoneEvidence, suggestZoneMutation.isPending]);
+
+  useEffect(() => {
+    if (!showSuggestZoneModal || !location) {
+      if (!showSuggestZoneModal) {
+        setIsResolvingSuggestedZoneStreetName(false);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    const fallbackLabel = formatSuggestedZoneCoordinateLabel(location);
+
+    setSuggestedZoneStreetName(fallbackLabel);
+    setIsResolvingSuggestedZoneStreetName(true);
+
+    ExpoLocation.reverseGeocodeAsync({
+      latitude: location.latitude,
+      longitude: location.longitude,
+    })
+      .then((results) => {
+        if (cancelled) {
+          return;
+        }
+
+        const nextLabel = getSuggestedZoneStreetLabel(results?.[0], location);
+        setSuggestedZoneStreetName(nextLabel || fallbackLabel);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSuggestedZoneStreetName(fallbackLabel);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsResolvingSuggestedZoneStreetName(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location, showSuggestZoneModal]);
 
   const logSpotSelection = useCallback((label, payload) => {
     if (!payload) {
@@ -1996,7 +2267,7 @@ function ParkMateContent() {
           onPanDrag={() => setIsFollowingLiveLocation(false)}
           showsUserLocation={false}
           showsMyLocationButton={false}
-          followsUserLocation={isFollowingLiveLocation}
+          followsUserLocation={false}
         >
           {location && (
             <Circle
@@ -2273,9 +2544,7 @@ function ParkMateContent() {
         insets={insets}
         location={location}
         isReporting={reportMutation.isPending}
-        isSuggestingZone={suggestZoneMutation.isPending}
         onReportPress={handleReport}
-        onSuggestZonePress={handleSuggestParkingZone}
         onRecenterPress={handleRecenter}
         tabBarHeight={tabBarHeight}
       />
@@ -2292,6 +2561,7 @@ function ParkMateContent() {
         onSelectType={setSelectedZoneOption}
         onSetQuantity={setSpotQuantity}
         onConfirm={handleConfirmReport}
+        onSuggestMissingZone={handleSuggestParkingZoneFromReport}
       />
 
       <Modal
@@ -2299,11 +2569,15 @@ function ParkMateContent() {
         transparent
         animationType="fade"
         onRequestClose={() => {
-          if (!suggestZoneMutation.isPending) {
+          if (!suggestZoneMutation.isPending && !isUploadingSuggestZoneEvidence) {
             setShowSuggestZoneModal(false);
             setSuggestedZoneStreetName("");
             setSuggestedZoneCapacity("");
             setSuggestedZoneType("");
+            setSuggestedZoneEvidence(null);
+            setSuggestedParkingCategory("");
+            setSuggestedZoneDescription("");
+            setIsPublicParkingConfirmed(false);
           }
         }}
       >
@@ -2319,150 +2593,432 @@ function ParkMateContent() {
             style={{
               borderRadius: 20,
               backgroundColor: "#FFFFFF",
-              padding: 18,
+              paddingTop: 18,
               borderWidth: 1,
               borderColor: "#E2E8F0",
+              maxHeight: "88%",
             }}
           >
-            <Text style={{ fontSize: 20, fontWeight: "800", color: "#0F172A" }}>
-              Suggest Missing Parking Zone
-            </Text>
-            <Text style={{ marginTop: 8, fontSize: 14, lineHeight: 21, color: "#475569" }}>
-              Send this location for review using your current coordinates, street name,
-              parking type, and estimated capacity.
-            </Text>
+            <ScrollView
+              style={{ paddingHorizontal: 18 }}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={{ fontSize: 20, fontWeight: "800", color: "#0F172A" }}>
+                Suggest Missing Parking Zone
+              </Text>
+              <Text style={{ marginTop: 8, fontSize: 14, lineHeight: 21, color: "#475569" }}>
+                Send this location for review using your current coordinates, auto-detected
+                street details, parking type, photo evidence, and estimated capacity.
+              </Text>
 
-            <Text
-              style={{
-                marginTop: 16,
-                marginBottom: 6,
-                fontSize: 14,
-                fontWeight: "700",
-                color: "#0F172A",
-              }}
-            >
-              Street name
-            </Text>
-            <TextInput
-              value={suggestedZoneStreetName}
-              onChangeText={setSuggestedZoneStreetName}
-              placeholder="e.g. Collins Street"
-              placeholderTextColor="#94A3B8"
-              style={{
-                borderWidth: 1,
-                borderColor: "#CBD5E1",
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                fontSize: 15,
-                color: "#0F172A",
-                backgroundColor: "#F8FAFC",
-              }}
-            />
-            <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
-              Required. This will be used as the suggested zone name during review.
-            </Text>
-            <Text style={{ marginTop: 14, fontSize: 12, color: "#64748B" }}>
-              We will use your current map location and this street name for review.
-            </Text>
+              <Text
+                style={{
+                  marginTop: 16,
+                  marginBottom: 6,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: "#0F172A",
+                }}
+              >
+                Detected location
+              </Text>
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#CBD5E1",
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  backgroundColor: "#F8FAFC",
+                }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0F172A" }}>
+                  {suggestedZoneStreetName || "Locating current street..."}
+                </Text>
+                <Text style={{ marginTop: 6, fontSize: 12, color: "#64748B" }}>
+                  {formatSuggestedZoneCoordinateLabel(location)}
+                </Text>
+                {isResolvingSuggestedZoneStreetName ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
+                    <ActivityIndicator size="small" color="#0F766E" />
+                    <Text style={{ fontSize: 12, color: "#0F766E" }}>
+                      Detecting street from your current coordinates
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
+                Auto-filled from your current location and coordinates.
+              </Text>
+              <Text style={{ marginTop: 14, fontSize: 12, color: "#64748B" }}>
+                ParkMate will use this detected location label during review.
+              </Text>
 
-            <Text
-              style={{
-                marginTop: 16,
-                marginBottom: 8,
-                fontSize: 14,
-                fontWeight: "700",
-                color: "#0F172A",
-              }}
-            >
-              Parking type
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 8,
-              }}
-            >
-              {SUGGESTED_ZONE_TYPE_OPTIONS.map((option) => {
-                const isSelected = suggestedZoneType === option;
-                return (
-                  <TouchableOpacity
-                    key={option}
-                    onPress={() => setSuggestedZoneType(option)}
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 10,
-                      borderRadius: 999,
-                      borderWidth: 1,
-                      borderColor: isSelected ? "#0F766E" : "#CBD5E1",
-                      backgroundColor: isSelected ? "#CCFBF1" : "#F8FAFC",
-                    }}
-                  >
-                    <Text
+              <Text
+                style={{
+                  marginTop: 16,
+                  marginBottom: 8,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: "#0F172A",
+                }}
+              >
+                Parking type
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                {SUGGESTED_ZONE_TYPE_OPTIONS.map((option) => {
+                  const isSelected = suggestedZoneType === option;
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      onPress={() => setSuggestedZoneType(option)}
                       style={{
-                        fontSize: 14,
-                        fontWeight: "700",
-                        color: isSelected ? "#115E59" : "#334155",
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 999,
+                        borderWidth: 1,
+                        borderColor: isSelected ? "#0F766E" : "#CBD5E1",
+                        backgroundColor: isSelected ? "#CCFBF1" : "#F8FAFC",
                       }}
                     >
-                      {option}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
-              Required. This helps review the expected parking rule for the area.
-            </Text>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "700",
+                          color: isSelected ? "#115E59" : "#334155",
+                        }}
+                      >
+                        {option}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
+                Required. This helps review the expected parking rule for the area.
+              </Text>
 
-            <Text
-              style={{
-                marginTop: 16,
-                marginBottom: 6,
-                fontSize: 14,
-                fontWeight: "700",
-                color: "#0F172A",
-              }}
-            >
-              Approximate spaces
-            </Text>
-            <TextInput
-              value={suggestedZoneCapacity}
-              onChangeText={setSuggestedZoneCapacity}
-              placeholder="e.g. 20"
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              style={{
-                borderWidth: 1,
-                borderColor: "#CBD5E1",
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                fontSize: 15,
-                color: "#0F172A",
-                backgroundColor: "#F8FAFC",
-              }}
-            />
-            <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
-              Optional, but helpful for review.
-            </Text>
+              <Text
+                style={{
+                  marginTop: 16,
+                  marginBottom: 8,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: "#0F172A",
+                }}
+              >
+                Parking category
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                {SUGGESTED_PARKING_CATEGORY_OPTIONS.map((option) => {
+                  const isSelected = suggestedParkingCategory === option;
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      onPress={() => setSuggestedParkingCategory(option)}
+                      style={{
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 999,
+                        borderWidth: 1,
+                        borderColor: isSelected ? "#0F766E" : "#CBD5E1",
+                        backgroundColor: isSelected ? "#CCFBF1" : "#F8FAFC",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "700",
+                          color: isSelected ? "#115E59" : "#334155",
+                        }}
+                      >
+                        {option}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
+                Required. This describes the physical parking setup at the location.
+              </Text>
+
+              <Text
+                style={{
+                  marginTop: 16,
+                  marginBottom: 6,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: "#0F172A",
+                }}
+              >
+                Photo evidence
+              </Text>
+              {suggestedZoneEvidence?.uri ? (
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "#CBD5E1",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    backgroundColor: "#F8FAFC",
+                  }}
+                >
+                  <Image
+                    source={{ uri: suggestedZoneEvidence.uri }}
+                    style={{ width: "100%", height: 180, backgroundColor: "#E2E8F0" }}
+                    resizeMode="cover"
+                  />
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      padding: 12,
+                      gap: 10,
+                    }}
+                  >
+                    <TouchableOpacity
+                      onPress={handleCaptureSuggestZoneEvidence}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        backgroundColor: "#DBEAFE",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: "#1D4ED8" }}>
+                        Take Photo
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handlePickSuggestZoneEvidence}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        backgroundColor: "#E2E8F0",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: "#0F172A" }}>
+                        Upload Photo
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setSuggestedZoneEvidence(null)}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        backgroundColor: "#FEE2E2",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: "#B91C1C" }}>
+                        Remove
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  gap: 10,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={handleCaptureSuggestZoneEvidence}
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: "#BFDBFE",
+                    borderRadius: 12,
+                    paddingHorizontal: 14,
+                    paddingVertical: 16,
+                    alignItems: "center",
+                    backgroundColor: "#EFF6FF",
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#1D4ED8" }}>
+                    Take Photo
+                  </Text>
+                  <Text style={{ marginTop: 6, fontSize: 12, color: "#64748B", textAlign: "center" }}>
+                    Use the camera now
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handlePickSuggestZoneEvidence}
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: "#CBD5E1",
+                    borderRadius: 12,
+                    paddingHorizontal: 14,
+                    paddingVertical: 16,
+                    alignItems: "center",
+                    backgroundColor: "#F8FAFC",
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#0F766E" }}>
+                    Upload Photo
+                  </Text>
+                  <Text style={{ marginTop: 6, fontSize: 12, color: "#64748B", textAlign: "center" }}>
+                    Choose from library
+                  </Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            )}
+
+              <Text
+                style={{
+                  marginTop: 16,
+                  marginBottom: 6,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: "#0F172A",
+                }}
+              >
+                Approximate spaces
+              </Text>
+              <TextInput
+                value={suggestedZoneCapacity}
+                onChangeText={setSuggestedZoneCapacity}
+                placeholder="e.g. 20"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#CBD5E1",
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  fontSize: 15,
+                  color: "#0F172A",
+                  backgroundColor: "#F8FAFC",
+                }}
+              />
+              <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
+                Optional, but helpful for review.
+              </Text>
+
+              <Text
+                style={{
+                  marginTop: 16,
+                  marginBottom: 6,
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: "#0F172A",
+                }}
+              >
+                Description
+              </Text>
+              <TextInput
+                value={suggestedZoneDescription}
+                onChangeText={setSuggestedZoneDescription}
+                placeholder="Add details like entry points, signage, restrictions, or anything reviewers should know."
+                placeholderTextColor="#94A3B8"
+                multiline
+                textAlignVertical="top"
+                style={{
+                  minHeight: 108,
+                  borderWidth: 1,
+                  borderColor: "#CBD5E1",
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  fontSize: 15,
+                  color: "#0F172A",
+                  backgroundColor: "#F8FAFC",
+                }}
+              />
+              <Text style={{ marginTop: 8, fontSize: 12, color: "#64748B" }}>
+                Optional, but useful when the evidence photo does not show everything clearly.
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setIsPublicParkingConfirmed((current) => !current)}
+                style={{
+                  marginTop: 18,
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  borderWidth: 1,
+                  borderColor: isPublicParkingConfirmed ? "#0F766E" : "#CBD5E1",
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 14,
+                  backgroundColor: isPublicParkingConfirmed ? "#F0FDFA" : "#F8FAFC",
+                }}
+              >
+                <View
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    borderWidth: 2,
+                    borderColor: isPublicParkingConfirmed ? "#0F766E" : "#94A3B8",
+                    backgroundColor: isPublicParkingConfirmed ? "#0F766E" : "#FFFFFF",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginTop: 1,
+                  }}
+                >
+                  {isPublicParkingConfirmed ? (
+                    <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>✓</Text>
+                  ) : null}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#0F172A" }}>
+                    Public parking confirmation
+                  </Text>
+                  <Text style={{ marginTop: 4, fontSize: 12, lineHeight: 18, color: "#64748B" }}>
+                    Required. I confirm this is public parking and should be visible to ParkMate users.
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </ScrollView>
 
             <View
               style={{
                 flexDirection: "row",
                 justifyContent: "flex-end",
                 gap: 10,
-                marginTop: 18,
+                marginTop: 4,
+                paddingHorizontal: 18,
+                paddingTop: 12,
+                paddingBottom: 18,
+                borderTopWidth: 1,
+                borderTopColor: "#E2E8F0",
               }}
             >
               <TouchableOpacity
                 onPress={() => {
                   if (!suggestZoneMutation.isPending) {
+                    if (isUploadingSuggestZoneEvidence) {
+                      return;
+                    }
                     setShowSuggestZoneModal(false);
                     setSuggestedZoneStreetName("");
                     setSuggestedZoneCapacity("");
                     setSuggestedZoneType("");
+                    setSuggestedZoneEvidence(null);
+                    setSuggestedParkingCategory("");
+                    setSuggestedZoneDescription("");
+                    setIsPublicParkingConfirmed(false);
                   }
                 }}
                 style={{
@@ -2471,7 +3027,7 @@ function ParkMateContent() {
                   borderRadius: 12,
                   backgroundColor: "#E2E8F0",
                 }}
-                disabled={suggestZoneMutation.isPending}
+                disabled={suggestZoneMutation.isPending || isUploadingSuggestZoneEvidence}
               >
                 <Text style={{ fontSize: 14, fontWeight: "700", color: "#0F172A" }}>
                   Cancel
@@ -2486,10 +3042,14 @@ function ParkMateContent() {
                   borderRadius: 12,
                   backgroundColor: "#0F766E",
                 }}
-                disabled={suggestZoneMutation.isPending}
+                disabled={suggestZoneMutation.isPending || isUploadingSuggestZoneEvidence}
               >
                 <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>
-                  {suggestZoneMutation.isPending ? "Sending..." : "Send"}
+                  {isUploadingSuggestZoneEvidence
+                    ? "Uploading Photo..."
+                    : suggestZoneMutation.isPending
+                      ? "Sending..."
+                      : "Send"}
                 </Text>
               </TouchableOpacity>
             </View>

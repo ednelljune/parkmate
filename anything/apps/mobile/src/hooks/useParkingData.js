@@ -1165,7 +1165,16 @@ export const useSuggestParkingZone = (location, onSuccess) => {
   const suggestZoneUrl = resolveBackendUrl("/api/zones/suggest");
 
   return useMutation({
-    mutationFn: async ({ coords, streetName, estimatedCapacitySpaces, suggestedZoneType }) => {
+    mutationFn: async ({
+      coords,
+      streetName,
+      estimatedCapacitySpaces,
+      suggestedZoneType,
+      evidencePhotoUrl,
+      parkingCategory,
+      description,
+      publicParkingConfirmed,
+    }) => {
       const session = useAuthStore.getState().session;
 
       if (!user?.id) {
@@ -1181,6 +1190,10 @@ export const useSuggestParkingZone = (location, onSuccess) => {
           streetName: typeof streetName === "string" ? streetName.trim() : "",
           estimatedCapacitySpaces,
           suggestedZoneType,
+          evidencePhotoUrl: typeof evidencePhotoUrl === "string" ? evidencePhotoUrl.trim() : "",
+          parkingCategory: typeof parkingCategory === "string" ? parkingCategory.trim() : "",
+          description: typeof description === "string" ? description.trim() : "",
+          publicParkingConfirmed: !!publicParkingConfirmed,
         }),
       });
 

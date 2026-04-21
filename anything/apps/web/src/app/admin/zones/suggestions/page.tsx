@@ -29,6 +29,37 @@ function formatDate(value) {
   return date.toLocaleString();
 }
 
+function getSuggestionZoneName(suggestion) {
+  return (
+    suggestion?.approved_zone_name ||
+    suggestion?.zone_name ||
+    suggestion?.street_name ||
+    suggestion?.area_name ||
+    ''
+  );
+}
+
+function getSuggestionZoneType(suggestion) {
+  return suggestion?.approved_zone_type || suggestion?.zone_type || suggestion?.suggested_zone_type || '';
+}
+
+function getSuggestionCapacity(suggestion) {
+  if (suggestion?.approved_capacity_spaces != null) {
+    return String(suggestion.approved_capacity_spaces);
+  }
+  if (suggestion?.capacity_spaces != null) {
+    return String(suggestion.capacity_spaces);
+  }
+  if (suggestion?.estimated_capacity_spaces != null) {
+    return String(suggestion.estimated_capacity_spaces);
+  }
+  return '';
+}
+
+function getSuggestionRulesDescription(suggestion) {
+  return suggestion?.approved_rules_description || '';
+}
+
 export default function AdminZoneSuggestionsPage() {
   const { isLoading, session, user } = useSupabaseAuth();
   const [status, setStatus] = useState('pending');
@@ -100,23 +131,11 @@ export default function AdminZoneSuggestionsPage() {
 
     setApprovalForm((current) => ({
       ...current,
-      zoneName:
-        activeSuggestion.zone_name ||
-        activeSuggestion.street_name ||
-        activeSuggestion.area_name ||
-        current.zoneName ||
-        '',
-      zoneType:
-        activeSuggestion.zone_type ||
-        activeSuggestion.suggested_zone_type ||
-        current.zoneType ||
-        DEFAULT_APPROVAL_FORM.zoneType,
-      capacitySpaces:
-        activeSuggestion.capacity_spaces != null
-          ? String(activeSuggestion.capacity_spaces)
-          : activeSuggestion.estimated_capacity_spaces != null
-            ? String(activeSuggestion.estimated_capacity_spaces)
-            : current.capacitySpaces || '',
+      zoneName: getSuggestionZoneName(activeSuggestion) || current.zoneName || '',
+      zoneType: getSuggestionZoneType(activeSuggestion) || current.zoneType || DEFAULT_APPROVAL_FORM.zoneType,
+      capacitySpaces: getSuggestionCapacity(activeSuggestion) || current.capacitySpaces || '',
+      rulesDescription: getSuggestionRulesDescription(activeSuggestion) || current.rulesDescription || '',
+      reviewNotes: activeSuggestion.review_notes || current.reviewNotes || '',
     }));
   }, [activeSuggestion]);
 
@@ -124,21 +143,11 @@ export default function AdminZoneSuggestionsPage() {
     setActiveSuggestionId(suggestion.id);
     setApprovalForm({
       ...DEFAULT_APPROVAL_FORM,
-      zoneName:
-        suggestion.zone_name ||
-        suggestion.street_name ||
-        suggestion.area_name ||
-        '',
-      zoneType:
-        suggestion.zone_type ||
-        suggestion.suggested_zone_type ||
-        DEFAULT_APPROVAL_FORM.zoneType,
-      capacitySpaces:
-        suggestion.capacity_spaces != null
-          ? String(suggestion.capacity_spaces)
-          : suggestion.estimated_capacity_spaces != null
-            ? String(suggestion.estimated_capacity_spaces)
-            : '',
+      zoneName: getSuggestionZoneName(suggestion),
+      zoneType: getSuggestionZoneType(suggestion) || DEFAULT_APPROVAL_FORM.zoneType,
+      capacitySpaces: getSuggestionCapacity(suggestion),
+      rulesDescription: getSuggestionRulesDescription(suggestion),
+      reviewNotes: suggestion.review_notes || '',
     });
   };
 
@@ -171,6 +180,10 @@ export default function AdminZoneSuggestionsPage() {
       setSubmittingAction(false);
     }
   };
+
+  const isManagingApprovedZone = Boolean(
+    activeSuggestion && activeSuggestion.status === 'approved' && activeSuggestion.approved_zone_id,
+  );
 
   if (isLoading) {
     return <div className="min-h-screen bg-slate-950 text-white p-8">Loading admin tools...</div>;
@@ -282,19 +295,23 @@ export default function AdminZoneSuggestionsPage() {
                         </div>
 
                         <h3 className="mt-3 text-lg font-bold text-white">
-                          {suggestion.zone_name || suggestion.street_name || suggestion.area_name || 'Unnamed suggestion'}
+                          {getSuggestionZoneName(suggestion) || 'Unnamed suggestion'}
                         </h3>
                         <p className="mt-1 text-sm text-slate-300">
                           {Number(suggestion.latitude).toFixed(6)}, {Number(suggestion.longitude).toFixed(6)}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-200">
                           <span className="rounded-full border border-white/10 bg-slate-900/70 px-2.5 py-1">
-                            Type: {suggestion.zone_type || suggestion.suggested_zone_type || 'Not set'}
+                            Type: {getSuggestionZoneType(suggestion) || 'Not set'}
                           </span>
                           <span className="rounded-full border border-white/10 bg-slate-900/70 px-2.5 py-1">
-                            Capacity:{' '}
-                            {suggestion.capacity_spaces ?? suggestion.estimated_capacity_spaces ?? 'Not set'}
+                            Capacity: {getSuggestionCapacity(suggestion) || 'Not set'}
                           </span>
+                          {suggestion.approved_zone_id ? (
+                            <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-emerald-100">
+                              Live zone #{suggestion.approved_zone_id}
+                            </span>
+                          ) : null}
                         </div>
                         <p className="mt-2 text-xs text-slate-400">
                           Submitted by {suggestion.submitter_name || suggestion.submitter_email || 'Unknown'} on{' '}
@@ -327,29 +344,35 @@ export default function AdminZoneSuggestionsPage() {
                         onClick={() => openApprovePanel(suggestion)}
                         className="rounded-2xl bg-emerald-400 px-4 py-2 text-sm font-bold text-slate-950"
                       >
-                        Approve
+                        {suggestion.status === 'approved' && suggestion.approved_zone_id
+                          ? 'Manage live zone'
+                          : 'Approve'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => runAction(suggestion.id, { action: 'review' })}
-                        disabled={submittingAction}
-                        className="rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm font-bold text-amber-100"
-                      >
-                        Mark Reviewing
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          runAction(suggestion.id, {
-                            action: 'reject',
-                            reviewNotes: 'Rejected during admin review.',
-                          })
-                        }
-                        disabled={submittingAction}
-                        className="rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 text-sm font-bold text-rose-100"
-                      >
-                        Reject
-                      </button>
+                      {suggestion.status !== 'approved' ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => runAction(suggestion.id, { action: 'review' })}
+                            disabled={submittingAction}
+                            className="rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm font-bold text-amber-100"
+                          >
+                            Mark Reviewing
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              runAction(suggestion.id, {
+                                action: 'reject',
+                                reviewNotes: 'Rejected during admin review.',
+                              })
+                            }
+                            disabled={submittingAction}
+                            className="rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 text-sm font-bold text-rose-100"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -357,10 +380,13 @@ export default function AdminZoneSuggestionsPage() {
             </div>
 
             <div className="rounded-[24px] border border-white/10 bg-slate-950/45 p-5">
-              <h2 className="text-lg font-bold">Approval panel</h2>
+              <h2 className="text-lg font-bold">
+                {isManagingApprovedZone ? 'Approved zone management' : 'Approval panel'}
+              </h2>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                Select a suggestion and publish it as a live parking zone. This first version creates
-                a box-shaped zone around the reported coordinates.
+                {isManagingApprovedZone
+                  ? 'Edit or delete the live zone created from this suggestion. Deleting the live zone moves the suggestion back into reviewing.'
+                  : 'Select a suggestion and publish it as a live parking zone. This first version creates a box-shaped zone around the reported coordinates.'}
               </p>
 
               {!activeSuggestion ? (
@@ -372,20 +398,32 @@ export default function AdminZoneSuggestionsPage() {
                   <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                     <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Selected suggestion</div>
                     <div className="mt-2 text-base font-bold text-white">
-                      {activeSuggestion.zone_name || activeSuggestion.street_name || activeSuggestion.area_name || `Suggestion #${activeSuggestion.id}`}
+                      {getSuggestionZoneName(activeSuggestion) || `Suggestion #${activeSuggestion.id}`}
                     </div>
                     <div className="mt-1 text-sm text-slate-300">
                       {Number(activeSuggestion.latitude).toFixed(6)}, {Number(activeSuggestion.longitude).toFixed(6)}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-200">
                       <span className="rounded-full border border-white/10 bg-slate-900/70 px-2.5 py-1">
-                        Type: {activeSuggestion.zone_type || activeSuggestion.suggested_zone_type || 'Not set'}
+                        Type: {getSuggestionZoneType(activeSuggestion) || 'Not set'}
                       </span>
                       <span className="rounded-full border border-white/10 bg-slate-900/70 px-2.5 py-1">
-                        Capacity:{' '}
-                        {activeSuggestion.capacity_spaces ?? activeSuggestion.estimated_capacity_spaces ?? 'Not set'}
+                        Capacity: {getSuggestionCapacity(activeSuggestion) || 'Not set'}
                       </span>
+                      {activeSuggestion.approved_zone_id ? (
+                        <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-emerald-100">
+                          Live zone #{activeSuggestion.approved_zone_id}
+                        </span>
+                      ) : null}
                     </div>
+                    {activeSuggestion.approved_rules_description ? (
+                      <div className="mt-3 rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                          Live zone rules
+                        </div>
+                        <div className="mt-2">{activeSuggestion.approved_rules_description}</div>
+                      </div>
+                    ) : null}
                   </div>
 
                   <label className="block">
@@ -429,33 +467,35 @@ export default function AdminZoneSuggestionsPage() {
                     </label>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className="block">
-                      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-                        Lat offset
-                      </span>
-                      <input
-                        value={approvalForm.latOffset}
-                        onChange={(event) =>
-                          setApprovalForm((current) => ({ ...current, latOffset: event.target.value }))
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none"
-                      />
-                    </label>
+                  {!isManagingApprovedZone ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          Lat offset
+                        </span>
+                        <input
+                          value={approvalForm.latOffset}
+                          onChange={(event) =>
+                            setApprovalForm((current) => ({ ...current, latOffset: event.target.value }))
+                          }
+                          className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none"
+                        />
+                      </label>
 
-                    <label className="block">
-                      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-                        Lng offset
-                      </span>
-                      <input
-                        value={approvalForm.lngOffset}
-                        onChange={(event) =>
-                          setApprovalForm((current) => ({ ...current, lngOffset: event.target.value }))
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none"
-                      />
-                    </label>
-                  </div>
+                      <label className="block">
+                        <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          Lng offset
+                        </span>
+                        <input
+                          value={approvalForm.lngOffset}
+                          onChange={(event) =>
+                            setApprovalForm((current) => ({ ...current, lngOffset: event.target.value }))
+                          }
+                          className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none"
+                        />
+                      </label>
+                    </div>
+                  ) : null}
 
                   <label className="block">
                     <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
@@ -486,19 +526,50 @@ export default function AdminZoneSuggestionsPage() {
                   </label>
 
                   <div className="flex flex-wrap gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        runAction(activeSuggestion.id, {
-                          action: 'approve',
-                          ...approvalForm,
-                        })
-                      }
-                      disabled={submittingAction}
-                      className="rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-950"
-                    >
-                      {submittingAction ? 'Submitting...' : 'Approve and publish'}
-                    </button>
+                    {isManagingApprovedZone ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            runAction(activeSuggestion.id, {
+                              action: 'update-approved-zone',
+                              ...approvalForm,
+                            })
+                          }
+                          disabled={submittingAction}
+                          className="rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-950"
+                        >
+                          {submittingAction ? 'Submitting...' : 'Update live zone'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            runAction(activeSuggestion.id, {
+                              action: 'delete-approved-zone',
+                              reviewNotes: approvalForm.reviewNotes,
+                            })
+                          }
+                          disabled={submittingAction}
+                          className="rounded-2xl border border-rose-300/30 bg-rose-500/10 px-5 py-3 text-sm font-bold text-rose-100"
+                        >
+                          {submittingAction ? 'Submitting...' : 'Delete live zone'}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          runAction(activeSuggestion.id, {
+                            action: 'approve',
+                            ...approvalForm,
+                          })
+                        }
+                        disabled={submittingAction}
+                        className="rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-950"
+                      >
+                        {submittingAction ? 'Submitting...' : 'Approve and publish'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -507,7 +578,7 @@ export default function AdminZoneSuggestionsPage() {
                       }}
                       className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-slate-200"
                     >
-                      Cancel
+                      Clear selection
                     </button>
                   </div>
                 </div>

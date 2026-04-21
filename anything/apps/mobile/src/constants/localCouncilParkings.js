@@ -1,6 +1,14 @@
 import { mergeDistinctZones } from "@/utils/zoneDeduplication";
 import { RESEARCHED_PUBLIC_PARKING_ZONES } from "@/constants/researchedPublicParkingZones";
 
+const COUNCIL_SOURCE_OWNER_PATTERN =
+  /(?:^| )(?:City|Shire|Borough|Town|Rural City|Regional Council|Council)(?: of|$)/i;
+
+const COUNCIL_RESEARCHED_PUBLIC_PARKING_ZONES =
+  RESEARCHED_PUBLIC_PARKING_ZONES.filter((zone) =>
+    COUNCIL_SOURCE_OWNER_PATTERN.test(String(zone?.sourceOwner || "")),
+  );
+
 const BASE_LOCAL_COUNCIL_PARKINGS = [
   {
     id: "burgundy-one-hour-south",
@@ -1122,5 +1130,5 @@ const BASE_LOCAL_COUNCIL_PARKINGS = [
 
 export const LOCAL_COUNCIL_PARKINGS = mergeDistinctZones(
   BASE_LOCAL_COUNCIL_PARKINGS,
-  RESEARCHED_PUBLIC_PARKING_ZONES,
+  COUNCIL_RESEARCHED_PUBLIC_PARKING_ZONES,
 );

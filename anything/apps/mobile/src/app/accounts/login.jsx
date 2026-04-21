@@ -84,7 +84,6 @@ export default function Login() {
       });
 
       setSession(data.session);
-      router.replace('/');
     } catch (submitError) {
       setError(
         errorMessages[submitError?.message] ||

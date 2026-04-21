@@ -110,6 +110,26 @@ export const ensureSuggestedZonesAdminSchema = () => {
       `;
 
       await sql`
+        ALTER TABLE suggested_parking_zones
+        ADD COLUMN IF NOT EXISTS evidence_photo_url TEXT;
+      `;
+
+      await sql`
+        ALTER TABLE suggested_parking_zones
+        ADD COLUMN IF NOT EXISTS parking_category TEXT;
+      `;
+
+      await sql`
+        ALTER TABLE suggested_parking_zones
+        ADD COLUMN IF NOT EXISTS description TEXT;
+      `;
+
+      await sql`
+        ALTER TABLE suggested_parking_zones
+        ADD COLUMN IF NOT EXISTS public_parking_confirmed BOOLEAN NOT NULL DEFAULT FALSE;
+      `;
+
+      await sql`
         CREATE INDEX IF NOT EXISTS idx_suggested_parking_zones_status_created
         ON suggested_parking_zones (status, created_at DESC);
       `;

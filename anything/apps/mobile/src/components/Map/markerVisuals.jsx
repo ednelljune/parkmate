@@ -17,8 +17,14 @@ export const getPinFrameSize = (baseValue, axis = "both") => {
 export const getZoneMarkerLabel = (type) => {
   const normalizedType = String(type || "").trim();
   const normalizedTypeLower = normalizedType.toLowerCase();
+  const suggestedTypeMatch = normalizedType.match(/^p(\d+)$/i);
+
+  if (suggestedTypeMatch) {
+    return `${suggestedTypeMatch[1]}P`;
+  }
 
   switch (normalizedType) {
+    case "FH":
     case "Full Hour":
       return "FH";
     case "Loading Zone":

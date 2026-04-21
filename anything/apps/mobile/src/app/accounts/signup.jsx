@@ -124,7 +124,6 @@ export default function Signup() {
       if (data.session) {
         allowScreenExitRef.current = true;
         setSession(data.session);
-        router.replace('/');
       } else {
         setSuccess('Check your email to confirm your account, then sign in.');
         routeToLogin();

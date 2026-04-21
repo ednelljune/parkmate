@@ -1,15 +1,25 @@
 import { useSyncExternalStore } from "react";
+import { AppState } from "react-native";
 import * as Location from "expo-location";
 
-const LOCATION_CHANGE_THRESHOLD_METERS = 4;
-const HEADING_CHANGE_THRESHOLD_DEGREES = 8;
+const LOCATION_CHANGE_THRESHOLD_METERS = 2;
+const HEADING_CHANGE_THRESHOLD_DEGREES = 5;
+const CURRENT_POSITION_TIMEOUT_MS = 8000;
+const LAST_KNOWN_POSITION_MAX_AGE_MS = 30000;
+const WATCH_POSITION_OPTIONS = {
+  accuracy: Location.Accuracy.BestForNavigation,
+  timeInterval: 250,
+  distanceInterval: 1,
+};
 
 const listeners = new Set();
 
 let locationSubscription = null;
 let headingSubscription = null;
 let trackingPromise = null;
+let restartPromise = null;
 let trackingRunId = 0;
+let appStateSubscription = null;
 let locationSnapshot = {
   location: null,
   errorMsg: null,
@@ -34,7 +44,10 @@ const getDistanceMeters = (origin, target) => {
   return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const getPositionWithTimeout = async (options, timeoutMs = 8000) => {
+const getPositionWithTimeout = async (
+  options,
+  timeoutMs = CURRENT_POSITION_TIMEOUT_MS,
+) => {
   return Promise.race([
     Location.getCurrentPositionAsync(options),
     new Promise((_, reject) => {
@@ -77,6 +90,18 @@ const getHeadingDelta = (previousHeading, nextHeading) => {
 
   const delta = Math.abs(next - previous);
   return Math.min(delta, 360 - delta);
+};
+
+const isRecentPosition = (
+  position,
+  maxAgeMs = LAST_KNOWN_POSITION_MAX_AGE_MS,
+) => {
+  const timestamp = Number(position?.timestamp);
+  if (!Number.isFinite(timestamp)) {
+    return false;
+  }
+
+  return Date.now() - timestamp <= maxAgeMs;
 };
 
 const emitSnapshot = () => {
@@ -139,6 +164,14 @@ const setStatusState = (status, errorMsg = null) => {
   });
 };
 
+const resetLocationState = () => {
+  updateSnapshot({
+    location: null,
+    errorMsg: null,
+    status: "loading",
+  });
+};
+
 const removeSubscription = async (subscription) => {
   if (!subscription) return;
 
@@ -162,6 +195,47 @@ const stopTracking = async () => {
   await Promise.all(subscriptions.map(removeSubscription));
 };
 
+const restartTracking = async () => {
+  if (restartPromise) {
+    return restartPromise;
+  }
+
+  restartPromise = (async () => {
+    await stopTracking();
+
+    if (listeners.size > 0) {
+      await startTracking();
+    }
+  })();
+
+  try {
+    await restartPromise;
+  } finally {
+    restartPromise = null;
+  }
+};
+
+const ensureAppStateSubscription = () => {
+  if (appStateSubscription) {
+    return;
+  }
+
+  appStateSubscription = AppState.addEventListener("change", (nextAppState) => {
+    if (nextAppState === "active" && listeners.size > 0) {
+      restartTracking().catch(() => {});
+    }
+  });
+};
+
+const removeAppStateSubscription = () => {
+  if (!appStateSubscription) {
+    return;
+  }
+
+  appStateSubscription.remove();
+  appStateSubscription = null;
+};
+
 const startTracking = async () => {
   if (trackingPromise) {
     return trackingPromise;
@@ -171,9 +245,7 @@ const startTracking = async () => {
   trackingRunId = runId;
   trackingPromise = (async () => {
     try {
-      if (!locationSnapshot.location) {
-        setStatusState("loading", null);
-      }
+      resetLocationState();
 
       const { status: permissionStatus } =
         await Location.requestForegroundPermissionsAsync();
@@ -193,16 +265,18 @@ const startTracking = async () => {
         return;
       }
 
-      if (lastKnown?.coords) {
+      const lastKnownIsRecent = isRecentPosition(lastKnown);
+
+      if (lastKnownIsRecent && lastKnown?.coords) {
         setLocationState(lastKnown.coords, locationSnapshot.location?.heading);
       }
 
       try {
         const currentPosition = await getPositionWithTimeout(
           {
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.High,
           },
-          8000,
+          CURRENT_POSITION_TIMEOUT_MS,
         );
 
         if (currentPosition?.coords) {
@@ -212,7 +286,7 @@ const startTracking = async () => {
           );
         }
       } catch (currentPositionError) {
-        if (!lastKnown?.coords) {
+        if (!lastKnownIsRecent || !lastKnown?.coords) {
           setStatusState(
             "error",
             currentPositionError?.message ||
@@ -226,11 +300,7 @@ const startTracking = async () => {
       }
 
       const nextLocationSubscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 1000,
-          distanceInterval: 5,
-        },
+        WATCH_POSITION_OPTIONS,
         (nextLocation) => {
           setLocationState(
             nextLocation?.coords,
@@ -290,6 +360,7 @@ const subscribe = (listener) => {
   listeners.add(listener);
 
   if (listeners.size === 1) {
+    ensureAppStateSubscription();
     startTracking();
   }
 
@@ -297,6 +368,7 @@ const subscribe = (listener) => {
     listeners.delete(listener);
 
     if (listeners.size === 0) {
+      removeAppStateSubscription();
       stopTracking();
     }
   };

@@ -14,6 +14,9 @@ const MIN_TRUST_SCORE_TO_SUGGEST = 45;
 const MAX_SUGGESTIONS_PER_DAY = 3;
 const DUPLICATE_DISTANCE_METERS = 75;
 const STREET_NAME_MAX_LENGTH = 180;
+const EVIDENCE_PHOTO_URL_MAX_LENGTH = 5000000;
+const PARKING_CATEGORY_MAX_LENGTH = 80;
+const DESCRIPTION_MAX_LENGTH = 1200;
 
 const getDisplayNameFallback = (user) => {
   const metadataName =
@@ -45,6 +48,10 @@ export async function POST(request) {
       streetName,
       estimatedCapacitySpaces,
       suggestedZoneType,
+      evidencePhotoUrl,
+      parkingCategory,
+      description,
+      publicParkingConfirmed,
     } =
       await request.json();
     const userId = auth.user.id;
@@ -53,6 +60,16 @@ export async function POST(request) {
     const normalizedStreetName = normalizeText(streetName, STREET_NAME_MAX_LENGTH);
     const normalizedEstimatedCapacitySpaces = normalizeInteger(estimatedCapacitySpaces);
     const normalizedSuggestedZoneType = normalizeSuggestedZoneType(suggestedZoneType);
+    const normalizedEvidencePhotoUrl = normalizeText(
+      evidencePhotoUrl,
+      EVIDENCE_PHOTO_URL_MAX_LENGTH,
+    );
+    const normalizedParkingCategory = normalizeText(
+      parkingCategory,
+      PARKING_CATEGORY_MAX_LENGTH,
+    );
+    const normalizedDescription = normalizeText(description, DESCRIPTION_MAX_LENGTH);
+    const isPublicParkingConfirmed = publicParkingConfirmed === true;
     const fullName = getDisplayNameFallback(auth.user);
     const email = auth.user.email || "";
 
@@ -73,6 +90,27 @@ export async function POST(request) {
     if (!normalizedSuggestedZoneType) {
       return Response.json(
         { success: false, message: "Parking type is required for missing zone suggestions." },
+        { status: 400 },
+      );
+    }
+
+    if (!normalizedEvidencePhotoUrl) {
+      return Response.json(
+        { success: false, message: "Photo evidence is required for missing zone suggestions." },
+        { status: 400 },
+      );
+    }
+
+    if (!normalizedParkingCategory) {
+      return Response.json(
+        { success: false, message: "Parking category is required for missing zone suggestions." },
+        { status: 400 },
+      );
+    }
+
+    if (!isPublicParkingConfirmed) {
+      return Response.json(
+        { success: false, message: "You must confirm this is public parking before submitting." },
         { status: 400 },
       );
     }
@@ -189,6 +227,10 @@ export async function POST(request) {
         location,
         area_name,
         street_name,
+        evidence_photo_url,
+        parking_category,
+        description,
+        public_parking_confirmed,
         estimated_capacity_spaces,
         suggested_zone_type,
         status,
@@ -199,6 +241,10 @@ export async function POST(request) {
         ST_SetSRID(ST_Point(${normalizedLongitude}, ${normalizedLatitude}), 4326),
         ${normalizedStreetName},
         ${normalizedStreetName},
+        ${normalizedEvidencePhotoUrl},
+        ${normalizedParkingCategory},
+        ${normalizedDescription},
+        ${isPublicParkingConfirmed},
         ${normalizedEstimatedCapacitySpaces},
         ${normalizedSuggestedZoneType},
         'pending',
@@ -208,6 +254,10 @@ export async function POST(request) {
         id,
         area_name,
         street_name,
+        evidence_photo_url,
+        parking_category,
+        description,
+        public_parking_confirmed,
         estimated_capacity_spaces,
         suggested_zone_type,
         suggested_zone_type AS zone_type,

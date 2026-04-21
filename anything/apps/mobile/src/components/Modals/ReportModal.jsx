@@ -14,6 +14,7 @@ export const ReportModal = ({
   onSelectType,
   onSetQuantity,
   onConfirm,
+  onSuggestMissingZone,
 }) => {
   const nearbyZoneOptions = availableZoneOptions.filter(
     (option) => option.distanceMeters <= detectionRadius,
@@ -23,7 +24,7 @@ export const ReportModal = ({
   return (
     <Modal
       visible={visible}
-      transparent={true}
+      transparent
       animationType="slide"
       onRequestClose={onClose}
     >
@@ -52,202 +53,242 @@ export const ReportModal = ({
               borderBottomColor: "#E5E7EB",
             }}
           >
-            <Text
-              style={{ fontSize: 17, fontWeight: "bold", color: "#111827" }}
-            >
-              Report Parking Spot
+            <Text style={{ fontSize: 17, fontWeight: "bold", color: "#111827" }}>
+              {hasAvailableParkingTypes ? "Report Parking Spot" : "No Mapped Parking Zone"}
             </Text>
             <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
               <X size={20} color="#6B7280" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            style={{ paddingHorizontal: 14 }}
-            contentContainerStyle={{ paddingTop: 14, paddingBottom: 16 }}
-            showsVerticalScrollIndicator={false}
-          >
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: "#111827",
-                marginBottom: 4,
-              }}
-            >
-              Parking Type
-            </Text>
-            <Text style={{ fontSize: 12, color: "#6B7280", marginBottom: 8 }}>
-              {hasAvailableParkingTypes
-                ? "Choose the mapped parking zone area you are currently inside before reporting a spot."
-                : "You can only report a spot when your current location is inside a mapped parking zone area."}
-            </Text>
-
-            <View style={{ gap: 6, marginBottom: 16 }}>
-              {hasAvailableParkingTypes ? (
-                nearbyZoneOptions.map((option) => (
-                  <TouchableOpacity
-                    key={`${option.zoneId}-${option.parkingType}`}
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 14,
-                      borderRadius: 8,
-                      borderWidth: 2,
-                      borderColor:
-                        selectedZoneOption?.zoneId === option.zoneId ? "#3B82F6" : "#E5E7EB",
-                      backgroundColor:
-                        selectedZoneOption?.zoneId === option.zoneId ? "#EFF6FF" : "#FFF",
-                    }}
-                    onPress={() => onSelectType(option)}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "600",
-                        color:
-                          selectedZoneOption?.zoneId === option.zoneId ? "#3B82F6" : "#111827",
-                      }}
-                    >
-                      {option.parkingType}
-                    </Text>
-                    <Text
-                      style={{
-                        marginTop: 2,
-                        fontSize: 12,
-                        color:
-                          selectedZoneOption?.zoneId === option.zoneId ? "#1D4ED8" : "#6B7280",
-                      }}
-                    >
-                      {option.zoneName}
-                    </Text>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View
+          {hasAvailableParkingTypes ? (
+            <>
+              <ScrollView
+                style={{ paddingHorizontal: 14 }}
+                contentContainerStyle={{ paddingTop: 14, paddingBottom: 16 }}
+                showsVerticalScrollIndicator={false}
+              >
+                <Text
                   style={{
-                    paddingVertical: 14,
-                    paddingHorizontal: 14,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: "#E5E7EB",
-                    backgroundColor: "#F9FAFB",
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: "#111827",
+                    marginBottom: 4,
                   }}
                 >
-                  <Text style={{ fontSize: 13, color: "#4B5563" }}>
-                    Reporting is only available when your current location is inside a mapped parking zone boundary.
-                  </Text>
-                  <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 10 }}>
-                    If this area should be reviewed as a new parking zone, use the separate
-                    missing-zone button on the map.
-                  </Text>
+                  Parking Type
+                </Text>
+                <Text style={{ fontSize: 12, color: "#6B7280", marginBottom: 8 }}>
+                  Choose the mapped parking zone area you are currently inside before
+                  reporting a spot.
+                </Text>
+
+                <View style={{ gap: 6, marginBottom: 16 }}>
+                  {nearbyZoneOptions.map((option) => (
+                    <TouchableOpacity
+                      key={`${option.zoneId}-${option.parkingType}`}
+                      style={{
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        borderRadius: 8,
+                        borderWidth: 2,
+                        borderColor:
+                          selectedZoneOption?.zoneId === option.zoneId ? "#3B82F6" : "#E5E7EB",
+                        backgroundColor:
+                          selectedZoneOption?.zoneId === option.zoneId ? "#EFF6FF" : "#FFF",
+                      }}
+                      onPress={() => onSelectType(option)}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "600",
+                          color:
+                            selectedZoneOption?.zoneId === option.zoneId
+                              ? "#3B82F6"
+                              : "#111827",
+                        }}
+                      >
+                        {option.parkingType}
+                      </Text>
+                      <Text
+                        style={{
+                          marginTop: 2,
+                          fontSize: 12,
+                          color:
+                            selectedZoneOption?.zoneId === option.zoneId
+                              ? "#1D4ED8"
+                              : "#6B7280",
+                        }}
+                      >
+                        {option.zoneName}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              )}
-            </View>
 
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: "#111827",
-                marginBottom: 4,
-              }}
-            >
-              Number of Spots
-            </Text>
-            <Text style={{ fontSize: 12, color: "#6B7280", marginBottom: 8 }}>
-              How many spots are available?
-            </Text>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: "#111827",
+                    marginBottom: 4,
+                  }}
+                >
+                  Number of Spots
+                </Text>
+                <Text style={{ fontSize: 12, color: "#6B7280", marginBottom: 8 }}>
+                  How many spots are available?
+                </Text>
 
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 12,
-                marginBottom: 12,
-              }}
-            >
-              <TouchableOpacity
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: spotQuantity > 1 ? "#3B82F6" : "#E5E7EB",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-                onPress={() => onSetQuantity(Math.max(1, spotQuantity - 1))}
-                disabled={spotQuantity <= 1}
-              >
-                <Minus
-                  size={16}
-                  color={spotQuantity > 1 ? "#FFF" : "#9CA3AF"}
-                />
-              </TouchableOpacity>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 12,
+                    marginBottom: 12,
+                  }}
+                >
+                  <TouchableOpacity
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      backgroundColor: spotQuantity > 1 ? "#3B82F6" : "#E5E7EB",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                    onPress={() => onSetQuantity(Math.max(1, spotQuantity - 1))}
+                    disabled={spotQuantity <= 1}
+                  >
+                    <Minus
+                      size={16}
+                      color={spotQuantity > 1 ? "#FFF" : "#9CA3AF"}
+                    />
+                  </TouchableOpacity>
+
+                  <View
+                    style={{
+                      minWidth: 50,
+                      paddingVertical: 6,
+                      paddingHorizontal: 14,
+                      borderRadius: 8,
+                      backgroundColor: "#F3F4F6",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: 20, fontWeight: "bold", color: "#111827" }}>
+                      {spotQuantity}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      backgroundColor: "#3B82F6",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                    onPress={() => onSetQuantity(Math.min(99, spotQuantity + 1))}
+                  >
+                    <Plus size={16} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
 
               <View
                 style={{
-                  minWidth: 50,
-                  paddingVertical: 6,
                   paddingHorizontal: 14,
-                  borderRadius: 8,
-                  backgroundColor: "#F3F4F6",
-                  alignItems: "center",
+                  paddingTop: 10,
+                  paddingBottom: Math.max(insets.bottom, 12),
+                  borderTopWidth: 1,
+                  borderTopColor: "#E5E7EB",
+                  backgroundColor: "#FFF",
                 }}
               >
-                <Text
-                  style={{ fontSize: 20, fontWeight: "bold", color: "#111827" }}
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: isReporting ? "#93C5FD" : "#3B82F6",
+                    paddingVertical: 11,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                  onPress={onConfirm}
+                  disabled={isReporting}
                 >
-                  {spotQuantity}
-                </Text>
+                  <Text style={{ color: "#FFF", fontSize: 15, fontWeight: "600" }}>
+                    {isReporting ? "Reporting..." : "Confirm Report"}
+                  </Text>
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: "#3B82F6",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-                onPress={() => onSetQuantity(Math.min(99, spotQuantity + 1))}
-              >
-                <Plus size={16} color="#FFF" />
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-
-          <View
-            style={{
-              paddingHorizontal: 14,
-              paddingTop: 10,
-              paddingBottom: Math.max(insets.bottom, 12),
-              borderTopWidth: 1,
-              borderTopColor: "#E5E7EB",
-              backgroundColor: "#FFF",
-            }}
-          >
-            <TouchableOpacity
+            </>
+          ) : (
+            <View
               style={{
-                backgroundColor:
-                  isReporting || !hasAvailableParkingTypes ? "#93C5FD" : "#3B82F6",
-                paddingVertical: 11,
-                borderRadius: 10,
-                alignItems: "center",
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 6,
+                paddingHorizontal: 14,
+                paddingTop: 18,
+                paddingBottom: Math.max(insets.bottom, 18),
               }}
-              onPress={onConfirm}
-              disabled={isReporting || !hasAvailableParkingTypes}
             >
-              <Text style={{ color: "#FFF", fontSize: 15, fontWeight: "600" }}>
-                {isReporting ? "Reporting..." : "Confirm Report"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          
+              <View
+                style={{
+                  paddingVertical: 18,
+                  paddingHorizontal: 16,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: "#D1FAE5",
+                  backgroundColor: "#F0FDFA",
+                }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A" }}>
+                  You are outside a mapped parking zone
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    lineHeight: 20,
+                    color: "#475569",
+                    marginTop: 10,
+                  }}
+                >
+                  Spot reports only work inside mapped parking zones. If this parking area
+                  is missing from the map, send it for review instead.
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    marginTop: 18,
+                    borderRadius: 10,
+                    backgroundColor: "#0F766E",
+                    paddingVertical: 12,
+                    alignItems: "center",
+                  }}
+                  onPress={onSuggestMissingZone}
+                >
+                  <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700" }}>
+                    Suggest Missing Parking Zone
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    marginTop: 10,
+                    paddingVertical: 10,
+                    alignItems: "center",
+                  }}
+                  onPress={onClose}
+                >
+                  <Text style={{ color: "#64748B", fontSize: 14, fontWeight: "600" }}>
+                    Close
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </Modal>

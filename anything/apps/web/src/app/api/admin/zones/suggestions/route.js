@@ -23,6 +23,10 @@ export async function GET(request) {
         spz.user_id,
         spz.area_name,
         spz.street_name,
+        spz.evidence_photo_url,
+        spz.parking_category,
+        spz.description,
+        spz.public_parking_confirmed,
         spz.estimated_capacity_spaces,
         spz.estimated_capacity_spaces AS capacity_spaces,
         spz.suggested_zone_type,
@@ -44,7 +48,9 @@ export async function GET(request) {
         reviewer.email AS reviewer_email,
         reviewer.full_name AS reviewer_name,
         pz.name AS approved_zone_name,
-        pz.zone_type AS approved_zone_type
+        pz.zone_type AS approved_zone_type,
+        pz.capacity_spaces AS approved_capacity_spaces,
+        pz.rules_description AS approved_rules_description
       FROM suggested_parking_zones spz
       LEFT JOIN users submitter ON submitter.id = spz.user_id
       LEFT JOIN users reviewer ON reviewer.id = spz.reviewed_by

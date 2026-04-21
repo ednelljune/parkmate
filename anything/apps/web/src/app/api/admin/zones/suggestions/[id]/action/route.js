@@ -35,7 +35,7 @@ export async function POST(request, context) {
     const action = normalizeAction(body.action);
     const reviewNotes = normalizeText(body.reviewNotes, 600);
 
-    if (!action || !["approve", "reject", "review", "delete"].includes(action)) {
+    if (!action || !["approve", "reject", "review", "delete", "update-approved-zone", "delete-approved-zone"].includes(action)) {
       return Response.json(
         { success: false, error: "A valid action is required." },
         { status: 400 },
@@ -52,6 +52,7 @@ export async function POST(request, context) {
         estimated_capacity_spaces,
         status,
         approved_zone_id,
+        review_notes,
         ST_Y(location::geometry) AS latitude,
         ST_X(location::geometry) AS longitude
       FROM suggested_parking_zones
@@ -143,6 +144,13 @@ export async function POST(request, context) {
     }
 
     if (action === "delete") {
+      if (suggestion.approved_zone_id) {
+        await sql`
+          DELETE FROM parking_zones
+          WHERE id = ${suggestion.approved_zone_id};
+        `;
+      }
+
       await sql`
         DELETE FROM suggested_parking_zones
         WHERE id = ${suggestionId};
@@ -150,8 +158,123 @@ export async function POST(request, context) {
 
       return Response.json({
         success: true,
-        message: "Suggestion deleted.",
+        message: suggestion.approved_zone_id
+          ? "Suggestion and linked live zone deleted."
+          : "Suggestion deleted.",
         deletedSuggestionId: suggestionId,
+        deletedZoneId: suggestion.approved_zone_id || null,
+      });
+    }
+
+    if (action === "update-approved-zone" || action === "delete-approved-zone") {
+      if (!suggestion.approved_zone_id) {
+        return Response.json(
+          { success: false, error: "This suggestion does not have an approved live zone to manage." },
+          { status: 409 },
+        );
+      }
+    }
+
+    if (action === "delete-approved-zone") {
+      await sql`
+        DELETE FROM parking_zones
+        WHERE id = ${suggestion.approved_zone_id};
+      `;
+
+      const updatedSuggestionRows = await sql`
+        UPDATE suggested_parking_zones
+        SET
+          status = 'reviewing',
+          approved_zone_id = NULL,
+          reviewed_by = ${auth.user.id},
+          reviewed_at = CURRENT_TIMESTAMP,
+          review_notes = COALESCE(${reviewNotes}, review_notes),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${suggestionId}
+        RETURNING id, status, reviewed_at, review_notes, approved_zone_id;
+      `;
+
+      return Response.json({
+        success: true,
+        message: "Approved live zone deleted. Suggestion moved back to reviewing.",
+        suggestion: updatedSuggestionRows[0] || null,
+        deletedZoneId: suggestion.approved_zone_id,
+      });
+    }
+
+    if (action === "update-approved-zone") {
+      const zoneName =
+        normalizeText(body.zoneName, 180) ||
+        normalizeText(suggestion.street_name, 180) ||
+        normalizeText(suggestion.area_name, 180) ||
+        `Suggested public zone ${suggestion.id}`;
+      const zoneType = normalizeSuggestedZoneType(body.zoneType);
+      const rulesDescription = normalizeText(body.rulesDescription, 600);
+      const capacitySpaces =
+        normalizeInteger(body.capacitySpaces) ??
+        normalizeInteger(suggestion.estimated_capacity_spaces);
+
+      if (!zoneType) {
+        return Response.json(
+          { success: false, error: "A valid parking type is required to update this zone." },
+          { status: 400 },
+        );
+      }
+
+      if (capacitySpaces !== null && capacitySpaces < 0) {
+        return Response.json(
+          { success: false, error: "Capacity must be zero or a positive number." },
+          { status: 400 },
+        );
+      }
+
+      const existingZoneRows = await sql`
+        SELECT id, name, zone_type
+        FROM parking_zones
+        WHERE LOWER(name) = LOWER(${zoneName})
+          AND LOWER(zone_type) = LOWER(${zoneType})
+          AND id <> ${suggestion.approved_zone_id}
+        LIMIT 1;
+      `;
+
+      if (existingZoneRows[0]) {
+        return Response.json(
+          {
+            success: false,
+            error: "Another parking zone with this name and type already exists.",
+            existingZone: existingZoneRows[0],
+          },
+          { status: 409 },
+        );
+      }
+
+      const updatedZoneRows = await sql`
+        UPDATE parking_zones
+        SET
+          name = ${zoneName},
+          zone_type = ${zoneType},
+          capacity_spaces = ${capacitySpaces},
+          rules_description = ${rulesDescription}
+        WHERE id = ${suggestion.approved_zone_id}
+        RETURNING id, name, zone_type, capacity_spaces, rules_description;
+      `;
+
+      const updatedSuggestionRows = await sql`
+        UPDATE suggested_parking_zones
+        SET
+          reviewed_by = ${auth.user.id},
+          reviewed_at = CURRENT_TIMESTAMP,
+          review_notes = COALESCE(${reviewNotes}, review_notes),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${suggestionId}
+        RETURNING id, status, reviewed_at, review_notes, approved_zone_id;
+      `;
+
+      return Response.json({
+        success: true,
+        message: "Approved live zone updated.",
+        suggestion: updatedSuggestionRows[0] || null,
+        approvedZone: updatedZoneRows[0] || null,
       });
     }
 

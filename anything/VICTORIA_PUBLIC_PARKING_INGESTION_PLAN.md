@@ -4,6 +4,10 @@
 
 Victoria does not appear to publish a single statewide authoritative dataset for all parking zones and all parking bays. The practical path is a council-by-council ingestion pipeline, starting with councils that publish stable geometry and restriction data.
 
+As of April 21, 2026, the workspace only contains official council-owned parking datasets for 4 of Victoria's 79 councils. See `research/victoria-council-parking-coverage-2026-04-21.md` for the current covered-versus-missing council audit.
+
+Use `research/victoria-council-parking-source-inventory-2026-04-21.csv` as the statewide backlog. It records which councils are already covered, which still need source discovery, and a metro-versus-regional launch priority.
+
 ## Recommended rollout
 
 1. City of Melbourne
@@ -188,3 +192,5 @@ Keep this separate so failures in live feeds do not break the static parking ref
 1. Add council-specific import adapters under `apps/web/src/app/api/zones/import-*`.
 2. Add a normalized staging module that maps raw records into one shared shape.
 3. Add source freshness reporting so the app can show which councils are current.
+4. Maintain a statewide council coverage audit so missing councils are visible and can be prioritized systematically.
+5. Keep a statewide council source inventory CSV current so new official council parking datasets can be assigned to fetch and normalization adapters.

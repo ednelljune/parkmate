@@ -1,0 +1,80 @@
+council_name,normalized_key,has_official_public_parking_data,matched_source_owner_count,matched_source_owners,matched_source_dataset_count,matched_source_datasets,matched_entity_count
+Alpine Shire Council,alpine shire,False,0,,0,,0
+Ararat Rural City Council,ararat rural,False,0,,0,,0
+Ballarat City Council,ballarat,True,1,City of Ballarat,2,Car Parking Zones | Parking Meters,906
+Banyule City Council,banyule,False,0,,0,,0
+Bass Coast Shire Council,bass coast shire,False,0,,0,,0
+Baw Baw Shire Council,baw baw shire,False,0,,0,,0
+Bayside City Council,bayside,False,0,,0,,0
+Benalla Rural City Council,benalla rural,False,0,,0,,0
+Boroondara City Council,boroondara,False,0,,0,,0
+Borough of Queenscliffe Council,borough queenscliffe,False,0,,0,,0
+Brimbank City Council,brimbank,False,0,,0,,0
+Buloke Shire Council,buloke shire,False,0,,0,,0
+Campaspe Shire Council,campaspe shire,False,0,,0,,0
+Cardinia Shire Council,cardinia shire,False,0,,0,,0
+Casey City Council,casey,True,1,City of Casey,1,City of Casey Parking Restriction Zones,4286
+Central Goldfields Shire Council,central goldfields shire,False,0,,0,,0
+Colac Otway Shire Council,colac otway shire,False,0,,0,,0
+Corangamite Shire Council,corangamite shire,False,0,,0,,0
+Darebin City Council,darebin,False,0,,0,,0
+East Gippsland Shire Council,east gippsland shire,False,0,,0,,0
+Frankston City Council,frankston,False,0,,0,,0
+Gannawarra Shire Council,gannawarra shire,False,0,,0,,0
+Glen Eira City Council,glen eira,False,0,,0,,0
+Glenelg Shire Council,glenelg shire,False,0,,0,,0
+Golden Plains Shire Council,golden plains shire,False,0,,0,,0
+Greater Bendigo City Council,greater bendigo,False,0,,0,,0
+Greater Dandenong City Council,greater dandenong,False,0,,0,,0
+Greater Geelong City Council,greater geelong,True,1,City of Greater Geelong,1,Parking Lots,24
+Greater Shepparton City Council,greater shepparton,False,0,,0,,0
+Hepburn Shire Council,hepburn shire,False,0,,0,,0
+Hindmarsh Shire Council,hindmarsh shire,False,0,,0,,0
+Hobsons Bay City Council,hobsons bay,False,0,,0,,0
+Horsham Rural City Council,horsham rural,False,0,,0,,0
+Hume City Council,hume,False,0,,0,,0
+Indigo Shire Council,indigo shire,False,0,,0,,0
+Kingston City Council,kingston,False,0,,0,,0
+Knox City Council,knox,False,0,,0,,0
+Latrobe City Council,latrobe,False,0,,0,,0
+Loddon Shire Council,loddon shire,False,0,,0,,0
+Macedon Ranges Shire Council,macedon ranges shire,False,0,,0,,0
+Manningham City Council,manningham,False,0,,0,,0
+Mansfield Shire Council,mansfield shire,False,0,,0,,0
+Maribyrnong City Council,maribyrnong,False,0,,0,,0
+Maroondah City Council,maroondah,False,0,,0,,0
+Melbourne City Council,melbourne,True,1,City of Melbourne,3,On-street Parking Bay Sensors | On-street Parking Bays | Parking zones linked to street segments,27895
+Melton City Council,melton,False,0,,0,,0
+Merri-bek City Council,merri bek,False,0,,0,,0
+Mildura Rural City Council,mildura rural,False,0,,0,,0
+Mitchell Shire Council,mitchell shire,False,0,,0,,0
+Moira Shire Council,moira shire,False,0,,0,,0
+Monash City Council,monash,False,0,,0,,0
+Moonee Valley City Council,moonee valley,False,0,,0,,0
+Moorabool Shire Council,moorabool shire,False,0,,0,,0
+Mornington Peninsula Shire Council,mornington peninsula shire,False,0,,0,,0
+Mount Alexander Shire Council,mount alexander shire,False,0,,0,,0
+Moyne Shire Council,moyne shire,False,0,,0,,0
+Murrindindi Shire Council,murrindindi shire,False,0,,0,,0
+Nillumbik Shire Council,nillumbik shire,False,0,,0,,0
+Northern Grampians Shire Council,northern grampians shire,False,0,,0,,0
+Port Phillip City Council,port phillip,False,0,,0,,0
+Pyrenees Shire Council,pyrenees shire,False,0,,0,,0
+South Gippsland Shire Council,south gippsland shire,False,0,,0,,0
+Southern Grampians Shire Council,southern grampians shire,False,0,,0,,0
+Stonnington City Council,stonnington,False,0,,0,,0
+Strathbogie Shire Council,strathbogie shire,False,0,,0,,0
+Surf Coast Shire Council,surf coast shire,False,0,,0,,0
+Swan Hill Rural City Council,swan hill rural,False,0,,0,,0
+Towong Shire Council,towong shire,False,0,,0,,0
+Wangaratta Rural City Council,wangaratta rural,False,0,,0,,0
+Warrnambool City Council,warrnambool,False,0,,0,,0
+Wellington Shire Council,wellington shire,False,0,,0,,0
+West Wimmera Shire Council,west wimmera shire,False,0,,0,,0
+Whitehorse City Council,whitehorse,False,0,,0,,0
+Whittlesea City Council,whittlesea,False,0,,0,,0
+Wodonga City Council,wodonga,False,0,,0,,0
+Wyndham City Council,wyndham,False,0,,0,,0
+Yarra City Council,yarra,False,0,,0,,0
+Yarra Ranges Shire Council,yarra ranges shire,False,0,,0,,0
+Yarriambiack Shire Council,yarriambiack shire,False,0,,0,,0

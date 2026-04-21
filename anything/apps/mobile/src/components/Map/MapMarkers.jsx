@@ -33,8 +33,10 @@ const getMarkerHeading = (location) => {
 };
 
 const USER_MARKER_BLUE = "#1A73E8";
-const USER_MARKER_CONE = "rgba(26, 115, 232, 0.22)";
+const USER_MARKER_CONE = "rgba(26, 115, 232, 0.28)";
+const USER_MARKER_CONE_EDGE = "rgba(26, 115, 232, 0.14)";
 const USER_MARKER_HALO = "rgba(26, 115, 232, 0.16)";
+const USER_MARKER_PULSE = "rgba(26, 115, 232, 0.12)";
 const AVAILABLE_ZONE_HIGHLIGHT = "#10B981";
 
 const areCoordinatesEqual = (left, right) =>
@@ -255,8 +257,8 @@ export const UserLocationMarker = ({ location }) => {
           collapsable={false}
           renderToHardwareTextureAndroid={false}
           style={{
-            width: 56,
-            height: 56,
+            width: 78,
+            height: 78,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -265,22 +267,36 @@ export const UserLocationMarker = ({ location }) => {
             <View
               style={{
                 position: "absolute",
-                width: 56,
-                height: 56,
+                width: 78,
+                height: 78,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ rotate: headingRotation }],
               }}
             >
               <Svg
-                width={56}
-                height={56}
-                viewBox="0 0 56 56"
+                width={78}
+                height={78}
+                viewBox="0 0 78 78"
                 style={{ position: "absolute" }}
               >
                 <Path
-                  d="M28 28 C20 22 15 14 14 4 C19 1 37 1 42 4 C41 14 36 22 28 28 Z"
+                  d="M39 39 C28 31 20 18 18 4 C24 1 54 1 60 4 C58 18 50 31 39 39 Z"
                   fill={USER_MARKER_CONE}
+                />
+                <Path
+                  d="M39 39 C30 31 23 21 21 8"
+                  stroke={USER_MARKER_CONE_EDGE}
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  fill="none"
+                />
+                <Path
+                  d="M39 39 C48 31 55 21 57 8"
+                  stroke={USER_MARKER_CONE_EDGE}
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  fill="none"
                 />
               </Svg>
             </View>
@@ -289,26 +305,46 @@ export const UserLocationMarker = ({ location }) => {
           <View
             style={{
               position: "absolute",
-              width: 28,
-              height: 28,
-              borderRadius: 14,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
               backgroundColor: USER_MARKER_HALO,
             }}
           />
 
           <View
             style={{
-              width: 18,
-              height: 18,
-              borderRadius: 9,
+              position: "absolute",
+              width: 30,
+              height: 30,
+              borderRadius: 15,
+              backgroundColor: USER_MARKER_PULSE,
+            }}
+          />
+
+          <View
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 11,
               backgroundColor: USER_MARKER_BLUE,
-              borderWidth: 2.5,
-              borderColor: "#FFF",
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.18,
-              shadowRadius: 3,
+              shadowOpacity: 0.12,
+              shadowRadius: 4,
               elevation: 4,
+            }}
+          />
+
+          <View
+            style={{
+              position: "absolute",
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: USER_MARKER_BLUE,
+              opacity: headingRotation ? 0.2 : 0,
+              transform: [{ translateY: -24 }],
             }}
           />
         </View>

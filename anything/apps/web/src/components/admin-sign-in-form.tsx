@@ -2,21 +2,26 @@
 
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
-import { isSupabaseConfigured } from '@/lib/supabase/client';
-import { formatAuthError } from '@/utils/auth-errors';
 import useAuth from '@/utils/useAuth';
+import { formatAuthError } from '@/utils/auth-errors';
 import logo from '@/__create/parkmate-logo.png';
 import { useSupabaseAuth } from '@/utils/supabase-auth';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 
-export default function SignUp() {
+type AdminSignInFormProps = {
+	defaultCallbackUrl?: string;
+};
+
+export default function AdminSignInForm({
+	defaultCallbackUrl = '/admin',
+}: AdminSignInFormProps) {
 	const [error, setError] = useState<string | null>(null);
-	const [success, setSuccess] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
 	const { isLoading: isAuthLoading, session } = useSupabaseAuth();
-	const { signUpWithCredentials } = useAuth();
+	const { signInWithCredentials } = useAuth();
 
 	useEffect(() => {
 		if (typeof window === 'undefined' || isAuthLoading || !session) {
@@ -24,15 +29,14 @@ export default function SignUp() {
 		}
 
 		const urlParams = new URLSearchParams(window.location.search);
-		const callbackUrl = urlParams.get('callbackUrl') || '/admin';
+		const callbackUrl = urlParams.get('callbackUrl') || defaultCallbackUrl;
 		window.location.replace(callbackUrl);
-	}, [isAuthLoading, session]);
+	}, [defaultCallbackUrl, isAuthLoading, session]);
 
 	const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setLoading(true);
 		setError(null);
-		setSuccess(null);
 
 		if (!isSupabaseConfigured) {
 			setError(
@@ -48,27 +52,16 @@ export default function SignUp() {
 			return;
 		}
 
-		if (password.length < 6) {
-			setError('Password must be at least 6 characters');
-			setLoading(false);
-			return;
-		}
-
 		try {
 			const urlParams = new URLSearchParams(window.location.search);
-			const callbackUrl = urlParams.get('callbackUrl') || '/admin';
+			const callbackUrl = urlParams.get('callbackUrl') || defaultCallbackUrl;
 
-			const result = await signUpWithCredentials({
+			await signInWithCredentials({
 				email,
 				password,
 				callbackUrl,
 				redirect: true,
 			});
-
-			if (result?.requiresEmailConfirmation) {
-				setSuccess('Check your email to confirm your account, then sign in.');
-				setLoading(false);
-			}
 		} catch (err) {
 			setError(formatAuthError(err, 'Something went wrong. Please try again.'));
 			setLoading(false);
@@ -84,10 +77,9 @@ export default function SignUp() {
 			>
 				<div className="mb-5 text-center">
 					<img src={logo} alt="ParkMate logo" className="mx-auto h-14 w-14" />
-					<h1 className="mt-4 text-2xl font-black tracking-tight text-slate-950">Create admin account</h1>
+					<h1 className="mt-4 text-2xl font-black tracking-tight text-slate-950">Admin sign in</h1>
 					<p className="mt-2 text-sm leading-6 text-slate-600">
-						Create a login for the admin web. Access to admin tools still requires your email to be
-						allowlisted.
+						Use your ParkMate admin account to access the dashboard and parking zone review tools.
 					</p>
 				</div>
 
@@ -117,7 +109,7 @@ export default function SignUp() {
 							type="password"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
-							placeholder="At least 6 characters"
+							placeholder="Enter your password"
 							className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
 						/>
 					</div>
@@ -125,12 +117,6 @@ export default function SignUp() {
 					{error && (
 						<div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
 							{error}
-						</div>
-					)}
-
-					{success && (
-						<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-							{success}
 						</div>
 					)}
 
@@ -145,16 +131,16 @@ export default function SignUp() {
 						disabled={loading || !isSupabaseConfigured}
 						className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-sky-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
 					>
-						{loading ? 'Creating account...' : 'Create account'}
+						{loading ? 'Signing in...' : 'Sign in'}
 					</button>
 
 					<p className="mt-3 text-center text-sm text-gray-600">
-						Already have an account?{' '}
+						Need an account?{' '}
 						<a
-							href={`/account/signin${typeof window !== 'undefined' ? window.location.search : ''}`}
+							href={`/account/signup${typeof window !== 'undefined' ? window.location.search : ''}`}
 							className="font-semibold text-cyan-700 hover:text-cyan-800 hover:underline"
 						>
-							Sign in
+							Create one
 						</a>
 					</p>
 				</div>

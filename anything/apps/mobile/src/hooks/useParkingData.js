@@ -1177,13 +1177,16 @@ export const useSuggestParkingZone = (location, onSuccess) => {
     }) => {
       const session = useAuthStore.getState().session;
 
-      if (!user?.id) {
+      if (!user?.id || !session?.access_token) {
         throw new Error("Please sign in to suggest parking zones");
       }
 
       const response = await fetch(suggestZoneUrl || "/api/zones/suggest", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           latitude: coords?.latitude,
           longitude: coords?.longitude,
@@ -1213,6 +1216,7 @@ export const useSuggestParkingZone = (location, onSuccess) => {
         throw new Error(
           payload?.message ||
             payload?.error ||
+            (response.status === 401 ? "Please sign in again and retry your zone suggestion." : null) ||
             responseText ||
             "Failed to suggest parking zone",
         );

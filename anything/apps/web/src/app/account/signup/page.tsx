@@ -1,19 +1,20 @@
 'use client';
 
+import type { FormEvent } from 'react';
 import { useState } from 'react';
 import useAuth from '@/utils/useAuth';
 import logo from '@/__create/parkmate-logo.png';
 
 export default function SignUp() {
-	const [error, setError] = useState(null);
-	const [success, setSuccess] = useState(null);
+	const [error, setError] = useState<string | null>(null);
+	const [success, setSuccess] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
 	const { signUpWithCredentials } = useAuth();
 
-	const onSubmit = async (e) => {
+	const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setLoading(true);
 		setError(null);
@@ -53,9 +54,10 @@ export default function SignUp() {
 				'Password should be at least 6 characters':
 					'Password must be at least 6 characters.',
 			};
+			const errorMessage = err instanceof Error ? err.message : '';
 
 			setError(
-				errorMessages[err.message] || 'Something went wrong. Please try again.',
+				errorMessages[errorMessage as keyof typeof errorMessages] || 'Something went wrong. Please try again.',
 			);
 			setLoading(false);
 		}

@@ -189,6 +189,8 @@ const MAILBOX_META = {
   },
 };
 
+const ZONE_APPROVAL_POINTS_AWARDED = 10;
+
 const getDeleteErrorMessage = (error, fallbackMessage) => {
   const message =
     typeof error?.message === "string" && error.message.trim()
@@ -285,7 +287,7 @@ const getActivityDetail = (item) => {
   }
 
   if (item.activity_type === "zone_approved") {
-    return "Admin update: this suggestion was approved and added to the map";
+    return `Admin update: this suggestion was approved and earned +${ZONE_APPROVAL_POINTS_AWARDED} contribution points`;
   }
 
   if (item.activity_type === "zone_rejected") {
@@ -339,7 +341,13 @@ const getMailboxDetail = (item) => {
   }
 
   if (item?.mailbox_type === "zone_approved") {
-    return "Your missing zone suggestion was approved and published to the live map.";
+    const points = Math.max(
+      0,
+      Number(item?.claim_points_awarded) || ZONE_APPROVAL_POINTS_AWARDED,
+    );
+    return points > 0
+      ? `Your missing zone suggestion was approved and published to the live map. You earned +${points} contribution points.`
+      : "Your missing zone suggestion was approved and published to the live map.";
   }
 
   if (item?.mailbox_type === "zone_rejected") {
@@ -1092,12 +1100,19 @@ const ListHeader = React.memo(function ListHeader({
           <Text style={styles.sectionTitle}>Timeline</Text>
           <View style={styles.headerActionsRow}>
             {isEditing ? (
-              <HeaderIconButton
-                icon={Trash2}
-                onPress={onDeleteSelected}
-                disabled={deleteDisabled || actionBusy}
-                destructive
-              />
+              <>
+                <HeaderIconButton
+                  icon={Eye}
+                  onPress={onMarkSelectedRead}
+                  disabled={readDisabled || actionBusy}
+                />
+                <HeaderIconButton
+                  icon={Trash2}
+                  onPress={onDeleteSelected}
+                  disabled={deleteDisabled || actionBusy}
+                  destructive
+                />
+              </>
             ) : (
               <HeaderTextButton
                 label="Edit"
@@ -1116,7 +1131,7 @@ const ListHeader = React.memo(function ListHeader({
         </View>
         <Text style={styles.sectionSubtitle}>
           {isEditing
-            ? "Select activity items, then use delete on the left or cancel on the right."
+            ? "Select activity items, then mark them read or unread, delete them, or cancel."
             : "Newest activity first. Swipe any item to manage it."}
         </Text>
       </View>

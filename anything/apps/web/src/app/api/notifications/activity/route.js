@@ -12,6 +12,7 @@ import { getEffectiveReportExpiresAtSql } from "@/app/api/utils/report-ttl";
 const LEGACY_ACTIVITY_TIMEOUT_MS = 4000;
 const EXCLUDED_ZONE_TYPE = "meter";
 const FALSE_REPORT_TRUST_THRESHOLD = 3;
+const ZONE_APPROVAL_POINTS_AWARDED = 10;
 
 const buildActivityMessage = (activity) => {
   const quantity = Number(activity.quantity) || 1;
@@ -42,7 +43,7 @@ const buildActivityMessage = (activity) => {
   }
 
   if (activity.activity_type === "zone_approved") {
-    return `Your missing public zone suggestion${zoneLabel} was approved and added to the map.`;
+    return `Your missing public zone suggestion${zoneLabel} was approved and added to the map. You earned ${ZONE_APPROVAL_POINTS_AWARDED} contribution points.`;
   }
 
   if (activity.activity_type === "zone_rejected") {

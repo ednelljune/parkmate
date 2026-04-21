@@ -14,7 +14,7 @@ export const ReportModal = ({
   onSelectType,
   onSetQuantity,
   onConfirm,
-  onSuggestMissingZone,
+  onSuggestMissingZone = () => {},
 }) => {
   const nearbyZoneOptions = availableZoneOptions.filter(
     (option) => option.distanceMeters <= detectionRadius,
@@ -93,9 +93,9 @@ export const ReportModal = ({
                         borderRadius: 8,
                         borderWidth: 2,
                         borderColor:
-                          selectedZoneOption?.zoneId === option.zoneId ? "#3B82F6" : "#E5E7EB",
+                          selectedZoneOption?.zoneId === option.zoneId && selectedZoneOption?.parkingType === option.parkingType ? "#3B82F6" : "#E5E7EB",
                         backgroundColor:
-                          selectedZoneOption?.zoneId === option.zoneId ? "#EFF6FF" : "#FFF",
+                          selectedZoneOption?.zoneId === option.zoneId && selectedZoneOption?.parkingType === option.parkingType ? "#EFF6FF" : "#FFF",
                       }}
                       onPress={() => onSelectType(option)}
                     >
@@ -104,7 +104,7 @@ export const ReportModal = ({
                           fontSize: 14,
                           fontWeight: "600",
                           color:
-                            selectedZoneOption?.zoneId === option.zoneId
+                            selectedZoneOption?.zoneId === option.zoneId && selectedZoneOption?.parkingType === option.parkingType
                               ? "#3B82F6"
                               : "#111827",
                         }}
@@ -116,7 +116,7 @@ export const ReportModal = ({
                           marginTop: 2,
                           fontSize: 12,
                           color:
-                            selectedZoneOption?.zoneId === option.zoneId
+                            selectedZoneOption?.zoneId === option.zoneId && selectedZoneOption?.parkingType === option.parkingType
                               ? "#1D4ED8"
                               : "#6B7280",
                         }}
@@ -211,7 +211,7 @@ export const ReportModal = ({
               >
                 <TouchableOpacity
                   style={{
-                    backgroundColor: isReporting ? "#93C5FD" : "#3B82F6",
+                    backgroundColor: isReporting || !selectedZoneOption ? "#93C5FD" : "#3B82F6",
                     paddingVertical: 11,
                     borderRadius: 10,
                     alignItems: "center",
@@ -220,7 +220,7 @@ export const ReportModal = ({
                     gap: 6,
                   }}
                   onPress={onConfirm}
-                  disabled={isReporting}
+                  disabled={isReporting || !selectedZoneOption}
                 >
                   <Text style={{ color: "#FFF", fontSize: 15, fontWeight: "600" }}>
                     {isReporting ? "Reporting..." : "Confirm Report"}

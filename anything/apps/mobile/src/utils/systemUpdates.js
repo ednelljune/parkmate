@@ -1,4 +1,5 @@
 const CLAIM_POINTS_AWARDED = 10;
+const ZONE_APPROVAL_POINTS_AWARDED = 10;
 const FALSE_REPORT_TRUST_THRESHOLD = 3;
 
 export const isSystemUpdateActivity = (item) => Boolean(item?.is_system_update);
@@ -69,7 +70,10 @@ const normalizeSystemUpdateFromActivity = (item) => {
       ...item,
       id: `system-${itemId}`,
       mailbox_type: "zone_approved",
-      claim_points_awarded: 0,
+      claim_points_awarded: Math.max(
+        0,
+        Number(item?.claim_points_awarded) || ZONE_APPROVAL_POINTS_AWARDED,
+      ),
       false_report_count: 0,
       trust_score_threshold: FALSE_REPORT_TRUST_THRESHOLD,
       trust_score_affected: false,

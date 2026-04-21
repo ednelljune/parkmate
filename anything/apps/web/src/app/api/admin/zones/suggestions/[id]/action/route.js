@@ -12,6 +12,8 @@ import {
   normalizeText,
 } from "../../shared";
 
+const ZONE_APPROVAL_POINTS_AWARDED = 10;
+
 const normalizeAction = (value) => normalizeText(value, 24)?.toLowerCase() || null;
 
 export async function POST(request, context) {
@@ -176,28 +178,43 @@ export async function POST(request, context) {
     }
 
     if (action === "delete-approved-zone") {
-      await sql`
-        DELETE FROM parking_zones
-        WHERE id = ${suggestion.approved_zone_id};
-      `;
+      const [deleteResult, updateResult] = await sql.transaction(async (txn) => {
+        const deleteRows = await txn`
+          DELETE FROM parking_zones
+          WHERE id = ${suggestion.approved_zone_id}
+          RETURNING id;
+        `;
 
-      const updatedSuggestionRows = await sql`
-        UPDATE suggested_parking_zones
-        SET
-          status = 'reviewing',
-          approved_zone_id = NULL,
-          reviewed_by = ${auth.user.id},
-          reviewed_at = CURRENT_TIMESTAMP,
-          review_notes = COALESCE(${reviewNotes}, review_notes),
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${suggestionId}
-        RETURNING id, status, reviewed_at, review_notes, approved_zone_id;
-      `;
+        const updatedSuggestionRows = await txn`
+          UPDATE suggested_parking_zones
+          SET
+            status = 'reviewing',
+            approved_zone_id = NULL,
+            reviewed_by = ${auth.user.id},
+            reviewed_at = CURRENT_TIMESTAMP,
+            review_notes = COALESCE(${reviewNotes}, review_notes),
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ${suggestionId}
+          RETURNING id, status, reviewed_at, review_notes, approved_zone_id;
+        `;
+
+        return [deleteRows, updatedSuggestionRows];
+      });
+
+      // Log the activity after transaction succeeds
+      await logUserActivity({
+        userId: auth.user.id,
+        action: "delete-approved-zone",
+        context: {
+          suggestionId,
+          deletedZoneId: suggestion.approved_zone_id,
+        },
+      });
 
       return Response.json({
         success: true,
         message: "Approved live zone deleted. Suggestion moved back to reviewing.",
-        suggestion: updatedSuggestionRows[0] || null,
+        suggestion: updateResult[0] || null,
         deletedZoneId: suggestion.approved_zone_id,
       });
     }
@@ -248,27 +265,42 @@ export async function POST(request, context) {
         );
       }
 
-      const updatedZoneRows = await sql`
-        UPDATE parking_zones
-        SET
-          name = ${zoneName},
-          zone_type = ${zoneType},
-          capacity_spaces = ${capacitySpaces},
-          rules_description = ${rulesDescription}
-        WHERE id = ${suggestion.approved_zone_id}
-        RETURNING id, name, zone_type, capacity_spaces, rules_description;
-      `;
+      const [updatedZoneRows, updatedSuggestionRows] = await sql.transaction(async (txn) => {
+        const zoneUpdateResult = await txn`
+          UPDATE parking_zones
+          SET
+            name = ${zoneName},
+            zone_type = ${zoneType},
+            capacity_spaces = ${capacitySpaces},
+            rules_description = ${rulesDescription}
+          WHERE id = ${suggestion.approved_zone_id}
+          RETURNING id, name, zone_type, capacity_spaces, rules_description;
+        `;
 
-      const updatedSuggestionRows = await sql`
-        UPDATE suggested_parking_zones
-        SET
-          reviewed_by = ${auth.user.id},
-          reviewed_at = CURRENT_TIMESTAMP,
-          review_notes = COALESCE(${reviewNotes}, review_notes),
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${suggestionId}
-        RETURNING id, status, reviewed_at, review_notes, approved_zone_id;
-      `;
+        const suggestionUpdateResult = await txn`
+          UPDATE suggested_parking_zones
+          SET
+            reviewed_by = ${auth.user.id},
+            reviewed_at = CURRENT_TIMESTAMP,
+            review_notes = COALESCE(${reviewNotes}, review_notes),
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ${suggestionId}
+          RETURNING id, status, reviewed_at, review_notes, approved_zone_id;
+        `;
+
+        return [zoneUpdateResult, suggestionUpdateResult];
+      });
+
+      // Log the activity after transaction succeeds
+      await logUserActivity({
+        userId: auth.user.id,
+        action: "update-approved-zone",
+        context: {
+          suggestionId,
+          approvedZoneId: suggestion.approved_zone_id,
+          reviewNotes,
+        },
+      });
 
       return Response.json({
         success: true,
@@ -381,6 +413,12 @@ export async function POST(request, context) {
     `;
 
     if (suggestion.user_id) {
+      await sql`
+        UPDATE users
+        SET contribution_score = COALESCE(contribution_score, 0) + ${ZONE_APPROVAL_POINTS_AWARDED}
+        WHERE id = ${suggestion.user_id};
+      `;
+
       await logUserActivity({
         userId: suggestion.user_id,
         reportId: suggestion.id,
@@ -398,9 +436,10 @@ export async function POST(request, context) {
 
     return Response.json({
       success: true,
-      message: "Suggestion approved and added to parking zones.",
+      message: `Suggestion approved, added to parking zones, and awarded +${ZONE_APPROVAL_POINTS_AWARDED} points to the suggester.`,
       suggestion: updatedSuggestionRows[0] || null,
       approvedZone,
+      pointsAwarded: ZONE_APPROVAL_POINTS_AWARDED,
     });
   } catch (error) {
     console.error("Error reviewing zone suggestion:", error);

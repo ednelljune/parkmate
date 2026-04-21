@@ -12,8 +12,9 @@ import {
 const EXCLUDED_ZONE_TYPE = "meter";
 const MIN_TRUST_SCORE_TO_SUGGEST = 45;
 const MAX_SUGGESTIONS_PER_DAY = 3;
-const DUPLICATE_DISTANCE_METERS = 75;
+const DUPLICATE_DISTANCE_METERS = 30;
 const STREET_NAME_MAX_LENGTH = 180;
+// Temporary limit while evidence images are still sent as inline data URLs.
 const EVIDENCE_PHOTO_URL_MAX_LENGTH = 5000000;
 const PARKING_CATEGORY_MAX_LENGTH = 80;
 const DESCRIPTION_MAX_LENGTH = 1200;
@@ -199,7 +200,7 @@ export async function POST(request) {
     const nearbySuggestionRows = await sql`
       SELECT id, street_name, area_name, status, created_at
       FROM suggested_parking_zones
-      WHERE status IN ('pending', 'reviewing', 'approved')
+      WHERE status IN ('pending', 'reviewing')
         AND ST_DWithin(
           location::geography,
           ST_SetSRID(ST_Point(${normalizedLongitude}, ${normalizedLatitude}), 4326)::geography,

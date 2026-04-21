@@ -1,12 +1,63 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getApiUrl } from '@/utils/api-base';
 import { useSupabaseAuth } from '@/utils/supabase-auth';
+
+type Suggestion = {
+  id: number;
+  user_id?: string | null;
+  area_name?: string | null;
+  street_name?: string | null;
+  evidence_photo_url?: string | null;
+  parking_category?: string | null;
+  description?: string | null;
+  public_parking_confirmed?: boolean | null;
+  estimated_capacity_spaces?: number | null;
+  capacity_spaces?: number | null;
+  suggested_zone_type?: string | null;
+  zone_type?: string | null;
+  zone_name?: string | null;
+  status: string;
+  confirmation_count: number;
+  false_flag_count: number;
+  source?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  reviewed_at?: string | null;
+  review_notes?: string | null;
+  approved_zone_id?: number | null;
+  latitude: number;
+  longitude: number;
+  submitter_email?: string | null;
+  submitter_name?: string | null;
+  reviewer_email?: string | null;
+  reviewer_name?: string | null;
+  approved_zone_name?: string | null;
+  approved_zone_type?: string | null;
+  approved_capacity_spaces?: number | null;
+  approved_rules_description?: string | null;
+};
+
+type ApprovalForm = {
+  zoneName: string;
+  zoneType: string;
+  capacitySpaces: string;
+  rulesDescription: string;
+  reviewNotes: string;
+  latOffset: string;
+  lngOffset: string;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 const STATUS_OPTIONS = ['pending', 'reviewing', 'approved', 'rejected'];
 
-const DEFAULT_APPROVAL_FORM = {
+const DEFAULT_APPROVAL_FORM: ApprovalForm = {
   zoneName: '',
   zoneType: 'Public',
   capacitySpaces: '',
@@ -16,7 +67,7 @@ const DEFAULT_APPROVAL_FORM = {
   lngOffset: '0.00055',
 };
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined) {
   if (!value) {
     return 'Unknown';
   }
@@ -29,7 +80,7 @@ function formatDate(value) {
   return date.toLocaleString();
 }
 
-function getSuggestionZoneName(suggestion) {
+function getSuggestionZoneName(suggestion: Suggestion | null | undefined) {
   return (
     suggestion?.approved_zone_name ||
     suggestion?.zone_name ||
@@ -39,11 +90,11 @@ function getSuggestionZoneName(suggestion) {
   );
 }
 
-function getSuggestionZoneType(suggestion) {
+function getSuggestionZoneType(suggestion: Suggestion | null | undefined) {
   return suggestion?.approved_zone_type || suggestion?.zone_type || suggestion?.suggested_zone_type || '';
 }
 
-function getSuggestionCapacity(suggestion) {
+function getSuggestionCapacity(suggestion: Suggestion | null | undefined) {
   if (suggestion?.approved_capacity_spaces != null) {
     return String(suggestion.approved_capacity_spaces);
   }
@@ -56,21 +107,21 @@ function getSuggestionCapacity(suggestion) {
   return '';
 }
 
-function getSuggestionRulesDescription(suggestion) {
+function getSuggestionRulesDescription(suggestion: Suggestion | null | undefined) {
   return suggestion?.approved_rules_description || '';
 }
 
 export default function AdminZoneSuggestionsPage() {
   const { isLoading, session, user } = useSupabaseAuth();
   const [status, setStatus] = useState('pending');
-  const [suggestions, setSuggestions] = useState([]);
-  const [error, setError] = useState(null);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [activeSuggestionId, setActiveSuggestionId] = useState(null);
-  const [approvalForm, setApprovalForm] = useState(DEFAULT_APPROVAL_FORM);
+  const [activeSuggestionId, setActiveSuggestionId] = useState<number | null>(null);
+  const [approvalForm, setApprovalForm] = useState<ApprovalForm>(DEFAULT_APPROVAL_FORM);
   const [submittingAction, setSubmittingAction] = useState(false);
 
-  const activeSuggestion = useMemo(
+  const activeSuggestion = useMemo<Suggestion | null>(
     () => suggestions.find((item) => item.id === activeSuggestionId) || null,
     [activeSuggestionId, suggestions],
   );
@@ -96,7 +147,7 @@ export default function AdminZoneSuggestionsPage() {
 
     try {
       const accessToken = await getAccessToken();
-      const response = await fetch(`/api/admin/zones/suggestions?status=${status}`, {
+      const response = await fetch(getApiUrl(`/api/admin/zones/suggestions?status=${status}`), {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -110,7 +161,7 @@ export default function AdminZoneSuggestionsPage() {
       setSuggestions(Array.isArray(result.suggestions) ? result.suggestions : []);
     } catch (loadError) {
       setSuggestions([]);
-      setError(loadError.message || 'Failed to load suggestions.');
+      setError(getErrorMessage(loadError, 'Failed to load suggestions.'));
     } finally {
       setLoadingSuggestions(false);
     }
@@ -139,7 +190,7 @@ export default function AdminZoneSuggestionsPage() {
     }));
   }, [activeSuggestion]);
 
-  const openApprovePanel = (suggestion) => {
+  const openApprovePanel = (suggestion: Suggestion) => {
     setActiveSuggestionId(suggestion.id);
     setApprovalForm({
       ...DEFAULT_APPROVAL_FORM,
@@ -151,13 +202,13 @@ export default function AdminZoneSuggestionsPage() {
     });
   };
 
-  const runAction = async (suggestionId, payload) => {
+  const runAction = async (suggestionId: number, payload: Record<string, unknown>) => {
     setSubmittingAction(true);
     setError(null);
 
     try {
       const accessToken = await getAccessToken();
-      const response = await fetch(`/api/admin/zones/suggestions/${suggestionId}/action`, {
+      const response = await fetch(getApiUrl(`/api/admin/zones/suggestions/${suggestionId}/action`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +226,7 @@ export default function AdminZoneSuggestionsPage() {
       setApprovalForm(DEFAULT_APPROVAL_FORM);
       await loadSuggestions();
     } catch (actionError) {
-      setError(actionError.message || 'Action failed.');
+      setError(getErrorMessage(actionError, 'Action failed.'));
     } finally {
       setSubmittingAction(false);
     }
@@ -230,6 +281,12 @@ export default function AdminZoneSuggestionsPage() {
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              to="/admin"
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-200 transition hover:border-cyan-300/30"
+            >
+              Dashboard
+            </Link>
             {STATUS_OPTIONS.map((option) => (
               <button
                 key={option}

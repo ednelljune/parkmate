@@ -15,6 +15,8 @@ import { nextPublicProcessEnv } from './plugins/nextPublicProcessEnv';
 import { restart } from './plugins/restart';
 import { restartEnvFileChange } from './plugins/restartEnvFileChange';
 
+const isNetlifyStaticBuild = process.env.NETLIFY === 'true';
+
 export default defineConfig(({ isSsrBuild }) => ({
   // Keep them available via import.meta.env.NEXT_PUBLIC_*
   envPrefix: 'NEXT_PUBLIC_',
@@ -49,10 +51,14 @@ export default defineConfig(({ isSsrBuild }) => ({
   plugins: [
     nextPublicProcessEnv(),
     restartEnvFileChange(),
-    reactRouterHonoServer({
-      serverEntryPoint: './__create/index.ts',
-      runtime: 'node',
-    }),
+    ...(!isNetlifyStaticBuild
+      ? [
+          reactRouterHonoServer({
+            serverEntryPoint: './__create/index.ts',
+            runtime: 'node',
+          }),
+        ]
+      : []),
     babel({
       include: ['src/**/*.{js,jsx,ts,tsx}'], // or RegExp: /src\/.*\.[tj]sx?$/
       exclude: /node_modules/, // skip everything else
@@ -76,8 +82,7 @@ export default defineConfig(({ isSsrBuild }) => ({
     loadFontsFromTailwindSource(),
     addRenderIds(),
     reactRouter(),
-    netlifyReactRouter(),
-    netlify(),
+    ...(!isNetlifyStaticBuild ? [netlifyReactRouter(), netlify()] : []),
     tsconfigPaths(),
     aliases(),
     layoutWrapperPlugin(),

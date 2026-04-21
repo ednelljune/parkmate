@@ -89,7 +89,11 @@ CREATE TABLE IF NOT EXISTS suggested_parking_zones (
   false_flag_count INTEGER NOT NULL DEFAULT 0,
   source TEXT NOT NULL DEFAULT 'mobile',
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT evidence_photo_url_format CHECK (
+    evidence_photo_url IS NULL OR 
+    evidence_photo_url ~ '^https?://' 
+  )
 );
 
 CREATE OR REPLACE FUNCTION public.sync_supabase_auth_user()

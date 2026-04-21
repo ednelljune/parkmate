@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 export const meta = () => [
@@ -5,7 +6,14 @@ export const meta = () => [
   { name: "description", content: "Privacy Policy for ParkMate." },
 ];
 
-function LegalLayout({ eyebrow, title, accentClassName, children }) {
+type LegalLayoutProps = {
+  eyebrow: string;
+  title: string;
+  accentClassName: string;
+  children: ReactNode;
+};
+
+function LegalLayout({ eyebrow, title, accentClassName, children }: LegalLayoutProps) {
   return (
     <div className="min-h-screen bg-[#0b1f33] text-slate-100">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#071827]/85 backdrop-blur">

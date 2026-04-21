@@ -11,6 +11,7 @@ import { getEffectiveReportExpiresAtSql } from "@/app/api/utils/report-ttl";
 
 const EXCLUDED_ZONE_TYPE = "meter";
 const CLAIM_POINTS_AWARDED = 10;
+const ZONE_APPROVAL_POINTS_AWARDED = 10;
 const FALSE_REPORT_TRUST_THRESHOLD = 3;
 
 const buildSystemUpdateMessage = (item) => {
@@ -33,7 +34,7 @@ const buildSystemUpdateMessage = (item) => {
   }
 
   if (item.mailbox_type === "zone_approved") {
-    return `Your missing public zone suggestion in ${zoneName} was approved and added to the live map.`;
+    return `Your missing public zone suggestion in ${zoneName} was approved and added to the live map. You earned ${ZONE_APPROVAL_POINTS_AWARDED} points.`;
   }
 
   if (item.mailbox_type === "zone_rejected") {
@@ -144,7 +145,7 @@ export async function GET(request) {
           ual.latitude,
           ual.zone_type,
           ual.zone_name,
-          NULL::int AS claim_points_awarded,
+          $4::int AS claim_points_awarded,
           NULL::int AS false_report_count,
           $3::int AS trust_score_threshold,
           false AS trust_score_affected
@@ -259,11 +260,18 @@ export async function GET(request) {
       )
       SELECT *
       FROM system_updates_feed
-      WHERE LOWER(COALESCE(zone_type, parking_type, '')) NOT LIKE '%' || $4 || '%'
+      WHERE LOWER(COALESCE(zone_type, parking_type, '')) NOT LIKE '%' || $5 || '%'
       ORDER BY occurred_at DESC
-      LIMIT $5
+      LIMIT $6
     `,
-      [userId, CLAIM_POINTS_AWARDED, FALSE_REPORT_TRUST_THRESHOLD, EXCLUDED_ZONE_TYPE, limit],
+      [
+        userId,
+        CLAIM_POINTS_AWARDED,
+        FALSE_REPORT_TRUST_THRESHOLD,
+        ZONE_APPROVAL_POINTS_AWARDED,
+        EXCLUDED_ZONE_TYPE,
+        limit,
+      ],
     );
 
     const notifications = systemUpdateItems

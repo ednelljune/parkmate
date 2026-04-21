@@ -75,6 +75,14 @@ const normalizeCoordinate = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const normalizeMapHeading = (value) => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return ((value % 360) + 360) % 360;
+};
+
 const buildTracePath = (coordinates, closePath = false) => {
   if (!Array.isArray(coordinates) || coordinates.length < 2) {
     return [];
@@ -367,6 +375,7 @@ function ParkMateContent() {
   });
   const lastAutoFramedReportCountRef = useRef(null);
   const lastAutoNavigationRequestRef = useRef(null);
+  const lastMapHeadingSyncRef = useRef(0);
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const params = useLocalSearchParams(); // Get navigation params
@@ -396,6 +405,7 @@ function ParkMateContent() {
   const [overlayMapRegion, setOverlayMapRegion] = useState(mapRegionRef.current);
   const [mapOverlayRevision, setMapOverlayRevision] = useState(0);
   const [selectedZoneTraceProgress, setSelectedZoneTraceProgress] = useState(0);
+  const [mapHeading, setMapHeading] = useState(0);
   const scheduleOverlayRefresh = useCallback(
     (immediate = false) => {
       if (!immediate) {
@@ -514,6 +524,28 @@ function ParkMateContent() {
     [safeAnimateToRegion],
   );
 
+  const syncMapHeading = useCallback((force = false) => {
+    if (!mapRef.current || typeof mapRef.current.getCamera !== "function") {
+      return;
+    }
+
+    const now = Date.now();
+    if (!force && now - lastMapHeadingSyncRef.current < 120) {
+      return;
+    }
+
+    lastMapHeadingSyncRef.current = now;
+    mapRef.current
+      .getCamera()
+      .then((camera) => {
+        const nextHeading = normalizeMapHeading(Number(camera?.heading));
+        setMapHeading((currentHeading) =>
+          Math.abs(currentHeading - nextHeading) < 1 ? currentHeading : nextHeading,
+        );
+      })
+      .catch(() => {});
+  }, []);
+
   const handleRegionChangeComplete = useCallback((region, details) => {
     if (!region) return;
 
@@ -535,28 +567,30 @@ function ParkMateContent() {
     if (Platform.OS === "android") {
       scheduleOverlayRefresh(true);
     }
-  }, [scheduleOverlayRefresh]);
+    syncMapHeading(true);
+  }, [scheduleOverlayRefresh, syncMapHeading]);
 
   const handleRegionChange = useCallback((region) => {
-    if (Platform.OS !== "android") {
-      return;
-    }
-
     if (region) {
-      setOverlayMapRegion({
-        latitude: region.latitude,
-        longitude: region.longitude,
-        latitudeDelta: region.latitudeDelta,
-        longitudeDelta: region.longitudeDelta,
-      });
+      if (Platform.OS === "android") {
+        setOverlayMapRegion({
+          latitude: region.latitude,
+          longitude: region.longitude,
+          latitudeDelta: region.latitudeDelta,
+          longitudeDelta: region.longitudeDelta,
+        });
+      }
+
+      syncMapHeading();
     }
-  }, []);
+  }, [syncMapHeading]);
 
   const handleMapReady = useCallback(() => {
     if (Platform.OS === "android") {
       scheduleOverlayRefresh(true);
     }
-  }, [scheduleOverlayRefresh]);
+    syncMapHeading(true);
+  }, [scheduleOverlayRefresh, syncMapHeading]);
 
   const nearbyZones = useParkingZones(location, detectionRadius);
   const currentZone = useCurrentZone(location);
@@ -1881,38 +1915,46 @@ function ParkMateContent() {
       return;
     }
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Photo access required",
+          "Allow photo library access so you can attach evidence for the missing parking zone.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets?.[0];
+      if (!asset?.uri || !asset?.base64) {
+        Alert.alert("Photo unavailable", "Please choose a valid photo and try again.");
+        return;
+      }
+
+      setSuggestedZoneEvidence({
+        uri: asset.uri,
+        base64: asset.base64,
+        mimeType: asset.mimeType || "image/jpeg",
+        fileName: asset.fileName || asset.uri.split("/").pop() || "parking-zone.jpg",
+      });
+    } catch (error) {
+      console.error("Error picking photo:", error);
       Alert.alert(
-        "Photo access required",
-        "Allow photo library access so you can attach evidence for the missing parking zone.",
+        "Could not access photo library",
+        "Please try again.",
       );
-      return;
     }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.7,
-      base64: true,
-    });
-
-    if (result.canceled) {
-      return;
-    }
-
-    const asset = result.assets?.[0];
-    if (!asset?.uri || !asset?.base64) {
-      Alert.alert("Photo unavailable", "Please choose a valid photo and try again.");
-      return;
-    }
-
-    setSuggestedZoneEvidence({
-      uri: asset.uri,
-      base64: asset.base64,
-      mimeType: asset.mimeType || "image/jpeg",
-      fileName: asset.fileName || asset.uri.split("/").pop() || "parking-zone.jpg",
-    });
   }, [isUploadingSuggestZoneEvidence, suggestZoneMutation.isPending]);
 
   const handleCaptureSuggestZoneEvidence = useCallback(async () => {
@@ -1920,38 +1962,46 @@ function ParkMateContent() {
       return;
     }
 
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Camera access required",
+          "Allow camera access so you can take evidence photos for the missing parking zone.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets?.[0];
+      if (!asset?.uri || !asset?.base64) {
+        Alert.alert("Photo unavailable", "Please take a valid photo and try again.");
+        return;
+      }
+
+      setSuggestedZoneEvidence({
+        uri: asset.uri,
+        base64: asset.base64,
+        mimeType: asset.mimeType || "image/jpeg",
+        fileName: asset.fileName || asset.uri.split("/").pop() || "parking-zone.jpg",
+      });
+    } catch (error) {
+      console.error("Error capturing photo:", error);
       Alert.alert(
-        "Camera access required",
-        "Allow camera access so you can take evidence photos for the missing parking zone.",
+        "Could not access camera",
+        "Please try again.",
       );
-      return;
     }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.7,
-      base64: true,
-    });
-
-    if (result.canceled) {
-      return;
-    }
-
-    const asset = result.assets?.[0];
-    if (!asset?.uri || !asset?.base64) {
-      Alert.alert("Photo unavailable", "Please take a valid photo and try again.");
-      return;
-    }
-
-    setSuggestedZoneEvidence({
-      uri: asset.uri,
-      base64: asset.base64,
-      mimeType: asset.mimeType || "image/jpeg",
-      fileName: asset.fileName || asset.uri.split("/").pop() || "parking-zone.jpg",
-    });
   }, [isUploadingSuggestZoneEvidence, suggestZoneMutation.isPending]);
 
   useEffect(() => {
@@ -2360,7 +2410,7 @@ function ParkMateContent() {
             />
           ))}
 
-          <UserLocationMarker location={location} />
+          <UserLocationMarker location={location} mapHeading={mapHeading} />
           {Platform.OS !== "android" && (
             <>
               <ParkingSpotMarkers
@@ -2834,7 +2884,7 @@ function ParkMateContent() {
                   </View>
                 </View>
               ) : (
-              <TouchableOpacity
+<View
                 style={{
                   flexDirection: "row",
                   gap: 10,
@@ -2880,7 +2930,7 @@ function ParkMateContent() {
                     Choose from library
                   </Text>
                 </TouchableOpacity>
-              </TouchableOpacity>
+              </View>
             )}
 
               <Text

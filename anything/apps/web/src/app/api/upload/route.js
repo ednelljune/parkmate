@@ -18,6 +18,47 @@ const normalizeBase64Payload = (value) => {
   return trimmedValue;
 };
 
+const isSafeUrl = (urlString) => {
+  if (typeof urlString !== "string" || !urlString) {
+    return false;
+  }
+
+  try {
+    const url = new URL(urlString);
+    
+    // Only allow http and https
+    if (!url.protocol.match(/^https?:$/)) {
+      return false;
+    }
+    
+    const hostname = url.hostname.toLowerCase();
+    
+    // Reject localhost and variations
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+      return false;
+    }
+    
+    // Reject link-local and loopback addresses
+    if (hostname.startsWith("127.") || hostname.startsWith("169.254.") || hostname.startsWith("::ffff:127.")) {
+      return false;
+    }
+    
+    // Reject cloud metadata addresses
+    if (hostname === "169.254.169.254" || hostname === "metadata.google.internal") {
+      return false;
+    }
+    
+    // Reject private IP ranges (simple check)
+    if (hostname.startsWith("10.") || hostname.startsWith("192.168.") || hostname.startsWith("172.")) {
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
 export async function POST(request) {
   try {
     const contentType = request.headers.get("content-type") || "";
@@ -39,13 +80,21 @@ export async function POST(request) {
       );
     }
 
+    // Validate URL if provided
+    if (url && !isSafeUrl(url)) {
+      return Response.json(
+        { error: "Invalid or unsafe URL provided." },
+        { status: 400 },
+      );
+    }
+
     const result = await upload({ base64: normalizedBase64, url });
 
     return Response.json(result);
   } catch (error) {
     console.error("Upload API error:", error);
     return Response.json(
-      { error: error.message || "Upload failed" },
+      { error: "Upload failed" },
       { status: 500 },
     );
   }

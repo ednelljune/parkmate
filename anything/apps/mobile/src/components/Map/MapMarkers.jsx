@@ -32,6 +32,14 @@ const getMarkerHeading = (location) => {
   return location.heading;
 };
 
+const normalizeRotation = (value) => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return ((value % 360) + 360) % 360;
+};
+
 const USER_MARKER_BLUE = "#1A73E8";
 const USER_MARKER_CONE = "rgba(26, 115, 232, 0.28)";
 const USER_MARKER_CONE_EDGE = "rgba(26, 115, 232, 0.14)";
@@ -223,11 +231,14 @@ const NativeCouncilZoneMarker = React.memo(
     areCoordinatesEqual(previousProps.userLocation, nextProps.userLocation),
 );
 
-export const UserLocationMarker = ({ location }) => {
+export const UserLocationMarker = ({ location, mapHeading = 0 }) => {
   if (!location) return null;
 
   const heading = getMarkerHeading(location);
-  const headingRotation = heading === null ? null : `${heading}deg`;
+  const relativeHeading =
+    heading === null ? null : normalizeRotation(heading - mapHeading);
+  const headingRotation =
+    relativeHeading === null ? null : `${relativeHeading}deg`;
 
   return (
     <>
@@ -257,8 +268,8 @@ export const UserLocationMarker = ({ location }) => {
           collapsable={false}
           renderToHardwareTextureAndroid={false}
           style={{
-            width: 78,
-            height: 78,
+            width: 64,
+            height: 64,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -267,34 +278,34 @@ export const UserLocationMarker = ({ location }) => {
             <View
               style={{
                 position: "absolute",
-                width: 78,
-                height: 78,
+                width: 64,
+                height: 64,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ rotate: headingRotation }],
               }}
             >
               <Svg
-                width={78}
-                height={78}
-                viewBox="0 0 78 78"
+                width={64}
+                height={64}
+                viewBox="0 0 64 64"
                 style={{ position: "absolute" }}
               >
                 <Path
-                  d="M39 39 C28 31 20 18 18 4 C24 1 54 1 60 4 C58 18 50 31 39 39 Z"
+                  d="M32 32 C24 26 17 15 16 3 C21 1 43 1 48 3 C47 15 40 26 32 32 Z"
                   fill={USER_MARKER_CONE}
                 />
                 <Path
-                  d="M39 39 C30 31 23 21 21 8"
+                  d="M32 32 C25 25 20 17 18 7"
                   stroke={USER_MARKER_CONE_EDGE}
-                  strokeWidth={3}
+                  strokeWidth={2.5}
                   strokeLinecap="round"
                   fill="none"
                 />
                 <Path
-                  d="M39 39 C48 31 55 21 57 8"
+                  d="M32 32 C39 25 44 17 46 7"
                   stroke={USER_MARKER_CONE_EDGE}
-                  strokeWidth={3}
+                  strokeWidth={2.5}
                   strokeLinecap="round"
                   fill="none"
                 />
@@ -305,9 +316,9 @@ export const UserLocationMarker = ({ location }) => {
           <View
             style={{
               position: "absolute",
-              width: 44,
-              height: 44,
-              borderRadius: 22,
+              width: 34,
+              height: 34,
+              borderRadius: 17,
               backgroundColor: USER_MARKER_HALO,
             }}
           />
@@ -315,18 +326,18 @@ export const UserLocationMarker = ({ location }) => {
           <View
             style={{
               position: "absolute",
-              width: 30,
-              height: 30,
-              borderRadius: 15,
+              width: 22,
+              height: 22,
+              borderRadius: 11,
               backgroundColor: USER_MARKER_PULSE,
             }}
           />
 
           <View
             style={{
-              width: 22,
-              height: 22,
-              borderRadius: 11,
+              width: 14,
+              height: 14,
+              borderRadius: 7,
               backgroundColor: USER_MARKER_BLUE,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -339,12 +350,12 @@ export const UserLocationMarker = ({ location }) => {
           <View
             style={{
               position: "absolute",
-              width: 10,
-              height: 10,
-              borderRadius: 5,
+              width: 7,
+              height: 7,
+              borderRadius: 3.5,
               backgroundColor: USER_MARKER_BLUE,
               opacity: headingRotation ? 0.2 : 0,
-              transform: [{ translateY: -24 }],
+              transform: [{ translateY: -19 }],
             }}
           />
         </View>

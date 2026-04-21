@@ -149,7 +149,7 @@ const buildSystemUpdateNotificationPayload = (item) => {
   if (item?.mailbox_type === "zone_approved") {
     return {
       title: "Missing zone approved",
-      body: `Your missing public zone suggestion in ${zoneName} was approved and added to the map.`,
+      body: `Your missing public zone suggestion in ${zoneName} was approved and added to the map. You earned +${Math.max(0, Number(item?.claim_points_awarded) || 10)} contribution points.`,
     };
   }
 

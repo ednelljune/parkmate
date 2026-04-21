@@ -6,10 +6,23 @@ async function upload({ url, buffer, base64 }) {
 		},
 		body: buffer ? buffer : JSON.stringify({ base64, url }),
 	});
-	const data = await response.json();
 
 	if (!response.ok) {
-		throw new Error(data?.error || data?.message || 'Upload failed');
+		try {
+			const data = await response.json();
+			throw new Error(data?.error || data?.message || 'Upload failed');
+		} catch (parseError) {
+			const text = await response.text();
+			throw new Error(text || 'Upload failed');
+		}
+	}
+
+	let data;
+	try {
+		data = await response.json();
+	} catch (parseError) {
+		const text = await response.text();
+		throw new Error(text || 'Upload response invalid');
 	}
 
 	if (!data?.url) {

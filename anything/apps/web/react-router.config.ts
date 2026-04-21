@@ -1,6 +1,8 @@
 import type { Config } from '@react-router/dev/config';
 
+const isNetlifyStaticBuild = process.env.NETLIFY === 'true';
+
 export default {
 	appDirectory: './src/app',
-	ssr: true,
+	ssr: !isNetlifyStaticBuild,
 } satisfies Config;

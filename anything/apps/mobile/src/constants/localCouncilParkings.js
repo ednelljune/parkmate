@@ -310,8 +310,8 @@ const BASE_LOCAL_COUNCIL_PARKINGS = [
     id: "morwell-station",
     name: "Morwell Station Parking",
     type: "Full Hour",
-    latitude: -38.2346,
-    longitude: 146.3969,
+    latitude: -38.236667,
+    longitude: 146.397222,
     rules: "All day public parking at Morwell Station.",
   },
   {

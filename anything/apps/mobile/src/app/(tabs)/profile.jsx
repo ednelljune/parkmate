@@ -141,6 +141,20 @@ const PLAYBOOK_ITEMS = [
     ],
   },
   {
+    points: "+10",
+    title: "Get a zone approved",
+    detail: "Missing public zones earn points once approved.",
+    accent: "#22C55E",
+    modalTitle: "Get a missing zone approved",
+    modalBody:
+      "When you submit a real missing public parking zone and the admin team approves it, you earn contribution points for helping expand the live map.",
+    bullets: [
+      "Submit accurate public parking locations with clear evidence.",
+      "Good photos, correct parking type, and useful notes improve approval quality.",
+      "Approved missing zones add value to the map and reward the suggester.",
+    ],
+  },
+  {
     points: "+2",
     title: "Claim an opening",
     detail: "Confirm availability and keep the map moving.",

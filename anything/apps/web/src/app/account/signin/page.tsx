@@ -1,18 +1,19 @@
 'use client';
 
+import type { FormEvent } from 'react';
 import { useState } from 'react';
 import useAuth from '@/utils/useAuth';
 import logo from '@/__create/parkmate-logo.png';
 
 export default function SignIn() {
-	const [error, setError] = useState(null);
+	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
 	const { signInWithCredentials } = useAuth();
 
-	const onSubmit = async (e) => {
+	const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setLoading(true);
 		setError(null);
@@ -42,9 +43,10 @@ export default function SignIn() {
 				'Auth session missing!':
 					'Sign-in did not complete. Please try again.',
 			};
+			const errorMessage = err instanceof Error ? err.message : '';
 
 			setError(
-				errorMessages[err.message] || 'Something went wrong. Please try again.',
+				errorMessages[errorMessage as keyof typeof errorMessages] || 'Something went wrong. Please try again.',
 			);
 			setLoading(false);
 		}

@@ -100,3 +100,30 @@ This inventory is the statewide working list for official Victorian council park
 - `source_discovery_status=evidence_found_no_dataset` means official council parking pages were found, but no machine-readable dataset endpoint was identified in this pass.
 - `source_discovery_status=needs_discovery` means the repo still needs an official source search and an ingestion adapter for that council.
 - `launch_priority=metro` is a heuristic to front-load Greater Melbourne councils for launch coverage.
+
+### CSV Format for Council Lines
+
+Each council line follows this three-field CSV-style format: `source_discovery_status, evidence_type, policy_or_feature_notes`
+
+**Field 1 - source_discovery_status:**
+- `needs_discovery`: No official parking data source has been identified yet; discovery research is needed.
+- `evidence_found_no_dataset`: Official council parking or parking-related pages were found, but no machine-readable zone/bay/lot dataset is available yet.
+- `evidence_found_with_dataset`: Official parking data source identified (would typically transition to Covered councils section).
+
+**Field 2 - evidence_type:**
+- `unknown`: No evidence gathered yet for this council.
+- `not_found_yet`: Discovery search completed but no official parking data source URL found.
+- `pdf_map_only`: Official parking data exists only as PDF maps or static documents, not as machine-readable datasets.
+- Other findings: Brief description of what was found (e.g., `parking_sensors_only`, `permit_zones_only`).
+
+**Field 3 - policy_or_feature_notes:**
+- `unknown`: No policy or feature information available.
+- Specific findings: Clarifies limitations or what type of parking data is available, e.g.:
+  - `unknown_policy_only`: Only permit/policy information found, no public zone dataset.
+  - `parking_sensors_not_zones_yet`: Sensor data exists but zones/bays data not found.
+  - `permit_area_maps_not_public_zones_yet`: Permit area maps found but public parking zones data not available.
+
+Examples:
+- `Alpine Shire Council (regional): needs_discovery, unknown, unknown` → No discovery yet.
+- `Bayside City Council (metro): evidence_found_no_dataset, not_found_yet, unknown_policy_only` → Parking pages found, no dataset, only policy info available.
+- `Monash City Council (metro): evidence_found_no_dataset, not_found_yet, parking_sensors_not_zones_yet` → Evidence found (parking pages), but zones data missing; sensors may exist.

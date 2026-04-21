@@ -1,9 +1,10 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useAuth from '@/utils/useAuth';
 import logo from '@/__create/parkmate-logo.png';
+import { useSupabaseAuth } from '@/utils/supabase-auth';
 
 export default function SignIn() {
 	const [error, setError] = useState<string | null>(null);
@@ -11,7 +12,18 @@ export default function SignIn() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
+	const { isLoading: isAuthLoading, session } = useSupabaseAuth();
 	const { signInWithCredentials } = useAuth();
+
+	useEffect(() => {
+		if (typeof window === 'undefined' || isAuthLoading || !session) {
+			return;
+		}
+
+		const urlParams = new URLSearchParams(window.location.search);
+		const callbackUrl = urlParams.get('callbackUrl') || '/admin';
+		window.location.replace(callbackUrl);
+	}, [isAuthLoading, session]);
 
 	const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -109,12 +121,12 @@ export default function SignIn() {
 					</button>
 
 					<p className="mt-3 text-center text-sm text-gray-600">
-						Don't have an account?{' '}
+						Need an account?{' '}
 						<a
 							href={`/account/signup${typeof window !== 'undefined' ? window.location.search : ''}`}
 							className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
 						>
-							Sign up
+							Create one
 						</a>
 					</p>
 				</div>

@@ -3,7 +3,7 @@
 import { Link, useLocation } from 'react-router';
 
 const fallbackLinks = [
-  { to: '/', label: 'Homepage' },
+  { to: '/', label: 'Admin entry' },
   { to: '/admin', label: 'Admin dashboard' },
   { to: '/admin/zones/suggestions', label: 'Zone review queue' },
   { to: '/account/signin', label: 'Sign in' },

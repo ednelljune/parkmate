@@ -2,6 +2,7 @@ import sql from '@/app/api/utils/sql';
 import { requireAuthenticatedUser } from '@/app/api/utils/supabase-auth';
 import { ensureActivityLogSchema } from '@/app/api/utils/activity-log';
 import { isConfiguredAdminEmail } from '@/app/api/utils/admin-auth';
+import { ensureUsersSchema } from '@/app/api/utils/users-schema';
 
 function getDisplayNameFallback(user) {
   const metadataName =
@@ -19,6 +20,7 @@ function getDisplayNameFallback(user) {
 }
 
 async function ensureUserRow(user) {
+  await ensureUsersSchema();
   const fullName = getDisplayNameFallback(user);
   const email = user.email || '';
 
@@ -40,6 +42,7 @@ export async function GET(request) {
     }
 
     const userId = auth.user.id;
+    await ensureUsersSchema();
     await ensureUserRow(auth.user);
     await ensureActivityLogSchema();
 
@@ -95,6 +98,7 @@ export async function POST(request) {
 
     const { full_name } = await request.json();
     const userId = auth.user.id;
+    await ensureUsersSchema();
     await ensureUserRow(auth.user);
 
     const users = await sql`

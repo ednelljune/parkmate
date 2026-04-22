@@ -1,263 +1,342 @@
 'use client';
 
-import React from 'react';
-import { 
-  Users, 
-  MapPin, 
-  PlusCircle, 
-  AlertTriangle, 
-  ArrowUpRight, 
-  ArrowDownRight,
-  TrendingUp,
-  Clock,
-  ChevronRight
-} from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  BarChart, 
-  Bar, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area
-} from 'recharts';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, Clock3, MapPin, RefreshCw, Users } from 'lucide-react';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { Card, Heading, Text, Badge, Button } from '@/components/ui';
-import { cn } from '@/utils/cn';
+import { Badge, Button, Card, Heading, Text } from '@/components/ui';
+import { fetchAdminJson } from '@/utils/admin-api';
 
-// Mock Data
-const userGrowthData = [
-  { name: 'Jan', users: 400 },
-  { name: 'Feb', users: 600 },
-  { name: 'Mar', users: 800 },
-  { name: 'Apr', users: 1200 },
-  { name: 'May', users: 1500 },
-  { name: 'Jun', users: 2100 },
-  { name: 'Jul', users: 2400 },
-];
+type DashboardResponse = {
+  summary: {
+    total_suggestions: number;
+    pending_count: number;
+    reviewing_count: number;
+    approved_count: number;
+    rejected_count: number;
+    live_zone_count: number;
+    contributor_count: number;
+    total_confirmations: number;
+    total_false_flags: number;
+    latest_submission_at: string | null;
+    oldest_pending_at: string | null;
+  } | null;
+  suggestions: Array<{
+    id: number;
+    zone_name: string | null;
+    street_name: string | null;
+    area_name: string | null;
+    status: string;
+    confirmation_count: number;
+    false_flag_count: number;
+    suggested_zone_type: string | null;
+    estimated_capacity_spaces: number | null;
+    created_at: string;
+    latitude: number | null;
+    longitude: number | null;
+    submitter_email: string | null;
+    submitter_name: string | null;
+  }>;
+};
 
-const zonesBySuburbData = [
-  { name: 'CBD', zones: 45 },
-  { name: 'Richmond', zones: 32 },
-  { name: 'St Kilda', zones: 28 },
-  { name: 'Brunswick', zones: 24 },
-  { name: 'South Yarra', zones: 20 },
-];
+type AnalyticsResponse = {
+  summary: {
+    total_users: number;
+    new_users_30d: number;
+    total_zones: number;
+    live_reports_available: number;
+    total_suggestions: number;
+    pending_suggestions: number;
+  } | null;
+  charts: {
+    suggestionsByDay: Array<{ label: string; suggestions: number }>;
+    reportsByDay: Array<{ label: string; reports: number }>;
+  };
+  topZones: Array<{ zone_name: string; report_count: number }>;
+  topContributors: Array<{
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    total_reports: number;
+    total_suggestions: number;
+    total_activity: number;
+  }>;
+};
 
-const categoryData = [
-  { name: 'Public', value: 45, color: '#0f172a' },
-  { name: 'Private', value: 25, color: '#334155' },
-  { name: 'Restricted', value: 20, color: '#64748b' },
-  { name: 'Disabled', value: 10, color: '#94a3b8' },
-];
+function formatRelativeTime(value: string | null) {
+  if (!value) {
+    return 'No activity yet';
+  }
 
-const recentActivity = [
-  { id: 1, type: 'new_zone', label: 'New zone suggested', suburb: 'Richmond', time: '5m ago' },
-  { id: 2, type: 'report', label: 'False flag reported', suburb: 'St Kilda', time: '12m ago' },
-  { id: 3, type: 'new_user', label: 'New user registered', user: 'Sarah J.', time: '24m ago' },
-  { id: 4, type: 'approval', label: 'Zone approved', suburb: 'CBD', time: '45m ago' },
-];
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) {
+    return 'Unknown time';
+  }
 
-export default function AdminDashboard() {
+  const diffMs = Date.now() - timestamp;
+  const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
+
+  if (diffMinutes < 1) {
+    return 'Just now';
+  }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m ago`;
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+function formatZoneLabel(suggestion: DashboardResponse['suggestions'][number]) {
+  return suggestion.zone_name || suggestion.street_name || suggestion.area_name || 'Unnamed suggestion';
+}
+
+export default function AdminDashboardPage() {
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadDashboard = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [dashboardResult, analyticsResult] = await Promise.all([
+        fetchAdminJson<DashboardResponse>('/api/admin/dashboard'),
+        fetchAdminJson<AnalyticsResponse>('/api/admin/analytics'),
+      ]);
+
+      setDashboard(dashboardResult);
+      setAnalytics(analyticsResult);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Failed to load dashboard.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const summary = dashboard?.summary;
+  const analyticsSummary = analytics?.summary;
+  const suggestionSeries = analytics?.charts?.suggestionsByDay || [];
+  const reportSeries = analytics?.charts?.reportsByDay || [];
+  const recentSuggestions = dashboard?.suggestions || [];
+
   return (
     <AdminLayout>
       <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <Heading level={1}>Operational Overview</Heading>
             <Text variant="body" className="mt-2">
-              Welcome back, Admin. System is running stable with <span className="text-emerald-600 font-bold">24 new submissions</span> today.
+              Real admin metrics for users, parking zones, live reports, and suggested parking zone intake.
             </Text>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              <Clock className="w-4 h-4 mr-2" />
-              Real-time
+            <Badge variant="info">Live backend data</Badge>
+            <Button variant="outline" size="sm" onClick={loadDashboard}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
             </Button>
-            <Button size="sm">Download Report</Button>
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {error ? (
+          <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: 'Total Users', value: '12,482', trend: '+12%', up: true, icon: Users, color: 'bg-blue-50 text-blue-600' },
-            { label: 'Total Zones', value: '842', trend: '+5%', up: true, icon: MapPin, color: 'bg-emerald-50 text-emerald-600' },
-            { label: 'Pending Suggestions', value: '24', trend: '-18%', up: false, icon: PlusCircle, color: 'bg-amber-50 text-amber-600' },
-            { label: 'Today\'s Reports', value: '156', trend: '+24%', up: true, icon: AlertTriangle, color: 'bg-rose-50 text-rose-600' },
-          ].map((stat, i) => (
-            <Card key={i} className="p-6">
-              <div className="flex items-start justify-between">
-                <div className={cn("p-2.5 rounded-xl", stat.color)}>
-                  <stat.icon className="w-5 h-5" />
+            {
+              label: 'Total Users',
+              value: analyticsSummary?.total_users ?? 0,
+              detail: `${analyticsSummary?.new_users_30d ?? 0} joined in the last 30 days`,
+              icon: Users,
+              tone: 'bg-blue-50 text-blue-700',
+            },
+            {
+              label: 'Parking Zones',
+              value: analyticsSummary?.total_zones ?? 0,
+              detail: `${summary?.live_zone_count ?? 0} approved from suggestions`,
+              icon: MapPin,
+              tone: 'bg-emerald-50 text-emerald-700',
+            },
+            {
+              label: 'Pending Suggestions',
+              value: summary?.pending_count ?? analyticsSummary?.pending_suggestions ?? 0,
+              detail: summary?.oldest_pending_at ? `Oldest pending ${formatRelativeTime(summary.oldest_pending_at)}` : 'Queue is clear',
+              icon: Clock3,
+              tone: 'bg-amber-50 text-amber-700',
+            },
+            {
+              label: 'Active Live Reports',
+              value: analyticsSummary?.live_reports_available ?? 0,
+              detail: `${summary?.total_false_flags ?? 0} false flags logged`,
+              icon: AlertTriangle,
+              tone: 'bg-rose-50 text-rose-700',
+            },
+          ].map((item) => (
+            <Card key={item.label} className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <Text variant="tiny">{item.label}</Text>
+                  <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">{item.value}</div>
+                  <Text variant="small" className="mt-2">
+                    {item.detail}
+                  </Text>
                 </div>
-                <div className={cn(
-                  "flex items-center text-xs font-bold px-2 py-1 rounded-full",
-                  stat.up ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"
-                )}>
-                  {stat.up ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
-                  {stat.trend}
+                <div className={`rounded-2xl p-3 ${item.tone}`}>
+                  <item.icon className="h-5 w-5" />
                 </div>
-              </div>
-              <div className="mt-4">
-                <Text variant="small" className="font-bold">{stat.label}</Text>
-                <div className="text-3xl font-black tracking-tight text-slate-900 mt-1">{stat.value}</div>
               </div>
             </Card>
           ))}
         </div>
 
-        {/* Main Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 p-6">
-            <div className="flex items-center justify-between mb-8">
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
+          <Card className="xl:col-span-2 p-6">
+            <div className="mb-6 flex items-center justify-between">
               <div>
-                <Heading level={2}>User Growth</Heading>
-                <Text variant="small">New registrations over the last 6 months</Text>
+                <Heading level={2}>Suggestion Intake</Heading>
+                <Text variant="small" className="mt-1">
+                  Submissions received over the last 7 days.
+                </Text>
               </div>
-              <select className="bg-slate-50 border-none text-xs font-bold rounded-lg px-3 py-1.5 focus:ring-0">
-                <option>Last 6 months</option>
-                <option>Last year</option>
-              </select>
+              <Badge variant="warning">{summary?.total_suggestions ?? 0} total</Badge>
             </div>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={userGrowthData}>
+                <AreaChart data={suggestionSeries}>
                   <defs>
-                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0f172a" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#0f172a" stopOpacity={0}/>
+                    <linearGradient id="dashboardSuggestionsFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0f172a" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#0f172a" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 12, fill: '#64748b' }} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 12, fill: '#64748b' }} 
-                  />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="users" 
-                    stroke="#0f172a" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorUsers)" 
-                  />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                  <YAxis axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="suggestions" stroke="#0f172a" strokeWidth={3} fill="url(#dashboardSuggestionsFill)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </Card>
 
           <Card className="p-6">
-            <Heading level={2} className="mb-6">Recent Activity</Heading>
-            <div className="space-y-6">
-              {recentActivity.map((item) => (
-                <div key={item.id} className="flex gap-4">
-                  <div className={cn(
-                    "w-2 h-2 rounded-full mt-2 shrink-0",
-                    item.type === 'new_zone' ? "bg-emerald-500" : 
-                    item.type === 'report' ? "bg-rose-500" :
-                    item.type === 'new_user' ? "bg-blue-500" : "bg-amber-500"
-                  )} />
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-slate-900 leading-none">{item.label}</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {item.suburb ? `Location: ${item.suburb}` : `User: ${item.user}`}
-                    </p>
+            <Heading level={2}>Queue Snapshot</Heading>
+            <div className="mt-6 space-y-4">
+              {[
+                { label: 'Pending', value: summary?.pending_count ?? 0, variant: 'warning' as const },
+                { label: 'Reviewing', value: summary?.reviewing_count ?? 0, variant: 'info' as const },
+                { label: 'Approved', value: summary?.approved_count ?? 0, variant: 'success' as const },
+                { label: 'Rejected', value: summary?.rejected_count ?? 0, variant: 'danger' as const },
+                { label: 'Contributors', value: summary?.contributor_count ?? 0, variant: 'neutral' as const },
+                { label: 'Confirmations', value: summary?.total_confirmations ?? 0, variant: 'neutral' as const },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                  <div className="text-sm font-semibold text-slate-700">{item.label}</div>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={item.variant}>{item.label}</Badge>
+                    <div className="text-xl font-black text-slate-900">{item.value}</div>
                   </div>
-                  <div className="text-[10px] font-bold text-slate-400">{item.time}</div>
                 </div>
               ))}
             </div>
-            <Button variant="outline" className="w-full mt-8" size="sm">
-              View all activity
-              <ChevronRight className="w-4 h-4 ml-2" />
-            </Button>
           </Card>
         </div>
 
-        {/* Bottom Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-6">
-            <Heading level={2} className="mb-8 text-center sm:text-left">Zones per Suburb</Heading>
-            <div className="h-[250px] w-full">
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
+          <Card className="xl:col-span-2 p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <Heading level={2}>Live Reports Last 7 Days</Heading>
+                <Text variant="small" className="mt-1">
+                  Fresh report volume from the live reports table.
+                </Text>
+              </div>
+              <Badge variant="neutral">{analyticsSummary?.live_reports_available ?? 0} active now</Badge>
+            </div>
+            <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={zonesBySuburbData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis type="number" axisLine={false} tickLine={false} hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    axisLine={false} 
-                    tickLine={false}
-                    tick={{ fontSize: 12, fontStyle: 'bold', fill: '#0f172a' }}
-                    width={100}
-                  />
-                  <Tooltip 
-                    cursor={{ fill: '#f8fafc' }}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Bar dataKey="zones" fill="#0f172a" radius={[0, 8, 8, 0]} barSize={24} />
+                <BarChart data={reportSeries}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                  <YAxis axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                  <Tooltip />
+                  <Bar dataKey="reports" fill="#0f172a" radius={[10, 10, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </Card>
 
           <Card className="p-6">
-            <Heading level={2} className="mb-8">Parking Categories</Heading>
-            <div className="flex flex-col sm:flex-row items-center gap-8">
-              <div className="h-[200px] w-[200px] shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex-1 space-y-4">
-                {categoryData.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm font-bold text-slate-700">{item.name}</span>
-                    </div>
-                    <span className="text-sm font-black text-slate-900">{item.value}%</span>
-                  </div>
-                ))}
-              </div>
+            <Heading level={2}>Top Contributors</Heading>
+            <div className="mt-6 space-y-4">
+              {(analytics?.topContributors || []).slice(0, 5).map((user) => (
+                <div key={user.id} className="rounded-2xl bg-slate-50 p-4">
+                  <div className="text-sm font-bold text-slate-900">{user.full_name || user.email || 'Unknown user'}</div>
+                  <Text variant="small" className="mt-1">
+                    {user.total_reports} reports • {user.total_suggestions} suggestions
+                  </Text>
+                  <div className="mt-3 text-lg font-black text-slate-900">{user.total_activity}</div>
+                </div>
+              ))}
+              {!loading && (analytics?.topContributors?.length ?? 0) === 0 ? (
+                <Text variant="body">No contributor activity has been recorded yet.</Text>
+              ) : null}
             </div>
           </Card>
         </div>
+
+        <Card className="p-6">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <Heading level={2}>Latest Suggested Zones</Heading>
+              <Text variant="small" className="mt-1">
+                The newest pending and reviewing items from the admin queue.
+              </Text>
+            </div>
+            <Badge variant="warning">{recentSuggestions.length} shown</Badge>
+          </div>
+          <div className="space-y-4">
+            {recentSuggestions.map((suggestion) => (
+              <div key={suggestion.id} className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-3">
+                    <div className="truncate text-sm font-bold text-slate-900">{formatZoneLabel(suggestion)}</div>
+                    <Badge variant={suggestion.status === 'pending' ? 'warning' : 'info'}>{suggestion.status}</Badge>
+                  </div>
+                  <Text variant="small" className="mt-2">
+                    {suggestion.submitter_name || suggestion.submitter_email || 'Unknown contributor'}
+                    {' • '}
+                    {suggestion.suggested_zone_type || 'Unknown type'}
+                    {' • '}
+                    {formatRelativeTime(suggestion.created_at)}
+                  </Text>
+                </div>
+                <div className="flex items-center gap-6 text-sm font-semibold text-slate-700">
+                  <span>{suggestion.confirmation_count} confirmations</span>
+                  <span>{suggestion.false_flag_count} false flags</span>
+                  <span>{suggestion.estimated_capacity_spaces ?? '—'} spaces</span>
+                </div>
+              </div>
+            ))}
+            {!loading && recentSuggestions.length === 0 ? (
+              <Text variant="body">No pending or reviewing suggestions are waiting in the queue.</Text>
+            ) : null}
+          </div>
+        </Card>
       </div>
     </AdminLayout>
   );

@@ -1,5 +1,6 @@
 import sql from '@/app/api/utils/sql';
 import { requireAdminUser, isConfiguredAdminEmail } from '@/app/api/utils/admin-auth';
+import { ensureUsersSchema } from '@/app/api/utils/users-schema';
 
 function getDisplayNameFallback(user) {
   const metadataName =
@@ -17,6 +18,7 @@ function getDisplayNameFallback(user) {
 }
 
 async function ensureUserRow(user) {
+  await ensureUsersSchema();
   const fullName = getDisplayNameFallback(user);
   const email = user.email || '';
 
@@ -31,6 +33,7 @@ async function ensureUserRow(user) {
 }
 
 async function buildSettingsPayload(user) {
+  await ensureUsersSchema();
   const rows = await sql`
     SELECT id, email, full_name, contribution_score, trust_score, created_at
     FROM users
@@ -67,6 +70,7 @@ export async function GET(request) {
       return auth.response;
     }
 
+    await ensureUsersSchema();
     await ensureUserRow(auth.user);
 
     return Response.json({
@@ -92,6 +96,7 @@ export async function PATCH(request) {
     const body = await request.json();
     const fullName = typeof body?.full_name === 'string' ? body.full_name.trim().slice(0, 120) : null;
 
+    await ensureUsersSchema();
     await ensureUserRow(auth.user);
 
     await sql`

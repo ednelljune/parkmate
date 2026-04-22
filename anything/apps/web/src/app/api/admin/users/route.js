@@ -1,6 +1,7 @@
 import sql from '@/app/api/utils/sql';
 import { requireAdminUser } from '@/app/api/utils/admin-auth';
 import { ensureActivityLogSchema } from '@/app/api/utils/activity-log';
+import { ensureUsersSchema } from '@/app/api/utils/users-schema';
 
 function normalizeInt(value, fallback, { min = 1, max = 100 } = {}) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
@@ -31,6 +32,7 @@ export async function GET(request) {
       return auth.response;
     }
 
+    await ensureUsersSchema();
     await ensureActivityLogSchema();
 
     const { searchParams } = new URL(request.url);
@@ -67,7 +69,7 @@ export async function GET(request) {
             GROUP BY user_id
           ),
           claim_counts AS (
-            SELECT user_id, COUNT(*)::int AS total_claims, MAX(created_at) AS last_claim_at
+            SELECT user_id, COUNT(*)::int AS total_claims, MAX(occurred_at) AS last_claim_at
             FROM user_activity_logs
             WHERE activity_type = 'claimed'
             GROUP BY user_id

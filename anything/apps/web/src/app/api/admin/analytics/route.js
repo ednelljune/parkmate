@@ -1,6 +1,7 @@
 import sql from '@/app/api/utils/sql';
 import { requireAdminUser } from '@/app/api/utils/admin-auth';
 import { getEffectiveReportExpiresAtSql } from '@/app/api/utils/report-ttl';
+import { ensureUsersSchema } from '@/app/api/utils/users-schema';
 
 export async function GET(request) {
   try {
@@ -9,6 +10,7 @@ export async function GET(request) {
       return auth.response;
     }
 
+    await ensureUsersSchema();
     const effectiveExpiresAtSql = getEffectiveReportExpiresAtSql('lr');
 
     const [summaryRows, suggestionsByDay, reportsByDay, topZones, topContributors] = await Promise.all([

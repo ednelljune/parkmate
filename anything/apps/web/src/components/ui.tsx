@@ -1,11 +1,16 @@
 import React from 'react';
 import { cn } from '@/utils/cn'; // Assuming I'll create this or use a simple one
-import { motion } from 'framer-motion';
-import { LucideIcon } from 'lucide-react';
 
-export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Card({
+  children,
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden', className)}>
+    <div
+      className={cn('bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden', className)}
+      {...props}
+    >
       {children}
     </div>
   );

@@ -1,11 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Bell, User, LogOut } from 'lucide-react';
 import { useSupabaseAuth } from '@/utils/supabase-auth';
-import { Avatar } from '@/components/ui';
+import { Avatar, Button } from '@/components/ui';
 import { cn } from '@/utils/cn';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useNavigate } from 'react-router';
 
 export function Header() {
   const { user } = useSupabaseAuth();
+  const navigate = useNavigate();
+  const [isSignoutLoading, setIsSignoutLoading] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSignoutLoading(true);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.signOut();
+      navigate('/account/signin');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      setIsSignoutLoading(false);
+    }
+  };
   
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30">
@@ -30,15 +47,23 @@ export function Header() {
 
         <div className="flex items-center gap-3 pl-2">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-slate-900 leading-none">{user?.user_metadata?.full_name || 'Admin User'}</p>
+            <p className="text-sm font-bold text-slate-900 leading-none">{user?.name || 'Admin User'}</p>
             <p className="text-[11px] font-medium text-slate-500 mt-1">{user?.email}</p>
           </div>
-          <button className="flex items-center gap-2 group">
+          <div className="flex items-center gap-2">
             <Avatar 
               fallback={user?.email ? user.email[0].toUpperCase() : 'A'} 
-              className="ring-2 ring-transparent group-hover:ring-slate-200 transition-all"
+              className="ring-2 ring-transparent transition-all"
             />
-          </button>
+            <button 
+              onClick={handleSignOut}
+              disabled={isSignoutLoading}
+              className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all disabled:opacity-50"
+              title="Sign Out"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </div>
     </header>

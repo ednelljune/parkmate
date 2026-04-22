@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { 
   LayoutDashboard, 
   MapPin, 
@@ -11,9 +11,13 @@ import {
   ChevronLeft, 
   ChevronRight,
   ParkingCircle,
-  Menu
+  Menu,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+
+import logo from '@/__create/parkmate-logo.png';
 
 interface SidebarItemProps {
   icon: React.ElementType;
@@ -48,7 +52,22 @@ function SidebarItem({ icon: Icon, label, href, isActive, isCollapsed }: Sidebar
 
 export function Sidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean, setIsCollapsed: (v: boolean) => void }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
+  const [isSignoutLoading, setIsSignoutLoading] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSignoutLoading(true);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.signOut();
+      navigate('/account/signin');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      setIsSignoutLoading(false);
+    }
+  };
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
@@ -68,9 +87,9 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean,
       )}
     >
       <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0">
-        <Link to="/admin" className="flex items-center gap-3 overflow-hidden">
-          <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center shrink-0">
-            <ParkingCircle className="w-5 h-5 text-white" />
+        <Link to="/admin" className="flex items-center gap-3 overflow-hidden group">
+          <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-slate-900/10 group-hover:scale-105 transition-transform">
+            <img src={logo} alt="ParkMate" className="w-6 h-6 object-contain" />
           </div>
           {!isCollapsed && <span className="font-black text-xl tracking-tight text-slate-900">ParkMate</span>}
         </Link>
@@ -87,7 +106,19 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean,
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-100">
+      <div className="p-4 border-t border-slate-100 space-y-2">
+        <button
+          onClick={handleSignOut}
+          disabled={isSignoutLoading}
+          className={cn(
+            "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all disabled:opacity-50",
+            isCollapsed ? "justify-center" : ""
+          )}
+        >
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          {!isCollapsed && <span className="font-medium text-sm">Sign Out</span>}
+        </button>
+
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="flex items-center justify-center w-full p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors"

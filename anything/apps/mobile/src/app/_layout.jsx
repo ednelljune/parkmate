@@ -1,6 +1,7 @@
 import { useAuth } from '@/utils/auth/useAuth';
 import { AnimatedParkMateLogo } from '@/components/AnimatedParkMateLogo';
 import { Asset } from 'expo-asset';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useStartupPrefetch } from '@/hooks/useStartupPrefetch';
@@ -16,6 +17,7 @@ import { WebView } from 'react-native-webview';
 SplashScreen.preventAutoHideAsync().catch(() => null);
 
 const BOOT_SCENE_TIMEOUT_MS = PARKMATE_LOGO_ANIMATION_DURATION_MS + 2000;
+const STARTUP_COMPLETE_STORAGE_KEY = 'parkmate-startup-complete';
 const PARKMATE_SVG_ASSET = Asset.fromModule(
   require('../../assets/images/parkmate-logo.svg'),
 );
@@ -43,6 +45,8 @@ function RootLayoutContent() {
   const { initiate, isReady } = useAuth();
   const { isStartupReady, startupProgress, startupStatusLabel } = useStartupPrefetch();
   const [hasCompletedBootScene, setHasCompletedBootScene] = useState(false);
+  const [hasCompletedStartupBefore, setHasCompletedStartupBefore] = useState(false);
+  const [hasLoadedStartupState, setHasLoadedStartupState] = useState(false);
   const [staticLogoXml, setStaticLogoXml] = useState(null);
   const hasHiddenNativeSplash = useRef(false);
 
@@ -105,7 +109,44 @@ function RootLayoutContent() {
     };
   }, []);
 
-  return !isReady || !hasCompletedBootScene || !isStartupReady ? (
+  useEffect(() => {
+    let isCancelled = false;
+
+    AsyncStorage.getItem(STARTUP_COMPLETE_STORAGE_KEY)
+      .then((value) => {
+        if (isCancelled) {
+          return;
+        }
+
+        setHasCompletedStartupBefore(value === 'true');
+        setHasLoadedStartupState(true);
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setHasLoadedStartupState(true);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isReady || !isStartupReady || hasCompletedStartupBefore) {
+      return;
+    }
+
+    setHasCompletedStartupBefore(true);
+    AsyncStorage.setItem(STARTUP_COMPLETE_STORAGE_KEY, 'true').catch(() => null);
+  }, [hasCompletedStartupBefore, isReady, isStartupReady]);
+
+  const shouldShowStartupScreen =
+    !hasLoadedStartupState ||
+    !isReady ||
+    ((!hasCompletedBootScene || !isStartupReady) && !hasCompletedStartupBefore);
+
+  return shouldShowStartupScreen ? (
     <View onLayout={hideNativeSplash} style={styles.loadingScreen}>
       <View style={styles.backdropOrbLarge} />
       <View style={styles.backdropOrbSmall} />

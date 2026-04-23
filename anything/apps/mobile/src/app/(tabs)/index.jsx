@@ -237,6 +237,23 @@ const RADIUS_VIEW_PADDING_MULTIPLIER = 1.15;
 const NAVIGATION_CARD_TO_ACTION_BUTTON_GAP = 12;
 const NAVIGATION_CARD_WIDTH = 220;
 const SELECTED_ZONE_TRACE_DURATION_MS = 2200;
+const EMPTY_EXTERNAL_MAP_SELECTION_PARAMS = {
+  navigate: "",
+  navigationRequestId: "",
+  alertEventId: "",
+  spotId: "",
+  spotLat: "",
+  spotLng: "",
+  spotName: "",
+  spotType: "",
+  zoneId: "",
+  zoneName: "",
+  zoneType: "",
+  zoneLat: "",
+  zoneLng: "",
+  zoneCapacity: "",
+  zoneRules: "",
+};
 
 const normalizeZoneIdentity = (name, type) => {
   const normalizedName = String(name || "").trim().toLowerCase();
@@ -465,6 +482,14 @@ function ParkMateContent() {
       // Not supported on web preview — initialRegion handles it
     }
   }, []);
+
+  const clearExternalMapSelectionParams = useCallback(() => {
+    if (typeof navigation?.setParams !== "function") {
+      return;
+    }
+
+    navigation.setParams(EMPTY_EXTERNAL_MAP_SELECTION_PARAMS);
+  }, [navigation]);
 
   const updateFollowCamera = useCallback((coordinate, duration = 0) => {
     if (!mapRef.current || !coordinate) {
@@ -1606,8 +1631,11 @@ function ParkMateContent() {
           lastAutoNavigationRequestRef.current = navigationRequestKey;
         }
       }
+
+      clearExternalMapSelectionParams();
     }
   }, [
+    clearExternalMapSelectionParams,
     focusMapRegion,
     params.navigate,
     params.navigationRequestId,
@@ -1678,8 +1706,11 @@ function ParkMateContent() {
           lastAutoNavigationRequestRef.current = navigationRequestKey;
         }
       }
+
+      clearExternalMapSelectionParams();
     }
   }, [
+    clearExternalMapSelectionParams,
     focusMapRegion,
     params.navigate,
     params.navigationRequestId,
@@ -2101,6 +2132,7 @@ function ParkMateContent() {
       console.log("[spot.crash] zone.press null");
     }
     const nextSelectedZone = sanitizeZoneForSelection(zone);
+    clearExternalMapSelectionParams();
     setSelectedZone(nextSelectedZone);
 
     if (!nextSelectedZone) {
@@ -2132,7 +2164,7 @@ function ParkMateContent() {
     } catch (e) {
       // Safe to ignore on web
     }
-  }, [focusMapRegion]);
+  }, [clearExternalMapSelectionParams, focusMapRegion]);
 
   const handleZoneReportPress = useCallback(
     (spot) => {
@@ -3115,6 +3147,7 @@ function ParkMateContent() {
         isReportingFalse={reportFalseMutation.isPending}
         insets={insets}
         onClose={() => {
+          clearExternalMapSelectionParams();
           setSelectedSpot(null);
           stopInAppNavigation();
         }}
@@ -3129,6 +3162,7 @@ function ParkMateContent() {
         availableReports={selectedZoneReports}
         insets={insets}
         onClose={() => {
+          clearExternalMapSelectionParams();
           setPendingZoneReportSpot(null);
           setSelectedZone(null);
           stopInAppNavigation();

@@ -60,10 +60,10 @@ export default defineConfig(({ isSsrBuild }) => ({
         ]
       : []),
     babel({
-      include: ['src/**/*.{js,jsx,ts,tsx}'], // or RegExp: /src\/.*\.[tj]sx?$/
-      exclude: /node_modules/, // skip everything else
+      include: ['src/**/*.{js,jsx,ts,tsx}'],
+      exclude: /node_modules/,
       babelConfig: {
-        babelrc: false, // don’t merge other Babel files
+        babelrc: false,
         configFile: false,
         plugins: ['styled-jsx/babel'],
       },

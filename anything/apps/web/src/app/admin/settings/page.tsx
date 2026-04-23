@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 import { Database, Lock, Save, Settings as SettingsIcon, Shield, User } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/admin-layout';

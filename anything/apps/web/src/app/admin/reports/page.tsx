@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Clock, Flag, MapPin, RefreshCw, Search } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/admin-layout';

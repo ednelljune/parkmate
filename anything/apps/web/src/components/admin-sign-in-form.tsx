@@ -1,5 +1,3 @@
-'use client';
-
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import useAuth from '@/utils/useAuth';
@@ -7,6 +5,7 @@ import { formatAuthError } from '@/utils/auth-errors';
 import { useSupabaseAuth } from '@/utils/supabase-auth';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import AdminAuthShell from '@/components/admin-auth-shell';
+import { validateCallbackUrl } from '@/utils/url-validation';
 
 type AdminSignInFormProps = {
 	defaultCallbackUrl?: string;
@@ -24,13 +23,14 @@ export default function AdminSignInForm({
 	const { signInWithCredentials } = useAuth();
 
 	useEffect(() => {
-		if (typeof window === 'undefined' || isAuthLoading || !session) {
+		if (isAuthLoading || !session) {
 			return;
 		}
 
 		const urlParams = new URLSearchParams(window.location.search);
-		const callbackUrl = urlParams.get('callbackUrl') || defaultCallbackUrl;
-		window.location.replace(callbackUrl);
+		const callbackUrlParam = urlParams.get('callbackUrl');
+		const validatedCallbackUrl = validateCallbackUrl(callbackUrlParam, defaultCallbackUrl);
+		window.location.replace(validatedCallbackUrl);
 	}, [defaultCallbackUrl, isAuthLoading, session]);
 
 	const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -54,12 +54,13 @@ export default function AdminSignInForm({
 
 		try {
 			const urlParams = new URLSearchParams(window.location.search);
-			const callbackUrl = urlParams.get('callbackUrl') || defaultCallbackUrl;
+			const callbackUrlParam = urlParams.get('callbackUrl');
+			const validatedCallbackUrl = validateCallbackUrl(callbackUrlParam, defaultCallbackUrl);
 
 			await signInWithCredentials({
 				email,
 				password,
-				callbackUrl,
+				callbackUrl: validatedCallbackUrl,
 				redirect: true,
 			});
 		} catch (err) {

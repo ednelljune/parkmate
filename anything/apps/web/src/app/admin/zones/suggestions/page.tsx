@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   PlusCircle, 
@@ -15,8 +13,7 @@ import {
   Info,
   Maximize2,
   RefreshCw,
-  Search,
-  Filter
+  Search
 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { Card, Heading, Text, Badge, Button, Input, Avatar } from '@/components/ui';

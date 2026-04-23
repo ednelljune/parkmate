@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, RefreshCw, Search, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/admin-layout';

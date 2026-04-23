@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Layers, MapPin, RefreshCw, Search } from 'lucide-react';
 import { Link } from 'react-router';

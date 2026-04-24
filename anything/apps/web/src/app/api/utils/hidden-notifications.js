@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { ensureUserRow } from "@/app/api/utils/users-schema";
 
 let hiddenNotificationsSchemaPromise = null;
 
@@ -63,17 +64,7 @@ export const ensureHiddenNotificationsUserRow = async (user) => {
     throw new Error("Authenticated user is required");
   }
 
-  const fullName = getDisplayNameFallback(user);
-  const email = user.email || "";
-
-  await sql`
-    INSERT INTO users (id, email, full_name)
-    VALUES (${user.id}, ${email}, ${fullName})
-    ON CONFLICT (id) DO UPDATE
-    SET
-      email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email),
-      full_name = COALESCE(users.full_name, EXCLUDED.full_name);
-  `;
+  await ensureUserRow(user);
 };
 
 export const getHiddenNotificationIds = async ({ userId, feedType }) => {

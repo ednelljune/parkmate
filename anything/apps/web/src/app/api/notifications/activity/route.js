@@ -39,7 +39,8 @@ const buildActivityMessage = (activity) => {
   }
 
   if (activity.activity_type === "zone_reviewing") {
-    return `Your missing public zone suggestion${zoneLabel} is now under review.`;
+    const note = String(activity?.review_notes || "").trim();
+    return `${`Your missing public zone suggestion${zoneLabel} is now under review.`}${note ? ` Comment: ${note}` : ""}`;
   }
 
   if (activity.activity_type === "zone_approved") {
@@ -47,7 +48,8 @@ const buildActivityMessage = (activity) => {
   }
 
   if (activity.activity_type === "zone_rejected") {
-    return `Your missing public zone suggestion${zoneLabel} was not approved.`;
+    const note = String(activity?.review_notes || "").trim();
+    return `${`Your missing public zone suggestion${zoneLabel} was not approved.`}${note ? ` Reason: ${note}` : ""}`;
   }
 
   if (activity.activity_type === "false_reported") {
@@ -299,6 +301,7 @@ const loadPersistedActivities = async (userId, limit) =>
       ual.latitude,
       ual.zone_type,
       ual.zone_name,
+      COALESCE(ual.review_notes, spz.review_notes) AS review_notes,
       ual.event_key,
       CASE
         WHEN ual.activity_type = 'false_reported' THEN frs.false_report_count
@@ -315,6 +318,7 @@ const loadPersistedActivities = async (userId, limit) =>
         ELSE false
       END AS is_system_update
     FROM user_activity_logs ual
+    LEFT JOIN suggested_parking_zones spz ON spz.id = ual.report_id
     LEFT JOIN false_report_summary frs ON frs.report_id = ual.report_id
     WHERE ual.user_id = ${userId}
     AND ual.activity_type IN ('reported', 'claimed', 'false_reported', 'report_claimed', 'expired', 'zone_suggested', 'zone_reviewing', 'zone_approved', 'zone_rejected')

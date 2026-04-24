@@ -3,6 +3,7 @@ import { Database, Lock, Save, Settings as SettingsIcon, Shield, User } from 'lu
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { Avatar, Badge, Button, Card, Heading, Input, Text } from '@/components/ui';
 import { fetchAdminJson } from '@/utils/admin-api';
+import { useSupabaseAuth } from '@/utils/supabase-auth';
 
 type SettingsResponse = {
   profile: {
@@ -39,6 +40,7 @@ function formatDate(value: string | null | undefined) {
 }
 
 export default function SettingsPage() {
+  const { session, isLoading: isAuthLoading } = useSupabaseAuth();
   const [activeTab, setActiveTab] = useState('Profile');
   const [response, setResponse] = useState<SettingsResponse | null>(null);
   const [fullName, setFullName] = useState('');
@@ -54,11 +56,15 @@ export default function SettingsPage() {
   ];
 
   const loadSettings = async () => {
+    if (isAuthLoading || !session) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const result = await fetchAdminJson<SettingsResponse>('/api/admin/settings');
+      const result = await fetchAdminJson<SettingsResponse>('/api/admin/settings', {}, session?.access_token);
       setResponse(result);
       setFullName(result.profile?.full_name || '');
     } catch (requestError) {
@@ -69,10 +75,23 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     loadSettings();
-  }, []);
+  }, [isAuthLoading, session]);
 
   const saveProfile = async () => {
+    if (isAuthLoading || !session) {
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -81,7 +100,7 @@ export default function SettingsPage() {
       const result = await fetchAdminJson<SettingsResponse>('/api/admin/settings', {
         method: 'PATCH',
         body: JSON.stringify({ full_name: fullName }),
-      });
+      }, session?.access_token);
       setResponse(result);
       setSuccess('Profile updated.');
     } catch (requestError) {

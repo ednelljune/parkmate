@@ -22,12 +22,15 @@ import {
   LEADERBOARD_QUERY_KEY,
   useLeaderboardVersion,
 } from "@/hooks/useLeaderboardVersion";
+import fetch from "@/__create/fetch";
 import { BRAND_PALETTE } from "@/theme/brandColors";
 import {
-  getTrustBadgeMeta,
+  getLeaderboardBadgeMeta,
+  normalizeImpactScore,
   normalizeTrustScore,
 } from "@/utils/trustBadges";
 import { resolveBackendUrl } from "@/utils/backend";
+import useUser from "@/utils/auth/useUser";
 
 const PODIUM_META = {
   1: {
@@ -71,45 +74,10 @@ const getInitials = (name) => {
     .join("");
 };
 
-const getSummaryStats = (users) => {
-  if (!users.length) {
-    return {
-      rankedCount: 0,
-      averageTrust: 0,
-      totalReports: 0,
-    };
-  }
-
-  const totals = users.reduce(
-    (accumulator, user) => {
-      accumulator.trust += normalizeTrustScore(user?.trust_score);
-      accumulator.reports += Number(user?.total_reports) || 0;
-      return accumulator;
-    },
-    { trust: 0, reports: 0 },
-  );
-
-  return {
-    rankedCount: users.length,
-    averageTrust: Math.round(totals.trust / users.length),
-    totalReports: totals.reports,
-  };
-};
-
-function SummaryChip({ label, value, accent }) {
-  return (
-    <View style={styles.summaryChip}>
-      <View style={[styles.summaryChipAccent, { backgroundColor: accent }]} />
-      <Text style={styles.summaryChipValue}>{value}</Text>
-      <Text style={styles.summaryChipLabel}>{label}</Text>
-    </View>
-  );
-}
-
 function PodiumCard({ item, rank }) {
   const trustScore = normalizeTrustScore(item?.trust_score);
-  const contributionScore = Number(item?.contribution_score) || 0;
-  const badge = getTrustBadgeMeta(trustScore);
+  const contributionScore = normalizeImpactScore(item?.contribution_score);
+  const badge = getLeaderboardBadgeMeta(contributionScore);
   const meta = PODIUM_META[rank];
   const Icon = meta.icon;
   const isChampion = rank === 1;
@@ -207,7 +175,7 @@ function PodiumCard({ item, rank }) {
             </Text>
           </View>
 
-          <View style={styles.podiumScoreRow}>
+        <View style={styles.podiumScoreRow}>
           <View
             style={[
               styles.podiumScoreBlock,
@@ -215,20 +183,26 @@ function PodiumCard({ item, rank }) {
             ]}
           >
             <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.68}
+              numberOfLines={1}
               style={[
                 styles.podiumScoreValue,
                 isChampion ? styles.podiumScoreValueChampion : styles.podiumScoreValueCompact,
               ]}
             >
-              {trustScore}
+              {formatNumber(contributionScore)}
             </Text>
             <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              numberOfLines={1}
               style={[
                 styles.podiumScoreLabel,
                 isChampion ? styles.podiumScoreLabelChampion : styles.podiumScoreLabelCompact,
               ]}
             >
-              trust
+              impact
             </Text>
           </View>
           <View style={styles.podiumDivider} />
@@ -239,20 +213,26 @@ function PodiumCard({ item, rank }) {
             ]}
           >
             <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.68}
+              numberOfLines={1}
               style={[
                 styles.podiumScoreValue,
                 isChampion ? styles.podiumScoreValueChampion : styles.podiumScoreValueCompact,
               ]}
             >
-              {contributionScore}
+              {formatNumber(trustScore)}
             </Text>
             <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              numberOfLines={1}
               style={[
                 styles.podiumScoreLabel,
                 isChampion ? styles.podiumScoreLabelChampion : styles.podiumScoreLabelCompact,
               ]}
             >
-              impact
+              trust
             </Text>
           </View>
         </View>
@@ -268,8 +248,8 @@ function PodiumCard({ item, rank }) {
 
 function RankedRow({ item, rank }) {
   const trustScore = normalizeTrustScore(item?.trust_score);
-  const contributionScore = Number(item?.contribution_score) || 0;
-  const badge = getTrustBadgeMeta(trustScore);
+  const contributionScore = normalizeImpactScore(item?.contribution_score);
+  const badge = getLeaderboardBadgeMeta(contributionScore);
 
   return (
     <View style={styles.rowCard}>
@@ -293,16 +273,23 @@ function RankedRow({ item, rank }) {
               ]}
             >
               <ShieldCheck size={11} color={badge.iconColor} />
-              <Text style={[styles.inlineBadgeText, { color: badge.textColor }]}>
-                {badge.caption}
+              <Text style={[styles.inlineBadgeText, { color: badge.textColor }]} numberOfLines={1}>
+                {badge.label}
               </Text>
             </View>
           </View>
         </View>
 
         <View style={styles.scoreOrb}>
-          <Text style={styles.scoreOrbValue}>{trustScore}</Text>
-          <Text style={styles.scoreOrbLabel}>trust</Text>
+          <Text
+            adjustsFontSizeToFit
+            minimumFontScale={0.68}
+            numberOfLines={1}
+            style={styles.scoreOrbValue}
+          >
+            {formatNumber(contributionScore)}
+          </Text>
+          <Text style={styles.scoreOrbLabel}>impact</Text>
         </View>
       </View>
 
@@ -317,9 +304,9 @@ function RankedRow({ item, rank }) {
         </View>
         <View style={[styles.metricPill, styles.metricPillAccent]}>
           <Text style={[styles.metricValue, styles.metricValueAccent]}>
-            {formatNumber(contributionScore)}
+            {formatNumber(trustScore)}
           </Text>
-          <Text style={[styles.metricLabel, styles.metricLabelAccent]}>impact</Text>
+          <Text style={[styles.metricLabel, styles.metricLabelAccent]}>trust</Text>
         </View>
       </View>
     </View>
@@ -328,8 +315,11 @@ function RankedRow({ item, rank }) {
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
-  const leaderboardLimit = 30;
+  const { data: authUser } = useUser();
+  const userId = authUser?.id || null;
+  const leaderboardLimit = 10;
   const leaderboardUrl = resolveBackendUrl(`/api/users/leaderboard?limit=${leaderboardLimit}`);
+  const profileUrl = resolveBackendUrl("/api/users/profile");
   const { refetch: refetchLeaderboardVersion } = useLeaderboardVersion(
     leaderboardLimit,
     Boolean(leaderboardUrl),
@@ -338,6 +328,28 @@ export default function LeaderboardScreen() {
   const { data, error, isError, isPending, refetch, isRefetching } = useQuery({
     queryKey: [...LEADERBOARD_QUERY_KEY, leaderboardLimit],
     queryFn: () => fetchLeaderboardQuery(leaderboardLimit),
+    staleTime: Infinity,
+    refetchInterval: false,
+    refetchOnMount: false,
+    retry: false,
+  });
+
+  const { data: profileData, refetch: refetchProfileRank } = useQuery({
+    queryKey: ["leaderboard_profile_rank", userId],
+    queryFn: async () => {
+      if (!profileUrl) {
+        throw new Error("Profile backend URL is not configured");
+      }
+
+      const response = await fetch(profileUrl);
+      if (!response.ok) {
+        throw new Error("Failed to fetch profile rank");
+      }
+
+      const result = await response.json();
+      return result.user;
+    },
+    enabled: Boolean(userId && profileUrl),
     staleTime: Infinity,
     refetchInterval: false,
     refetchOnMount: false,
@@ -360,13 +372,20 @@ export default function LeaderboardScreen() {
   }, [isPending]);
 
   const handleRefresh = React.useCallback(async () => {
-    await Promise.allSettled([refetch(), refetchLeaderboardVersion?.()]);
-  }, [refetch, refetchLeaderboardVersion]);
+    await Promise.allSettled([refetch(), refetchLeaderboardVersion?.(), refetchProfileRank?.()]);
+  }, [refetch, refetchLeaderboardVersion, refetchProfileRank]);
 
   const leaderboard = Array.isArray(data) ? data : [];
   const podium = leaderboard.slice(0, 3);
-  const remaining = leaderboard.slice(3);
-  const summary = getSummaryStats(leaderboard);
+  const remaining = leaderboard.slice(3, 10);
+  const profileRank = Number.isFinite(Number(profileData?.leaderboard_rank))
+    ? Number(profileData.leaderboard_rank)
+    : null;
+  const profileImpact = normalizeImpactScore(profileData?.contribution_score);
+  const profileTrust = normalizeTrustScore(profileData?.trust_score);
+  const profileBadge = getLeaderboardBadgeMeta(profileImpact);
+  const shouldShowYourRankCard =
+    Boolean(userId) && Number.isFinite(profileRank) && profileRank > 10;
 
   const renderLeaderboardItem = ({ item, index }) => (
     <RankedRow item={item} rank={index + 4} />
@@ -397,31 +416,13 @@ export default function LeaderboardScreen() {
           <View style={styles.heroCopy}>
             <Text style={styles.heroTitle}>City Champions</Text>
             <Text style={styles.heroSubtitle}>
-              Trust goes to drivers who keep the map sharp, fast, and accurate.
+              Impact crowns the drivers who keep the map sharp, fast, and accurate.
             </Text>
           </View>
 
           <View style={styles.heroIconShell}>
             <Trophy size={28} color="#FFFFFF" />
           </View>
-        </View>
-
-        <View style={styles.summaryRow}>
-          <SummaryChip
-            label="Ranked"
-            value={formatNumber(summary.rankedCount)}
-            accent={BRAND_PALETTE.accent}
-          />
-          <SummaryChip
-            label="Avg trust"
-            value={formatNumber(summary.averageTrust)}
-            accent={BRAND_PALETTE.gold}
-          />
-          <SummaryChip
-            label="Reports"
-            value={formatNumber(summary.totalReports)}
-            accent={BRAND_PALETTE.success}
-          />
         </View>
       </LinearGradient>
 
@@ -447,16 +448,89 @@ export default function LeaderboardScreen() {
         <View style={styles.sectionHeadingRow}>
           <View>
             <Text style={styles.sectionEyebrow}>Leaderboard</Text>
-            <Text style={styles.sectionTitle}>Climbing fast</Text>
+            <Text style={styles.sectionTitle}>Top ten</Text>
           </View>
           <View style={styles.listMetaPill}>
             <Sparkles size={12} color={BRAND_PALETTE.accentBold} />
-            <Text style={styles.listMetaPillText}>{remaining.length} contenders</Text>
+            <Text style={styles.listMetaPillText}>Ranks 4-10</Text>
           </View>
         </View>
       ) : null}
     </View>
   );
+
+  const renderFooter = () =>
+    shouldShowYourRankCard ? (
+      <View style={styles.footerBlock}>
+        <View style={styles.sectionHeadingRow}>
+          <View>
+            <Text style={styles.sectionEyebrow}>Your Standing</Text>
+            <Text style={styles.sectionTitle}>Outside the top ten</Text>
+          </View>
+          <Text style={styles.sectionHint}>Keep climbing</Text>
+        </View>
+
+        <View style={styles.yourRankCard}>
+          <View style={styles.yourRankTopRow}>
+            <View style={styles.yourRankIdentity}>
+              <View style={styles.yourRankBadge}>
+                <Text style={styles.yourRankBadgeText}>#{profileRank}</Text>
+              </View>
+              <View style={styles.yourRankCopy}>
+                <Text style={styles.yourRankName} numberOfLines={1}>
+                  {profileData?.full_name || "You"}
+                </Text>
+                <View
+                  style={[
+                    styles.inlineBadge,
+                    {
+                      backgroundColor: profileBadge.backgroundColor,
+                      borderColor: profileBadge.borderColor,
+                    },
+                  ]}
+                >
+                  <ShieldCheck size={11} color={profileBadge.iconColor} />
+                  <Text style={[styles.inlineBadgeText, { color: profileBadge.textColor }]} numberOfLines={1}>
+                    {profileBadge.label}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.scoreOrb}>
+              <Text
+                adjustsFontSizeToFit
+                minimumFontScale={0.68}
+                numberOfLines={1}
+                style={styles.scoreOrbValue}
+              >
+                {formatNumber(profileImpact)}
+              </Text>
+              <Text style={styles.scoreOrbLabel}>impact</Text>
+            </View>
+          </View>
+
+          <View style={styles.rowMetrics}>
+            <View style={styles.metricPill}>
+              <Text style={styles.metricValue}>{formatNumber(profileData?.total_reports)}</Text>
+              <Text style={styles.metricLabel}>reports</Text>
+            </View>
+            <View style={styles.metricPill}>
+              <Text style={styles.metricValue}>{formatNumber(profileData?.total_claims)}</Text>
+              <Text style={styles.metricLabel}>claimed</Text>
+            </View>
+            <View style={[styles.metricPill, styles.metricPillAccent]}>
+              <Text style={[styles.metricValue, styles.metricValueAccent]}>
+                {formatNumber(profileTrust)}
+              </Text>
+              <Text style={[styles.metricLabel, styles.metricLabelAccent]}>trust</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    ) : (
+      <View style={styles.footerSpacer} />
+    );
 
   if (isPending && !initialLoadTimedOut) {
     return (
@@ -472,7 +546,7 @@ export default function LeaderboardScreen() {
           </View>
           <Text style={styles.stateTitle}>Building the leaderboard</Text>
           <Text style={styles.stateMessage}>
-            Pulling the latest trust scores from the community.
+            Pulling the latest impact scores from the community.
           </Text>
         </LinearGradient>
       </View>
@@ -549,6 +623,7 @@ export default function LeaderboardScreen() {
         renderItem={renderLeaderboardItem}
         keyExtractor={(item, index) => String(item?.id ?? `leaderboard-${index}`)}
         ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
         contentContainerStyle={{
           paddingTop: 0,
           paddingBottom: insets.bottom + 96,
@@ -574,6 +649,13 @@ const styles = StyleSheet.create({
   headerBlock: {
     paddingHorizontal: 16,
     paddingBottom: 20,
+  },
+  footerBlock: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  footerSpacer: {
+    height: 8,
   },
   heroCard: {
     overflow: "hidden",
@@ -656,37 +738,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.12)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.16)",
-  },
-  summaryRow: {
-    marginTop: 22,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  summaryChip: {
-    minWidth: 94,
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  summaryChipAccent: {
-    width: 26,
-    height: 4,
-    borderRadius: 999,
-    marginBottom: 10,
-  },
-  summaryChipValue: {
-    fontSize: 21,
-    fontWeight: "900",
-    color: BRAND_PALETTE.deepNavy,
-  },
-  summaryChipLabel: {
-    marginTop: 4,
-    fontSize: 12,
-    fontWeight: "700",
-    color: BRAND_PALETTE.muted,
   },
   sectionBlock: {
     marginTop: 18,
@@ -866,9 +917,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 6,
   },
   podiumScoreBlock: {
     flex: 1,
+    minWidth: 0,
     alignItems: "center",
     borderRadius: 14,
     backgroundColor: "#F8FBFF",
@@ -881,21 +934,23 @@ const styles = StyleSheet.create({
   },
   podiumScoreBlockCompact: {
     paddingVertical: 7,
-    paddingHorizontal: 3,
+    paddingHorizontal: 5,
   },
   podiumDivider: {
-    width: 8,
+    width: 6,
   },
   podiumScoreValue: {
     fontSize: 19,
     fontWeight: "900",
     color: BRAND_PALETTE.deepNavy,
+    width: "100%",
+    textAlign: "center",
   },
   podiumScoreValueChampion: {
     fontSize: 17,
   },
   podiumScoreValueCompact: {
-    fontSize: 15,
+    fontSize: 13,
   },
   podiumScoreLabel: {
     marginTop: 2,
@@ -903,12 +958,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: BRAND_PALETTE.muted,
     textTransform: "uppercase",
+    width: "100%",
+    textAlign: "center",
   },
   podiumScoreLabelChampion: {
     fontSize: 9,
   },
   podiumScoreLabelCompact: {
-    fontSize: 8,
+    fontSize: 7,
     marginTop: 1,
   },
   podiumFootnote: {
@@ -933,6 +990,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     color: BRAND_PALETTE.navy,
+  },
+  yourRankCard: {
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#D9EAF6",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    shadowColor: "#0B1F33",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  yourRankTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  yourRankIdentity: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  yourRankBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E0F2FE",
+  },
+  yourRankBadgeText: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: BRAND_PALETTE.accentBold,
+  },
+  yourRankCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  yourRankName: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
   },
   rowCard: {
     marginHorizontal: 16,
@@ -998,18 +1102,21 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   scoreOrb: {
-    minWidth: 56,
+    minWidth: 76,
+    maxWidth: 104,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 14,
     backgroundColor: BRAND_PALETTE.deepNavy,
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     paddingVertical: 7,
   },
   scoreOrbValue: {
     fontSize: 16,
     fontWeight: "900",
     color: "#FFFFFF",
+    width: "100%",
+    textAlign: "center",
   },
   scoreOrbLabel: {
     marginTop: 1,

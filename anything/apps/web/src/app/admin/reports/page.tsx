@@ -3,6 +3,7 @@ import { AlertTriangle, Clock, Flag, MapPin, RefreshCw, Search } from 'lucide-re
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { Badge, Button, Card, Heading, Text } from '@/components/ui';
 import { fetchAdminJson } from '@/utils/admin-api';
+import { useSupabaseAuth } from '@/utils/supabase-auth';
 
 type ReportRecord = {
   id: number;
@@ -64,13 +65,24 @@ function getBadgeVariant(status: string) {
 }
 
 export default function ReportsPage() {
+  const { session, isLoading: isAuthLoading } = useSupabaseAuth();
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
   const [response, setResponse] = useState<ReportsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     const timeoutId = window.setTimeout(async () => {
       setLoading(true);
       setError(null);
@@ -78,6 +90,8 @@ export default function ReportsPage() {
       try {
         const result = await fetchAdminJson<ReportsResponse>(
           `/api/admin/reports?status=${encodeURIComponent(activeTab)}&search=${encodeURIComponent(searchTerm)}&limit=50&page=1`,
+          {},
+          session?.access_token,
         );
         setResponse(result);
       } catch (requestError) {
@@ -90,7 +104,7 @@ export default function ReportsPage() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [activeTab, searchTerm]);
+  }, [activeTab, isAuthLoading, refreshKey, searchTerm, session]);
 
   const summary = response?.summary;
 
@@ -104,8 +118,13 @@ export default function ReportsPage() {
               Monitor real parking availability reports, expired items, and false-flag pressure from the backend.
             </Text>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setSearchTerm((current) => current)}>
-            <RefreshCw className="mr-2 h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRefreshKey((current) => current + 1)}
+            disabled={isAuthLoading || !session}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>

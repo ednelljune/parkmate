@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { requireAdminUser } from "@/app/api/utils/admin-auth";
 import { logUserActivity } from "@/app/api/utils/activity-log";
+import { ensureUserIdRow } from "@/app/api/utils/users-schema";
 import {
   createBoxPolygon,
   DEFAULT_APPROVAL_LAT_OFFSET,
@@ -87,6 +88,7 @@ export async function POST(request, context) {
       `;
 
       if (suggestion.user_id) {
+        await ensureUserIdRow(suggestion.user_id);
         await logUserActivity({
           userId: suggestion.user_id,
           reportId: suggestion.id,
@@ -99,6 +101,7 @@ export async function POST(request, context) {
           zoneName: suggestion.street_name || suggestion.area_name || "Missing public zone",
           spotStatus: "reviewing",
           eventKey: `zone-suggestion-${suggestion.id}-reviewing`,
+          reviewNotes,
         });
       }
 
@@ -123,6 +126,7 @@ export async function POST(request, context) {
       `;
 
       if (suggestion.user_id) {
+        await ensureUserIdRow(suggestion.user_id);
         await logUserActivity({
           userId: suggestion.user_id,
           reportId: suggestion.id,
@@ -135,6 +139,7 @@ export async function POST(request, context) {
           zoneName: suggestion.street_name || suggestion.area_name || "Missing public zone",
           spotStatus: "rejected",
           eventKey: `zone-suggestion-${suggestion.id}-rejected`,
+          reviewNotes,
         });
       }
 
@@ -369,6 +374,47 @@ export async function POST(request, context) {
     `;
 
     if (existingZoneRows[0]) {
+      if (
+        suggestion.approved_zone_id &&
+        Number(existingZoneRows[0].id) === Number(suggestion.approved_zone_id)
+      ) {
+        const [updatedZoneRows, updatedSuggestionRows] = await sql.transaction(async (txn) => {
+          const zoneUpdateResult = await txn`
+            UPDATE parking_zones
+            SET
+              name = ${zoneName},
+              zone_type = ${zoneType},
+              capacity_spaces = ${capacitySpaces},
+              rules_description = ${rulesDescription}
+            WHERE id = ${suggestion.approved_zone_id}
+            RETURNING id, name, zone_type, capacity_spaces, rules_description;
+          `;
+
+          const suggestionUpdateResult = await txn`
+            UPDATE suggested_parking_zones
+            SET
+              status = 'approved',
+              reviewed_by = ${auth.user.id},
+              reviewed_at = CURRENT_TIMESTAMP,
+              review_notes = COALESCE(${reviewNotes}, review_notes),
+              approved_zone_id = ${suggestion.approved_zone_id},
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${suggestionId}
+            RETURNING id, status, reviewed_at, review_notes, approved_zone_id;
+          `;
+
+          return [zoneUpdateResult, suggestionUpdateResult];
+        });
+
+        return Response.json({
+          success: true,
+          message: "Suggestion re-approved using the existing linked live zone.",
+          suggestion: updatedSuggestionRows[0] || null,
+          approvedZone: updatedZoneRows[0] || null,
+          pointsAwarded: 0,
+        });
+      }
+
       return Response.json(
         {
           success: false,
@@ -413,6 +459,7 @@ export async function POST(request, context) {
     `;
 
     if (suggestion.user_id) {
+      await ensureUserIdRow(suggestion.user_id);
       await sql`
         UPDATE users
         SET contribution_score = COALESCE(contribution_score, 0) + ${ZONE_APPROVAL_POINTS_AWARDED}

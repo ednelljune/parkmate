@@ -2,37 +2,7 @@ import sql from '@/app/api/utils/sql';
 import { requireAuthenticatedUser } from '@/app/api/utils/supabase-auth';
 import { ensureActivityLogSchema } from '@/app/api/utils/activity-log';
 import { isConfiguredAdminEmail } from '@/app/api/utils/admin-auth';
-import { ensureUsersSchema } from '@/app/api/utils/users-schema';
-
-function getDisplayNameFallback(user) {
-  const metadataName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    null;
-
-  if (metadataName) {
-    return metadataName;
-  }
-
-  const email = typeof user.email === 'string' ? user.email.trim() : '';
-  const [localPart] = email.split('@');
-  return localPart || null;
-}
-
-async function ensureUserRow(user) {
-  await ensureUsersSchema();
-  const fullName = getDisplayNameFallback(user);
-  const email = user.email || '';
-
-  await sql`
-    INSERT INTO users (id, email, full_name)
-    VALUES (${user.id}, ${email}, ${fullName})
-    ON CONFLICT (id) DO UPDATE
-    SET
-      email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email),
-      full_name = COALESCE(users.full_name, EXCLUDED.full_name);
-  `;
-}
+import { ensureUsersSchema, ensureUserRow } from '@/app/api/utils/users-schema';
 
 export async function GET(request) {
   try {
@@ -47,13 +17,27 @@ export async function GET(request) {
     await ensureActivityLogSchema();
 
     const users = await sql`
+      WITH ranked_users AS (
+        SELECT
+          id,
+          ROW_NUMBER() OVER (
+            ORDER BY
+              COALESCE(contribution_score, 0) DESC,
+              COALESCE(trust_score, 0) DESC,
+              created_at ASC,
+              id ASC
+          )::int AS leaderboard_rank
+        FROM users
+      )
       SELECT
-        id,
-        email,
-        full_name,
-        contribution_score,
-        trust_score,
-        created_at,
+        u.id,
+        u.email,
+        u.full_name,
+        u.contribution_score,
+        u.trust_score,
+        u.created_at,
+        ru.leaderboard_rank,
+        (SELECT COUNT(*)::int FROM users) AS ranked_count,
         (SELECT COUNT(*) FROM live_reports WHERE user_id = ${userId}) AS total_reports,
         (
           SELECT COUNT(*)
@@ -61,8 +45,9 @@ export async function GET(request) {
           WHERE user_id = ${userId}
             AND activity_type = 'claimed'
         ) AS total_claims
-      FROM users
-      WHERE id = ${userId}
+      FROM users u
+      LEFT JOIN ranked_users ru ON ru.id = u.id
+      WHERE u.id = ${userId}
       LIMIT 1;
     `;
 

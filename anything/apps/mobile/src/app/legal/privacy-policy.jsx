@@ -4,7 +4,7 @@ import { Stack } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
-const PRIVACY_POLICY_URL = "https://getparkmate.app/privacy-policy";
+const PRIVACY_POLICY_URL = "https://getparkmate.app/privacy-policy.html";
 
 export default function PrivacyPolicyScreen() {
   const handleOpenInBrowser = useCallback(() => {

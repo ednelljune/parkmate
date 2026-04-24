@@ -1,36 +1,6 @@
 import sql from '@/app/api/utils/sql';
 import { requireAdminUser, isConfiguredAdminEmail } from '@/app/api/utils/admin-auth';
-import { ensureUsersSchema } from '@/app/api/utils/users-schema';
-
-function getDisplayNameFallback(user) {
-  const metadataName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    null;
-
-  if (metadataName) {
-    return metadataName;
-  }
-
-  const email = typeof user.email === 'string' ? user.email.trim() : '';
-  const [localPart] = email.split('@');
-  return localPart || null;
-}
-
-async function ensureUserRow(user) {
-  await ensureUsersSchema();
-  const fullName = getDisplayNameFallback(user);
-  const email = user.email || '';
-
-  await sql`
-    INSERT INTO users (id, email, full_name)
-    VALUES (${user.id}, ${email}, ${fullName})
-    ON CONFLICT (id) DO UPDATE
-    SET
-      email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email),
-      full_name = COALESCE(users.full_name, EXCLUDED.full_name);
-  `;
-}
+import { ensureUsersSchema, ensureUserRow } from '@/app/api/utils/users-schema';
 
 async function buildSettingsPayload(user) {
   await ensureUsersSchema();

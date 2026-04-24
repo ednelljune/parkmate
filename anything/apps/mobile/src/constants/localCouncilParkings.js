@@ -4,9 +4,20 @@ import { RESEARCHED_PUBLIC_PARKING_ZONES } from "@/constants/researchedPublicPar
 const COUNCIL_SOURCE_OWNER_PATTERN =
   /(?:^| )(?:City|Shire|Borough|Town|Rural City|Regional Council|Council)(?: of|$)/i;
 
+const PUBLISHED_PUBLIC_PARKING_ZONE_DATASETS = new Set([
+  "Car Parking Zones",
+  "City of Casey Parking Restriction Zones",
+  "Parking zones linked to street segments",
+]);
+
 const COUNCIL_RESEARCHED_PUBLIC_PARKING_ZONES =
   RESEARCHED_PUBLIC_PARKING_ZONES.filter((zone) =>
     COUNCIL_SOURCE_OWNER_PATTERN.test(String(zone?.sourceOwner || "")),
+  );
+
+export const STRICT_PUBLISHED_PUBLIC_PARKING_ZONES =
+  COUNCIL_RESEARCHED_PUBLIC_PARKING_ZONES.filter((zone) =>
+    PUBLISHED_PUBLIC_PARKING_ZONE_DATASETS.has(String(zone?.sourceDataset || "")),
   );
 
 const BASE_LOCAL_COUNCIL_PARKINGS = [
@@ -1128,7 +1139,9 @@ const BASE_LOCAL_COUNCIL_PARKINGS = [
   },
 ];
 
-export const LOCAL_COUNCIL_PARKINGS = mergeDistinctZones(
+export const LEGACY_LOCAL_COUNCIL_PARKINGS = mergeDistinctZones(
   BASE_LOCAL_COUNCIL_PARKINGS,
   COUNCIL_RESEARCHED_PUBLIC_PARKING_ZONES,
 );
+
+export const LOCAL_COUNCIL_PARKINGS = STRICT_PUBLISHED_PUBLIC_PARKING_ZONES;

@@ -10,6 +10,13 @@ import { createHonoServer } from 'react-router-hono-server/node';
 import { serializeError } from 'serialize-error';
 import { getHTMLForErrorPage } from './get-html-for-error-page';
 import { API_BASENAME, api, routesReady } from './route-builder';
+import * as adminAnalyticsRoute from '../src/app/api/admin/analytics/route.js';
+import * as adminDashboardRoute from '../src/app/api/admin/dashboard/route.js';
+import * as adminNotificationsRoute from '../src/app/api/admin/notifications/route.js';
+import * as adminReportsRoute from '../src/app/api/admin/reports/route.js';
+import * as adminSettingsRoute from '../src/app/api/admin/settings/route.js';
+import * as adminUsersRoute from '../src/app/api/admin/users/route.js';
+import * as adminZonesRoute from '../src/app/api/admin/zones/route.js';
 import * as notificationsActivityRoute from '../src/app/api/notifications/activity/route.js';
 import * as notificationsActivityDeleteRoute from '../src/app/api/notifications/activity/delete/route.js';
 import * as notificationsActivityVersionRoute from '../src/app/api/notifications/activity/version/route.js';
@@ -132,6 +139,14 @@ app.all('/integrations/:path{.+}', async (c, next) => {
   });
 });
 
+mountRoute('get', '/api/admin/analytics', adminAnalyticsRoute.GET);
+mountRoute('get', '/api/admin/dashboard', adminDashboardRoute.GET);
+mountRoute('get', '/api/admin/notifications', adminNotificationsRoute.GET);
+mountRoute('get', '/api/admin/reports', adminReportsRoute.GET);
+mountRoute('get', '/api/admin/settings', adminSettingsRoute.GET);
+mountRoute('patch', '/api/admin/settings', adminSettingsRoute.PATCH);
+mountRoute('get', '/api/admin/users', adminUsersRoute.GET);
+mountRoute('get', '/api/admin/zones', adminZonesRoute.GET);
 mountRoute('get', '/api/admin/zones/suggestions', adminZonesSuggestionsRoute.GET);
 mountRoute('post', '/api/admin/zones/suggestions/:id/action', adminZonesSuggestionsActionRoute.POST);
 

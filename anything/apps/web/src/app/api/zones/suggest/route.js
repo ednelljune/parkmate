@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { requireAuthenticatedUser } from "@/app/api/utils/supabase-auth";
 import { logUserActivity } from "@/app/api/utils/activity-log";
+import { ensureUserRow } from "@/app/api/utils/users-schema";
 import {
   ensureSuggestedZonesAdminSchema,
   normalizeCoordinate,
@@ -18,21 +19,6 @@ const STREET_NAME_MAX_LENGTH = 180;
 const EVIDENCE_PHOTO_URL_MAX_LENGTH = 5000000;
 const PARKING_CATEGORY_MAX_LENGTH = 80;
 const DESCRIPTION_MAX_LENGTH = 1200;
-
-const getDisplayNameFallback = (user) => {
-  const metadataName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    null;
-
-  if (metadataName) {
-    return metadataName;
-  }
-
-  const email = typeof user.email === "string" ? user.email.trim() : "";
-  const [localPart] = email.split("@");
-  return localPart || null;
-};
 
 export async function POST(request) {
   try {
@@ -71,8 +57,6 @@ export async function POST(request) {
     );
     const normalizedDescription = normalizeText(description, DESCRIPTION_MAX_LENGTH);
     const isPublicParkingConfirmed = publicParkingConfirmed === true;
-    const fullName = getDisplayNameFallback(auth.user);
-    const email = auth.user.email || "";
 
     if (normalizedLatitude === null || normalizedLongitude === null) {
       return Response.json(
@@ -126,14 +110,7 @@ export async function POST(request) {
       );
     }
 
-    await sql`
-      INSERT INTO users (id, email, full_name)
-      VALUES (${userId}, ${email}, ${fullName})
-      ON CONFLICT (id) DO UPDATE
-      SET
-        email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email),
-        full_name = COALESCE(users.full_name, EXCLUDED.full_name);
-    `;
+    await ensureUserRow(auth.user);
 
     const userRows = await sql`
       SELECT trust_score

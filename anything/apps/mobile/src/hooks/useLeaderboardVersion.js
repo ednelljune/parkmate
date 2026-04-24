@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import fetch from "@/__create/fetch";
 import { resolveBackendUrl } from "@/utils/backend";
-import { sortUsersByTrust } from "@/utils/trustBadges";
+import { sortUsersByImpact } from "@/utils/trustBadges";
 
 export const LEADERBOARD_QUERY_KEY = ["leaderboard"];
 export const LEADERBOARD_VERSION_QUERY_KEY = ["leaderboard_version"];
@@ -100,7 +100,7 @@ export const fetchLeaderboardQuery = async (limit = 50) => {
     throw new Error(result?.error || "Failed to fetch leaderboard");
   }
 
-  return sortUsersByTrust(result?.users);
+  return sortUsersByImpact(result?.users);
 };
 
 export const fetchLeaderboardVersionQuery = async (limit = 50) => {

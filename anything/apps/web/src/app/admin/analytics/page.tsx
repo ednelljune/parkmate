@@ -4,6 +4,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Too
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { Badge, Button, Card, Heading, Text } from '@/components/ui';
 import { fetchAdminJson } from '@/utils/admin-api';
+import { useSupabaseAuth } from '@/utils/supabase-auth';
 
 type AnalyticsResponse = {
   summary: {
@@ -30,16 +31,21 @@ type AnalyticsResponse = {
 };
 
 export default function AnalyticsPage() {
+  const { session, isLoading: isAuthLoading } = useSupabaseAuth();
   const [response, setResponse] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadAnalytics = async () => {
+    if (isAuthLoading || !session) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const result = await fetchAdminJson<AnalyticsResponse>('/api/admin/analytics');
+      const result = await fetchAdminJson<AnalyticsResponse>('/api/admin/analytics', {}, session?.access_token);
       setResponse(result);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to load analytics.');
@@ -49,8 +55,17 @@ export default function AnalyticsPage() {
   };
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     loadAnalytics();
-  }, []);
+  }, [isAuthLoading, session]);
 
   const summary = response?.summary;
 
@@ -65,8 +80,8 @@ export default function AnalyticsPage() {
             </Text>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={loadAnalytics}>
-              <RefreshCw className="mr-2 h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={loadAnalytics} disabled={isAuthLoading || !session}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button variant="outline" size="sm" disabled>

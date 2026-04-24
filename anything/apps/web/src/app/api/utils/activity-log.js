@@ -33,6 +33,11 @@ export const ensureActivityLogSchema = () => {
       `;
 
       await sql`
+        ALTER TABLE user_activity_logs
+        ADD COLUMN IF NOT EXISTS review_notes TEXT;
+      `;
+
+      await sql`
         DROP INDEX IF EXISTS idx_user_activity_logs_unique_event;
       `;
 
@@ -69,6 +74,7 @@ export const logUserActivity = async ({
   spotStatus = null,
   occurredAt = null,
   eventKey = null,
+  reviewNotes = null,
 }) => {
   await ensureActivityLogSchema();
   const resolvedOccurredAt = occurredAt || new Date().toISOString();
@@ -86,7 +92,8 @@ export const logUserActivity = async ({
       zone_name,
       spot_status,
       occurred_at,
-      event_key
+      event_key,
+      review_notes
     )
     VALUES (
       ${userId},
@@ -100,7 +107,8 @@ export const logUserActivity = async ({
       ${zoneName},
       ${spotStatus},
       ${resolvedOccurredAt},
-      ${eventKey}
+      ${eventKey},
+      ${reviewNotes}
     )
     ON CONFLICT DO NOTHING;
   `;

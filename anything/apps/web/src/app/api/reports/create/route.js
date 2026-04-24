@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { requireAuthenticatedUser } from "@/app/api/utils/supabase-auth";
 import { logUserActivity } from "@/app/api/utils/activity-log";
+import { ensureUserRow } from "@/app/api/utils/users-schema";
 import {
   applyEffectiveReportExpiry,
   REPORT_TTL_MS,
@@ -13,21 +14,6 @@ const normalizeCoordinate = (value) => {
   const parsed = typeof value === "number" ? value : Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
-
-function getDisplayNameFallback(user) {
-  const metadataName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    null;
-
-  if (metadataName) {
-    return metadataName;
-  }
-
-  const email = typeof user.email === "string" ? user.email.trim() : "";
-  const [localPart] = email.split("@");
-  return localPart || null;
-}
 
 const ensureReportIdempotencySchema = () => {
   if (!reportIdempotencySchemaPromise) {
@@ -118,8 +104,6 @@ export async function POST(request) {
         : Number.isFinite(Number(zoneId))
           ? Number(zoneId)
           : null;
-    const fullName = getDisplayNameFallback(auth.user);
-    const email = auth.user.email || "";
 
     console.log("[report.create] Parsed request body", {
       userId,
@@ -162,14 +146,7 @@ export async function POST(request) {
       );
     }
 
-    await sql`
-      INSERT INTO users (id, email, full_name)
-      VALUES (${userId}, ${email}, ${fullName})
-      ON CONFLICT (id) DO UPDATE
-      SET
-        email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email),
-        full_name = COALESCE(users.full_name, EXCLUDED.full_name);
-    `;
+    await ensureUserRow(auth.user);
 
     const userResults = await sql`
       SELECT trust_score FROM users WHERE id = ${userId} LIMIT 1;

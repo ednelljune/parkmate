@@ -30,7 +30,8 @@ const buildSystemUpdateMessage = (item) => {
   }
 
   if (item.mailbox_type === "zone_reviewing") {
-    return `Your missing public zone suggestion in ${zoneName} is now under review.`;
+    const note = String(item?.review_notes || "").trim();
+    return `${`Your missing public zone suggestion in ${zoneName} is now under review.`}${note ? ` Comment: ${note}` : ""}`;
   }
 
   if (item.mailbox_type === "zone_approved") {
@@ -38,7 +39,8 @@ const buildSystemUpdateMessage = (item) => {
   }
 
   if (item.mailbox_type === "zone_rejected") {
-    return `Your missing public zone suggestion in ${zoneName} was not approved.`;
+    const note = String(item?.review_notes || "").trim();
+    return `${`Your missing public zone suggestion in ${zoneName} was not approved.`}${note ? ` Reason: ${note}` : ""}`;
   }
 
   const falseReportCount = Math.max(1, Number(item?.false_report_count) || 1);
@@ -98,6 +100,7 @@ export async function GET(request) {
           ual.latitude,
           ual.zone_type,
           ual.zone_name,
+          NULL::text AS review_notes,
           $2::int AS claim_points_awarded,
           NULL::int AS false_report_count,
           $3::int AS trust_score_threshold,
@@ -122,11 +125,13 @@ export async function GET(request) {
           ual.latitude,
           ual.zone_type,
           ual.zone_name,
+          COALESCE(ual.review_notes, spz.review_notes) AS review_notes,
           NULL::int AS claim_points_awarded,
           NULL::int AS false_report_count,
           $3::int AS trust_score_threshold,
           false AS trust_score_affected
         FROM user_activity_logs ual
+        LEFT JOIN suggested_parking_zones spz ON spz.id = ual.report_id
         WHERE ual.user_id = $1
           AND ual.activity_type = 'zone_reviewing'
 
@@ -145,6 +150,7 @@ export async function GET(request) {
           ual.latitude,
           ual.zone_type,
           ual.zone_name,
+          NULL::text AS review_notes,
           $4::int AS claim_points_awarded,
           NULL::int AS false_report_count,
           $3::int AS trust_score_threshold,
@@ -168,11 +174,13 @@ export async function GET(request) {
           ual.latitude,
           ual.zone_type,
           ual.zone_name,
+          COALESCE(ual.review_notes, spz.review_notes) AS review_notes,
           NULL::int AS claim_points_awarded,
           NULL::int AS false_report_count,
           $3::int AS trust_score_threshold,
           false AS trust_score_affected
         FROM user_activity_logs ual
+        LEFT JOIN suggested_parking_zones spz ON spz.id = ual.report_id
         WHERE ual.user_id = $1
           AND ual.activity_type = 'zone_rejected'
 
@@ -191,6 +199,7 @@ export async function GET(request) {
           ST_Y(lr.location::geometry) AS latitude,
           pz.zone_type,
           pz.name AS zone_name,
+          NULL::text AS review_notes,
           $2::int AS claim_points_awarded,
           NULL::int AS false_report_count,
           $3::int AS trust_score_threshold,
@@ -223,6 +232,7 @@ export async function GET(request) {
           ST_Y(lr.location::geometry) AS latitude,
           pz.zone_type,
           pz.name AS zone_name,
+          NULL::text AS review_notes,
           NULL::int AS claim_points_awarded,
           NULL::int AS false_report_count,
           $3::int AS trust_score_threshold,
@@ -248,6 +258,7 @@ export async function GET(request) {
           ST_Y(lr.location::geometry) AS latitude,
           pz.zone_type,
           pz.name AS zone_name,
+          NULL::text AS review_notes,
           NULL::int AS claim_points_awarded,
           frs.false_report_count,
           $3::int AS trust_score_threshold,

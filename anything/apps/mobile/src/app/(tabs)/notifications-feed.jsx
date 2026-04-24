@@ -1,6 +1,7 @@
 import React from "react";
 import {
   ActivityIndicator,
+  Animated,
   Alert,
   AppState,
   FlatList,
@@ -325,6 +326,8 @@ const getMailboxSummary = (item) => {
 };
 
 const getMailboxDetail = (item) => {
+  const reviewNote = String(item?.review_notes || "").trim();
+
   if (item?.mailbox_type === "claimed") {
     const points = Math.max(0, Number(item?.claim_points_awarded) || 0);
     return points > 0
@@ -337,7 +340,9 @@ const getMailboxDetail = (item) => {
   }
 
   if (item?.mailbox_type === "zone_reviewing") {
-    return "Your missing zone suggestion is currently being reviewed by the admin team.";
+    return reviewNote
+      ? `Your missing zone suggestion is currently being reviewed by the admin team. Comment: ${reviewNote}`
+      : "Your missing zone suggestion is currently being reviewed by the admin team.";
   }
 
   if (item?.mailbox_type === "zone_approved") {
@@ -351,7 +356,9 @@ const getMailboxDetail = (item) => {
   }
 
   if (item?.mailbox_type === "zone_rejected") {
-    return "Your missing zone suggestion was reviewed but not approved.";
+    return reviewNote
+      ? `Your missing zone suggestion was reviewed but not approved. Reason: ${reviewNote}`
+      : "Your missing zone suggestion was reviewed but not approved.";
   }
 
   const falseReportCount = Math.max(1, Number(item?.false_report_count) || 1);
@@ -495,7 +502,7 @@ function HeaderTextButton({ label, onPress, disabled = false }) {
   );
 }
 
-function MailboxCard({ summary, lastItem, loading, onPress }) {
+function MailboxCard({ summary, lastItem, loading, onPress, hasUnread = false }) {
   const hasItems = (summary?.total || 0) > 0;
   const isInitialLoading = loading && !hasItems;
   const helperText = loading
@@ -503,6 +510,50 @@ function MailboxCard({ summary, lastItem, loading, onPress }) {
     : hasItems
       ? getMailboxSummary(lastItem || {})
       : "Tap to view";
+  const pulse = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (!hasUnread) {
+      pulse.stopAnimation();
+      pulse.setValue(0);
+      return undefined;
+    }
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    loop.start();
+    return () => loop.stop();
+  }, [hasUnread, pulse]);
+
+  const unreadDotAnimatedStyle = hasUnread
+    ? {
+        opacity: pulse.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.45, 1],
+        }),
+        transform: [
+          {
+            scale: pulse.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.88, 1.18],
+            }),
+          },
+        ],
+      }
+    : null;
 
   return (
     <Pressable
@@ -515,8 +566,11 @@ function MailboxCard({ summary, lastItem, loading, onPress }) {
     >
       <View style={styles.mailboxStatAccent} />
       <View style={styles.mailboxCompactHeader}>
-        <BellRing size={14} color={BRAND_PALETTE.gold} />
-        <Text style={styles.mailboxCompactEyebrow}>Updates</Text>
+        <View style={styles.mailboxCompactHeaderLead}>
+          <BellRing size={14} color={BRAND_PALETTE.gold} />
+          <Text style={styles.mailboxCompactEyebrow}>Updates</Text>
+        </View>
+        {hasUnread ? <Animated.View style={[styles.mailboxUnreadDot, unreadDotAnimatedStyle]} /> : null}
       </View>
 
       <Text style={styles.mailboxCompactValue}>
@@ -752,9 +806,11 @@ const ActivityRow = React.memo(function ActivityRow({
 
 const MailboxItemRow = React.memo(function MailboxItemRow({
   item,
+  viewedAt,
   isEditing = false,
   isSelected = false,
   onToggleSelect,
+  onDeleteItem,
 }) {
   const resolvedItem = item || {};
   const meta = MAILBOX_META[resolvedItem.mailbox_type] || MAILBOX_META.false_reported;
@@ -762,8 +818,52 @@ const MailboxItemRow = React.memo(function MailboxItemRow({
   const quantityLabel = getQuantityLabel(resolvedItem);
   const falseReportCount = Math.max(0, Number(resolvedItem?.false_report_count) || 0);
   const claimPoints = Math.max(0, Number(resolvedItem?.claim_points_awarded) || 0);
+  const unread = isActivityNotificationUnread(resolvedItem, viewedAt);
+  const swipeableRef = React.useRef(null);
 
-  return (
+  const handleToggleReadState = React.useCallback(async () => {
+    if (unread) {
+      await markActivityNotificationRead(resolvedItem).catch(() => {});
+    } else {
+      await markActivityNotificationUnread(resolvedItem).catch(() => {});
+    }
+    swipeableRef.current?.close();
+  }, [resolvedItem, unread]);
+
+  const handleDelete = React.useCallback(async () => {
+    Alert.alert(
+      "Delete system update?",
+      "This will remove the system update item from your list.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => swipeableRef.current?.close(),
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await onDeleteItem?.(resolvedItem);
+              swipeableRef.current?.close();
+            } catch (error) {
+              console.warn("[mailbox.delete] Failed to delete single system update", {
+                itemId: resolvedItem?.id || null,
+                message: error?.message || String(error),
+              });
+              Alert.alert(
+                "Unable to delete system update",
+                getDeleteErrorMessage(error, "Please try again."),
+              );
+            }
+          },
+        },
+      ],
+    );
+  }, [onDeleteItem, resolvedItem]);
+
+  const card = (
     <Pressable
       accessibilityRole={isEditing ? "checkbox" : "button"}
       accessibilityState={isEditing ? { checked: isSelected } : undefined}
@@ -778,8 +878,8 @@ const MailboxItemRow = React.memo(function MailboxItemRow({
         isEditing && styles.feedCardEditing,
         isSelected && styles.feedCardSelected,
         {
-          backgroundColor: meta.panel,
-          borderColor: isSelected ? meta.accent : meta.border,
+          backgroundColor: unread ? "#FFFFFF" : meta.panel,
+          borderColor: isSelected ? meta.accent : unread ? meta.accent : meta.border,
         },
       ]}
     >
@@ -860,8 +960,75 @@ const MailboxItemRow = React.memo(function MailboxItemRow({
           </View>
         ) : null}
       </View>
+      <View style={styles.mailboxItemFooter}>
+        {unread ? (
+          <View style={[styles.statusPill, styles.statusPillUnread]}>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: meta.accent },
+              ]}
+            />
+            <Text style={styles.statusPillUnreadText}>New update</Text>
+          </View>
+        ) : (
+          <View style={[styles.statusPill, styles.statusPillRead]}>
+            <Text style={styles.statusPillReadText}>Reviewed</Text>
+          </View>
+        )}
 
+        {!isEditing ? (
+          <Text style={styles.swipeHint}>
+            {Platform.OS === "ios" ? "System update" : "Swipe to manage"}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
+  );
+
+  if (isEditing) {
+    return card;
+  }
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      overshootLeft={false}
+      overshootRight={false}
+      leftThreshold={56}
+      rightThreshold={56}
+      renderLeftActions={() => (
+        <SwipeAction
+          title={unread ? "Mark Read" : "Mark Unread"}
+          detail={
+            unread
+              ? "Slide right to clear this update"
+              : "Slide right to bring this update back"
+          }
+          accent={BRAND_PALETTE.accentBold}
+        />
+      )}
+      renderRightActions={() => (
+        <SwipeAction
+          title="Delete"
+          detail="Slide left to remove this system update"
+          accent="#B91C1C"
+          destructive
+        />
+      )}
+      onSwipeableOpen={(direction) => {
+        if (direction === "left") {
+          handleToggleReadState();
+          return;
+        }
+
+        if (direction === "right") {
+          handleDelete();
+        }
+      }}
+    >
+      {card}
+    </Swipeable>
   );
 });
 
@@ -869,15 +1036,16 @@ function MailboxModal({
   visible,
   onClose,
   items = [],
-  summary = null,
   loading,
   onRefresh,
   insets,
+  viewedAt,
   isEditing = false,
   onStartEditing,
   onCancelEditing,
   onDeleteSelected,
   onToggleSelect,
+  onDeleteItem,
   selectedIdSet = new Set(),
   deleteDisabled = false,
 }) {
@@ -937,21 +1105,6 @@ function MailboxModal({
             </View>
           </View>
 
-          <View style={styles.mailboxSummaryRow}>
-            <View style={styles.mailboxSummaryChip}>
-              <Text style={styles.mailboxSummaryValue}>{summary?.claimed || 0}</Text>
-              <Text style={styles.mailboxSummaryLabel}>Claimed</Text>
-            </View>
-            <View style={styles.mailboxSummaryChip}>
-              <Text style={styles.mailboxSummaryValue}>{summary?.expired || 0}</Text>
-              <Text style={styles.mailboxSummaryLabel}>Expired</Text>
-            </View>
-            <View style={styles.mailboxSummaryChip}>
-              <Text style={styles.mailboxSummaryValue}>{summary?.falseReported || 0}</Text>
-              <Text style={styles.mailboxSummaryLabel}>False</Text>
-            </View>
-          </View>
-
           {loading && resolvedItems.length === 0 ? (
             <View style={styles.mailboxStateWrap}>
               <ActivityIndicator size="large" color={BRAND_PALETTE.accentBold} />
@@ -976,9 +1129,11 @@ function MailboxModal({
               renderItem={({ item }) => (
                 <MailboxItemRow
                   item={item}
+                  viewedAt={viewedAt}
                   isEditing={isEditing}
                   isSelected={selectedIdSet?.has?.(String(item.id)) || false}
                   onToggleSelect={onToggleSelect}
+                  onDeleteItem={onDeleteItem}
                 />
               )}
               contentContainerStyle={styles.mailboxListContent}
@@ -1026,6 +1181,10 @@ const ListHeader = React.memo(function ListHeader({
     [mailboxItems, mailboxSummary],
   );
   const latestMailboxItem = mailboxItems[0] || null;
+  const mailboxHasUnread = React.useMemo(
+    () => mailboxItems.some((item) => isActivityNotificationUnread(item, viewedAt)),
+    [mailboxItems, viewedAt],
+  );
 
   return (
     <View style={styles.listHeaderWrap}>
@@ -1081,6 +1240,7 @@ const ListHeader = React.memo(function ListHeader({
           lastItem={latestMailboxItem}
           loading={mailboxLoading}
           onPress={onOpenMailbox}
+          hasUnread={mailboxHasUnread}
         />
         <View style={styles.insightCard}>
           <Text style={styles.insightEyebrow}>Latest activity</Text>
@@ -1625,6 +1785,17 @@ export default function NotificationsScreen() {
     await deleteActivityNotification(item);
   }, []);
 
+  const handleDeleteMailboxItem = React.useCallback(async (item) => {
+    if (!item?.id) {
+      throw new Error("System update id is required");
+    }
+
+    await deleteMailboxNotificationsRemote([item]);
+    const nextIds = await deleteSystemUpdateItems(user?.id, [item]);
+    setDeletedSystemUpdateIds(nextIds);
+    await deleteActivityNotification(item).catch(() => {});
+  }, [user?.id]);
+
   const handleDeleteMailboxSelected = React.useCallback(() => {
     if (mailboxDeleteTargets.length === 0) {
       return;
@@ -1686,15 +1857,16 @@ export default function NotificationsScreen() {
         visible={isMailboxVisible}
         onClose={() => setIsMailboxVisible(false)}
         items={systemUpdateItems}
-        summary={systemUpdateSummary}
         loading={systemUpdatesLoading}
         onRefresh={handleRefresh}
         insets={insets}
+        viewedAt={viewedAt}
         isEditing={isMailboxEditing}
         onStartEditing={handleStartMailboxEditing}
         onCancelEditing={handleCancelMailboxEditing}
         onDeleteSelected={handleDeleteMailboxSelected}
         onToggleSelect={handleToggleMailboxSelect}
+        onDeleteItem={handleDeleteMailboxItem}
         selectedIdSet={selectedMailboxIdSet}
         deleteDisabled={mailboxDeleteDisabled}
       />
@@ -1875,7 +2047,21 @@ const styles = StyleSheet.create({
   mailboxCompactHeader: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  mailboxCompactHeaderLead: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
+  },
+  mailboxUnreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: "#EF4444",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
   },
   mailboxCompactEyebrow: {
     fontSize: 9,
@@ -2204,8 +2390,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FBFF",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingTop: 10,
-    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingHorizontal: 18,
   },
   mailboxModalHandle: {
     alignSelf: "center",
@@ -2213,13 +2399,14 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 999,
     backgroundColor: "#C7D7E6",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   mailboxModalHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
+    marginBottom: 10,
   },
   mailboxModalHeaderActions: {
     flexDirection: "row",
@@ -2245,9 +2432,9 @@ const styles = StyleSheet.create({
     color: BRAND_PALETTE.deepNavy,
   },
   mailboxModalSubtitle: {
-    marginTop: 5,
+    marginTop: 8,
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 20,
     color: BRAND_PALETTE.muted,
     maxWidth: "92%",
   },
@@ -2295,10 +2482,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.45,
   },
   mailboxListContent: {
+    paddingTop: 4,
     paddingBottom: 12,
   },
   mailboxListSeparator: {
-    height: 10,
+    height: 12,
   },
   mailboxStateWrap: {
     alignItems: "center",
@@ -2373,6 +2561,13 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 6,
     marginTop: 10,
+  },
+  mailboxItemFooter: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
   mailboxAccentPill: {
     backgroundColor: "#DCFCE7",

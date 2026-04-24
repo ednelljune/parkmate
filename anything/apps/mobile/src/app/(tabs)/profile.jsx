@@ -23,25 +23,27 @@ import {
   Sparkles,
   Star,
   Trophy,
-  User,
 } from "lucide-react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import fetch from "@/__create/fetch";
 
 import useUser from "@/utils/auth/useUser";
 import { useAuth } from "@/utils/auth/useAuth";
+import {
+  fetchLeaderboardQuery,
+  LEADERBOARD_QUERY_KEY,
+} from "@/hooks/useLeaderboardVersion";
+import { resolveBackendUrl } from "@/utils/backend";
+import {
+  LEADERBOARD_BADGE_TIERS,
+  getLeaderboardBadgeMeta,
+} from "@/utils/trustBadges";
 
-const PRIVACY_POLICY_URL = "https://getparkmate.app/privacy-policy";
-const TERMS_OF_SERVICE_URL = "https://getparkmate.app/terms-of-service";
+const PRIVACY_POLICY_URL = "https://getparkmate.app/privacy-policy.html";
+const TERMS_OF_SERVICE_URL = "https://getparkmate.app/terms-and-conditions.html";
 
-const PROFILE_TIERS = [
-  {
-    threshold: 0,
-    label: "Curb Scout",
-    caption: "Starter",
-    backgroundColor: "#E0F2FE",
-    borderColor: "#7DD3FC",
-    textColor: "#0F172A",
-    iconColor: "#EAB308",
+const PROFILE_TIER_VISUALS = {
+  "Curb Scout": {
     shellColor: "#1D4ED8",
     glowColor: "rgba(59, 130, 246, 0.14)",
     accentColor: "#38BDF8",
@@ -49,14 +51,7 @@ const PROFILE_TIERS = [
     iconSize: 16,
     shine: false,
   },
-  {
-    threshold: 25,
-    label: "Street Spotter",
-    caption: "Active",
-    backgroundColor: "#FEF3C7",
-    borderColor: "#FCD34D",
-    textColor: "#0F172A",
-    iconColor: "#F59E0B",
+  "Street Sprinter": {
     shellColor: "#9A3412",
     glowColor: "rgba(245, 158, 11, 0.14)",
     accentColor: "#FBBF24",
@@ -64,14 +59,7 @@ const PROFILE_TIERS = [
     iconSize: 17,
     shine: false,
   },
-  {
-    threshold: 75,
-    label: "Block Ranger",
-    caption: "Rising",
-    backgroundColor: "#DCFCE7",
-    borderColor: "#86EFAC",
-    textColor: "#0F172A",
-    iconColor: "#F59E0B",
+  "Lane Leader": {
     shellColor: "#0F766E",
     glowColor: "rgba(16, 185, 129, 0.18)",
     accentColor: "#34D399",
@@ -79,14 +67,7 @@ const PROFILE_TIERS = [
     iconSize: 18,
     shine: false,
   },
-  {
-    threshold: 200,
-    label: "Flow Keeper",
-    caption: "Elite",
-    backgroundColor: "#DBEAFE",
-    borderColor: "#93C5FD",
-    textColor: "#0F172A",
-    iconColor: "#F59E0B",
+  "City Vanguard": {
     shellColor: "#0B1F33",
     glowColor: "rgba(59, 130, 246, 0.22)",
     accentColor: "#10B981",
@@ -94,14 +75,7 @@ const PROFILE_TIERS = [
     iconSize: 20,
     shine: true,
   },
-  {
-    threshold: 500,
-    label: "City Sentinel",
-    caption: "Legendary",
-    backgroundColor: "#ECFEFF",
-    borderColor: "#7DD3FC",
-    textColor: "#0F172A",
-    iconColor: "#F59E0B",
+  "ParkMate Legend": {
     shellColor: "#082032",
     glowColor: "rgba(251, 191, 36, 0.28)",
     accentColor: "#38BDF8",
@@ -109,7 +83,7 @@ const PROFILE_TIERS = [
     iconSize: 22,
     shine: true,
   },
-];
+};
 
 const PLAYBOOK_ITEMS = [
   {
@@ -209,20 +183,24 @@ const getInitials = (name) => {
 };
 
 const getProfileBadgeMeta = (points) => {
-  const numericPoints = Number(points) || 0;
-
-  for (let index = PROFILE_TIERS.length - 1; index >= 0; index -= 1) {
-    if (numericPoints >= PROFILE_TIERS[index].threshold) {
-      return PROFILE_TIERS[index];
-    }
-  }
-
-  return PROFILE_TIERS[0];
+  const badge = getLeaderboardBadgeMeta(points);
+  return {
+    ...badge,
+    ...(PROFILE_TIER_VISUALS[badge.label] || PROFILE_TIER_VISUALS["Curb Scout"]),
+  };
 };
 
 const getNextTierMeta = (points) => {
   const numericPoints = Number(points) || 0;
-  return PROFILE_TIERS.find((tier) => numericPoints < tier.threshold) || null;
+  const nextBaseTier = LEADERBOARD_BADGE_TIERS.find((tier) => numericPoints < tier.threshold);
+  if (!nextBaseTier) {
+    return null;
+  }
+
+  return {
+    ...nextBaseTier,
+    ...(PROFILE_TIER_VISUALS[nextBaseTier.label] || PROFILE_TIER_VISUALS["Curb Scout"]),
+  };
 };
 
 const getTierProgress = (points) => {
@@ -527,6 +505,9 @@ export default function ProfileScreen() {
   const heroDrift = useRef(new Animated.Value(0)).current;
   const userId = authUser?.id || null;
   const canUseProfileApi = Boolean(userId && session?.access_token);
+  const profileUrl = resolveBackendUrl("/api/users/profile");
+  const leaderboardLimit = 100;
+  const leaderboardUrl = resolveBackendUrl(`/api/users/leaderboard?limit=${leaderboardLimit}`);
 
   useEffect(() => {
     const orbitLoop = Animated.loop(
@@ -553,12 +534,26 @@ export default function ProfileScreen() {
   const { data: profileData, isLoading } = useQuery({
     queryKey: ["user_profile", userId],
     queryFn: async () => {
-      const response = await fetch("/api/users/profile");
+      if (!profileUrl) {
+        throw new Error("Profile backend URL is not configured");
+      }
+
+      const response = await fetch(profileUrl);
       if (!response.ok) throw new Error("Failed to fetch profile");
       const result = await response.json();
       return result.user;
     },
-    enabled: canUseProfileApi,
+    enabled: canUseProfileApi && Boolean(profileUrl),
+  });
+
+  const { data: leaderboardData } = useQuery({
+    queryKey: [...LEADERBOARD_QUERY_KEY, leaderboardLimit, "profile-rank"],
+    queryFn: () => fetchLeaderboardQuery(leaderboardLimit),
+    enabled: canUseProfileApi && Boolean(leaderboardUrl),
+    staleTime: Infinity,
+    refetchInterval: false,
+    refetchOnMount: false,
+    retry: false,
   });
 
   const fallbackName = authUser?.name || getEmailDisplayName(authUser?.email) || "ParkMate User";
@@ -567,11 +562,22 @@ export default function ProfileScreen() {
     full_name: fallbackName,
     email: authUser?.email || "No email",
     contribution_score: 0,
+    leaderboard_rank: null,
+    ranked_count: 0,
     total_reports: 0,
     total_claims: 0,
   };
 
   const points = Number(profile?.contribution_score) || 0;
+  const leaderboardRankFromProfile = Number.isFinite(Number(profile?.leaderboard_rank))
+    ? Number(profile.leaderboard_rank)
+    : null;
+  const leaderboardRankFromList =
+    Array.isArray(leaderboardData) && userId
+      ? leaderboardData.findIndex((entry) => entry?.id === userId) + 1 || null
+      : null;
+  const leaderboardRank = leaderboardRankFromProfile || leaderboardRankFromList || null;
+  const rankedCount = Number(profile?.ranked_count) || (Array.isArray(leaderboardData) ? leaderboardData.length : 0);
   const totalReports = Number(profile?.total_reports) || 0;
   const totalClaims = Number(profile?.total_claims) || 0;
   const profileBadge = getProfileBadgeMeta(points);
@@ -718,6 +724,15 @@ export default function ProfileScreen() {
             <MetricCard
               dark
               compact
+              label="Rank"
+              value={leaderboardRank ? `#${formatNumber(leaderboardRank)}` : "Unranked"}
+              note={rankedCount ? `out of ${formatNumber(rankedCount)} drivers` : "impact leaderboard"}
+              icon={Trophy}
+              accent="#FCD34D"
+            />
+            <MetricCard
+              dark
+              compact
               label="Reports"
               value={formatNumber(totalReports)}
               note="signals dropped"
@@ -791,10 +806,18 @@ export default function ProfileScreen() {
             <MetricCard
               mini
               label="Current rank"
-              value={profileBadge.caption}
-              note="your live tier"
+              value={leaderboardRank ? `#${formatNumber(leaderboardRank)}` : "Unranked"}
+              note="impact leaderboard"
               icon={Trophy}
               accent="#0EA5E9"
+            />
+            <MetricCard
+              mini
+              label="Badge tier"
+              value={profileBadge.label}
+              note={profileBadge.caption}
+              icon={ShieldCheck}
+              accent="#14B8A6"
             />
             <MetricCard
               mini
@@ -802,14 +825,6 @@ export default function ProfileScreen() {
               value={formatNumber(points)}
               note="community reputation"
               icon={Sparkles}
-              accent="#14B8A6"
-            />
-            <MetricCard
-              mini
-              label="Report mix"
-              value={totalReports >= totalClaims ? "Scout-led" : "Claim-led"}
-              note="how you usually contribute"
-              icon={User}
               accent="#F59E0B"
             />
           </View>

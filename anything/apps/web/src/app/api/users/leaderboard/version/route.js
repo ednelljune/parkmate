@@ -36,7 +36,7 @@ export async function GET(request) {
         FROM users u
         LEFT JOIN report_counts rc ON rc.user_id = u.id
         LEFT JOIN claim_counts cc ON cc.user_id = u.id
-        ORDER BY u.trust_score DESC, u.contribution_score DESC, u.created_at ASC, u.id ASC
+        ORDER BY u.contribution_score DESC, u.trust_score DESC, u.created_at ASC, u.id ASC
         LIMIT $1
       )
       SELECT
@@ -48,14 +48,14 @@ export async function GET(request) {
                 '|',
                 id::text,
                 full_name,
-                trust_score::text,
                 contribution_score::text,
+                trust_score::text,
                 total_reports::text,
                 total_claims::text,
                 COALESCE(created_at::text, '')
               ),
               '||'
-              ORDER BY trust_score DESC, contribution_score DESC, created_at ASC, id ASC
+              ORDER BY contribution_score DESC, trust_score DESC, created_at ASC, id ASC
             )
           ),
           'empty'

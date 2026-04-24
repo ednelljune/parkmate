@@ -4,6 +4,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Too
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { Badge, Button, Card, Heading, Text } from '@/components/ui';
 import { fetchAdminJson } from '@/utils/admin-api';
+import { useSupabaseAuth } from '@/utils/supabase-auth';
 
 type DashboardResponse = {
   summary: {
@@ -96,19 +97,24 @@ function formatZoneLabel(suggestion: DashboardResponse['suggestions'][number]) {
 }
 
 export default function AdminDashboardPage() {
+  const { session, isLoading: isAuthLoading } = useSupabaseAuth();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadDashboard = async () => {
+    if (isAuthLoading || !session) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       const [dashboardResult, analyticsResult] = await Promise.all([
-        fetchAdminJson<DashboardResponse>('/api/admin/dashboard'),
-        fetchAdminJson<AnalyticsResponse>('/api/admin/analytics'),
+        fetchAdminJson<DashboardResponse>('/api/admin/dashboard', {}, session?.access_token),
+        fetchAdminJson<AnalyticsResponse>('/api/admin/analytics', {}, session?.access_token),
       ]);
 
       setDashboard(dashboardResult);
@@ -121,8 +127,17 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     loadDashboard();
-  }, []);
+  }, [isAuthLoading, session]);
 
   const summary = dashboard?.summary;
   const analyticsSummary = analytics?.summary;
@@ -142,8 +157,8 @@ export default function AdminDashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <Badge variant="info">Live backend data</Badge>
-            <Button variant="outline" size="sm" onClick={loadDashboard}>
-              <RefreshCw className="mr-2 h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={loadDashboard} disabled={isAuthLoading || !session}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>

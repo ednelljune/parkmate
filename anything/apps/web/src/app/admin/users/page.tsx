@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, RefreshCw, Search, ShieldAlert, ShieldCheck,
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { Avatar, Badge, Button, Card, Heading, Text } from '@/components/ui';
 import { fetchAdminJson } from '@/utils/admin-api';
+import { useSupabaseAuth } from '@/utils/supabase-auth';
 
 type AdminUser = {
   id: string;
@@ -58,14 +59,25 @@ function getTrustLabel(score: number) {
 }
 
 export default function UsersPage() {
+  const { session, isLoading: isAuthLoading } = useSupabaseAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [response, setResponse] = useState<UsersResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     const timeoutId = window.setTimeout(async () => {
       setLoading(true);
       setError(null);
@@ -73,6 +85,8 @@ export default function UsersPage() {
       try {
         const result = await fetchAdminJson<UsersResponse>(
           `/api/admin/users?search=${encodeURIComponent(searchTerm)}&page=${page}&limit=25`,
+          {},
+          session?.access_token,
         );
         setResponse(result);
       } catch (requestError) {
@@ -85,7 +99,7 @@ export default function UsersPage() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [page, searchTerm]);
+  }, [isAuthLoading, page, refreshKey, searchTerm, session]);
 
   const filteredUsers = useMemo(() => {
     const users = response?.users || [];
@@ -115,8 +129,13 @@ export default function UsersPage() {
               Review real ParkMate users, trust levels, and contributor activity from the backend.
             </Text>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setPage(1)}>
-            <RefreshCw className="mr-2 h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRefreshKey((current) => current + 1)}
+            disabled={isAuthLoading || !session}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>

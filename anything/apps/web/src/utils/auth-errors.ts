@@ -26,11 +26,11 @@ export function formatAuthError(error: unknown, fallbackMessage: string) {
 	}
 
 	if (normalizedMessage.startsWith('Supabase Auth is not configured.')) {
-		return 'Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY in Netlify.';
+		return 'Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.';
 	}
 
 	if (normalizedMessage.startsWith('Missing Supabase auth environment configuration:')) {
-		return 'Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY in Netlify.';
+		return 'Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.';
 	}
 
 	if (normalizedMessage.startsWith('Invalid Supabase URL in ')) {

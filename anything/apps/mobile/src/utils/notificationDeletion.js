@@ -49,11 +49,12 @@ const getMailboxAliasIds = (item) => {
   const itemId = String(item?.id || "").trim();
   const falseReportCount = Math.max(1, Number(item?.false_report_count) || 1);
   const aliases = new Set();
+  const rawId = itemId.startsWith("system-") ? itemId.slice("system-".length) : itemId;
 
   if (itemId) {
     aliases.add(itemId);
     if (itemId.startsWith("system-")) {
-      aliases.add(itemId.slice("system-".length));
+      aliases.add(rawId);
     }
   }
 
@@ -63,8 +64,6 @@ const getMailboxAliasIds = (item) => {
 
   if (mailboxType === "claimed") {
     aliases.add(`claimed-${reportId}`);
-
-    const rawId = itemId.startsWith("system-") ? itemId.slice("system-".length) : itemId;
     if (rawId.startsWith("report_claimed-")) {
       aliases.add(`claimed-${rawId.slice("report_claimed-".length)}`);
     }
@@ -75,6 +74,33 @@ const getMailboxAliasIds = (item) => {
     aliases.add(`expired-${reportId}`);
   } else if (mailboxType === "false_reported") {
     aliases.add(`false-${reportId}-${falseReportCount}`);
+  } else if (mailboxType === "zone_reviewing") {
+    aliases.add(`zone-reviewing-${reportId}`);
+    aliases.add(`zone_reviewing-${reportId}`);
+    if (rawId.startsWith("zone_reviewing-")) {
+      aliases.add(`zone-reviewing-${rawId.slice("zone_reviewing-".length)}`);
+    }
+    if (rawId.startsWith("zone-reviewing-")) {
+      aliases.add(`zone_reviewing-${rawId.slice("zone-reviewing-".length)}`);
+    }
+  } else if (mailboxType === "zone_approved") {
+    aliases.add(`zone-approved-${reportId}`);
+    aliases.add(`zone_approved-${reportId}`);
+    if (rawId.startsWith("zone_approved-")) {
+      aliases.add(`zone-approved-${rawId.slice("zone_approved-".length)}`);
+    }
+    if (rawId.startsWith("zone-approved-")) {
+      aliases.add(`zone_approved-${rawId.slice("zone-approved-".length)}`);
+    }
+  } else if (mailboxType === "zone_rejected") {
+    aliases.add(`zone-rejected-${reportId}`);
+    aliases.add(`zone_rejected-${reportId}`);
+    if (rawId.startsWith("zone_rejected-")) {
+      aliases.add(`zone-rejected-${rawId.slice("zone_rejected-".length)}`);
+    }
+    if (rawId.startsWith("zone-rejected-")) {
+      aliases.add(`zone_rejected-${rawId.slice("zone-rejected-".length)}`);
+    }
   }
 
   return [...aliases];

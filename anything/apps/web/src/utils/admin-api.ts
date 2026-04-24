@@ -1,7 +1,11 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getApiUrl } from '@/utils/api-base';
 
-export async function getAdminAccessToken() {
+export async function getAdminAccessToken(sessionAccessToken?: string | null) {
+  if (typeof sessionAccessToken === 'string' && sessionAccessToken.trim()) {
+    return sessionAccessToken;
+  }
+
   const client = getSupabaseBrowserClient();
   const { data, error } = await client.auth.getSession();
 
@@ -17,8 +21,12 @@ export async function getAdminAccessToken() {
   return accessToken;
 }
 
-export async function fetchAdminJson<T = any>(path: string, init: RequestInit = {}) {
-  const accessToken = await getAdminAccessToken();
+export async function fetchAdminJson<T = any>(
+  path: string,
+  init: RequestInit = {},
+  sessionAccessToken?: string | null,
+) {
+  const accessToken = await getAdminAccessToken(sessionAccessToken);
   const headers = new Headers(init.headers ?? {});
 
   if (init.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) {

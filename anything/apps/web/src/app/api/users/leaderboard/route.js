@@ -32,7 +32,7 @@ export async function GET(request) {
       FROM users u
       LEFT JOIN report_counts rc ON rc.user_id = u.id
       LEFT JOIN claim_counts cc ON cc.user_id = u.id
-      ORDER BY u.trust_score DESC, u.contribution_score DESC, u.created_at ASC
+      ORDER BY u.contribution_score DESC, u.trust_score DESC, u.created_at ASC
       LIMIT ${limit}
       OFFSET ${offset};
     `;

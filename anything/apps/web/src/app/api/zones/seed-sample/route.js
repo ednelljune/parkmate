@@ -1,7 +1,10 @@
 import sql from '@/app/api/utils/sql';
+import { ensureParkingZonesSchema } from '@/app/api/utils/parking-zones-schema';
 
 export async function POST() {
   try {
+    await ensureParkingZonesSchema();
+
     const sampleZones = [
       {
         name: 'Collins St (Spring-Elizabeth)',
@@ -59,20 +62,30 @@ export async function POST() {
           zone_type,
           boundary,
           capacity_spaces,
-          rules_description
+          rules_description,
+          source_registry_key,
+          source_owner,
+          source_dataset
         )
         VALUES (
           ${zone.name},
           ${zone.zone_type},
           ST_GeomFromGeoJSON(${JSON.stringify(polygon)}),
           ${zone.capacity_spaces ?? null},
-          ${zone.rules}
+          ${zone.rules},
+          ${`sample-zone::${zone.name}::${zone.zone_type}`},
+          ${'ParkMate Sample Data'},
+          ${'Sample Melbourne CBD Zones'}
         )
-        ON CONFLICT (name, zone_type) DO UPDATE
+        ON CONFLICT (source_registry_key) DO UPDATE
         SET
+          name = EXCLUDED.name,
+          zone_type = EXCLUDED.zone_type,
           boundary = EXCLUDED.boundary,
           capacity_spaces = EXCLUDED.capacity_spaces,
-          rules_description = EXCLUDED.rules_description
+          rules_description = EXCLUDED.rules_description,
+          source_owner = EXCLUDED.source_owner,
+          source_dataset = EXCLUDED.source_dataset
       `;
 
       importedCount++;

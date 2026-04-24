@@ -4,7 +4,7 @@ import { Stack } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
-const TERMS_OF_SERVICE_URL = "https://getparkmate.app/terms-of-service";
+const TERMS_OF_SERVICE_URL = "https://getparkmate.app/terms-and-conditions.html";
 
 export default function TermsOfServiceScreen() {
   const handleOpenInBrowser = useCallback(() => {

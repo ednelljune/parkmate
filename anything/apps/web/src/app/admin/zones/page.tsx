@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { Badge, Button, Card, Heading, Text } from '@/components/ui';
 import { fetchAdminJson } from '@/utils/admin-api';
+import { useSupabaseAuth } from '@/utils/supabase-auth';
 
 type ZoneRecord = {
   id: number;
@@ -45,14 +46,25 @@ function formatDate(value: string | null | undefined) {
 }
 
 export default function ZonesPage() {
+  const { session, isLoading: isAuthLoading } = useSupabaseAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [zoneTypeFilter, setZoneTypeFilter] = useState('All');
   const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [response, setResponse] = useState<ZonesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     const timeoutId = window.setTimeout(async () => {
       setLoading(true);
       setError(null);
@@ -60,6 +72,8 @@ export default function ZonesPage() {
       try {
         const result = await fetchAdminJson<ZonesResponse>(
           `/api/admin/zones?search=${encodeURIComponent(searchTerm)}&zoneType=${encodeURIComponent(zoneTypeFilter)}&page=${page}&limit=25`,
+          {},
+          session?.access_token,
         );
         setResponse(result);
       } catch (requestError) {
@@ -72,7 +86,7 @@ export default function ZonesPage() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [page, searchTerm, zoneTypeFilter]);
+  }, [isAuthLoading, page, refreshKey, searchTerm, session, zoneTypeFilter]);
 
   const zoneTypes = useMemo(
     () => ['All', ...(response?.zoneTypes?.map((item) => item.zone_type).filter(Boolean) ?? [])],
@@ -93,8 +107,13 @@ export default function ZonesPage() {
             </Text>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => setPage(1)}>
-              <RefreshCw className="mr-2 h-4 w-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRefreshKey((current) => current + 1)}
+              disabled={isAuthLoading || !session}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Link to="/admin/zones/suggestions">

@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
+import Slider from "@react-native-community/slider";
 import {
   BellRing,
   Clock3,
@@ -34,6 +35,8 @@ import useUser from "@/utils/auth/useUser";
 import { BRAND_PALETTE } from "@/theme/brandColors";
 
 const TIMER_STORAGE_KEY = "parkingTimers";
+const MANUAL_HOUR_MIN = 1;
+const MANUAL_HOUR_MAX = 12;
 
 const ZONE_DURATIONS = {
   "1P": 60,
@@ -41,42 +44,21 @@ const ZONE_DURATIONS = {
   "3P": 180,
 };
 
-const ZONE_ORDER = ["1P", "2P", "3P"];
-const TIMER_KIND_ORDER = ["manual", "claimed"];
-
 const ZONE_META = {
   "1P": {
     title: "Quick Stop",
-    subtitle: "Fast errands and pickups",
     accent: "#0EA5E9",
     soft: "#DBF0FF",
   },
   "2P": {
     title: "City Cruise",
-    subtitle: "Balanced for shopping runs",
     accent: "#10B981",
     soft: "#DDF8EC",
   },
   "3P": {
     title: "Long Stay",
-    subtitle: "Best for deep sessions downtown",
     accent: "#F59E0B",
     soft: "#FFF1CF",
-  },
-};
-
-const TIMER_KIND_META = {
-  manual: {
-    label: "Manual Timer",
-    eyebrow: "Your own session",
-    badge: "Manual",
-    description: "Pick a zone limit and run your own parking countdown any time.",
-  },
-  claimed: {
-    label: "Claimed Spot Timer",
-    eyebrow: "Auto-start ready",
-    badge: "Claimed",
-    description: "Starts from a claimed parking spot and stays separate from your manual timer.",
   },
 };
 
@@ -89,11 +71,7 @@ const formatTime = (seconds) => {
   const minutes = Math.floor((safeSeconds % 3600) / 60);
   const secs = safeSeconds % 60;
 
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
-
-  return `${minutes}:${secs.toString().padStart(2, "0")}`;
+  return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
 const formatShortDuration = (minutes) => {
@@ -107,26 +85,37 @@ const getPreferredZone = (claims) => {
   return "1P";
 };
 
-const createDefaultTimerSession = (zone = "1P", overrides = {}) => ({
-  zone,
-  remaining: ZONE_DURATIONS[zone] * 60,
+const getZoneDurationSeconds = (zone) =>
+  (ZONE_DURATIONS[zone] || ZONE_DURATIONS["1P"]) * 60;
+
+const clampManualHours = (value) =>
+  Math.max(MANUAL_HOUR_MIN, Math.min(MANUAL_HOUR_MAX, Math.round(Number(value) || MANUAL_HOUR_MIN)));
+
+const manualHoursToSeconds = (hours) => clampManualHours(hours) * 3600;
+
+const createManualSession = (overrides = {}) => ({
+  selectedHours: 1,
+  durationSeconds: 3600,
+  remaining: 3600,
   running: false,
   endsAt: null,
   hasReminder: false,
-  hasManualZoneChoice: false,
   notificationIds: [],
+  hasManualChoice: false,
   ...overrides,
 });
 
-const isLegacyTimerState = (value) =>
-  value &&
-  typeof value === "object" &&
-  ("zone" in value || "remaining" in value || "running" in value);
-
-const getSessionTotalDuration = (session) => {
-  const zone = session?.zone && ZONE_DURATIONS[session.zone] ? session.zone : "1P";
-  return ZONE_DURATIONS[zone] * 60;
-};
+const createClaimedSession = (overrides = {}) => ({
+  zone: "1P",
+  durationSeconds: getZoneDurationSeconds("1P"),
+  remaining: getZoneDurationSeconds("1P"),
+  running: false,
+  endsAt: null,
+  hasReminder: false,
+  notificationIds: [],
+  isSeeded: false,
+  ...overrides,
+});
 
 const getSessionRemaining = (session) => {
   const parsedRemaining = Number(session?.remaining);
@@ -134,15 +123,30 @@ const getSessionRemaining = (session) => {
     return Math.max(0, parsedRemaining);
   }
 
-  return getSessionTotalDuration(session);
+  const parsedDuration = Number(session?.durationSeconds);
+  if (Number.isFinite(parsedDuration)) {
+    return Math.max(0, parsedDuration);
+  }
+
+  return 0;
 };
 
-const getSessionHasStarted = (session) => {
-  const totalDuration = getSessionTotalDuration(session);
-  return Boolean(session?.running) || getSessionRemaining(session) < totalDuration;
+const getSessionDuration = (session) => {
+  const parsedDuration = Number(session?.durationSeconds);
+  if (Number.isFinite(parsedDuration)) {
+    return Math.max(0, parsedDuration);
+  }
+
+  return getSessionRemaining(session);
 };
 
-const getSessionStatusLabel = (session, kind) => {
+const getSessionProgress = (session) => {
+  const duration = Math.max(1, getSessionDuration(session));
+  const remaining = getSessionRemaining(session);
+  return Math.min(1, Math.max(0, 1 - remaining / duration));
+};
+
+const getSessionStatusLabel = (session) => {
   const remaining = getSessionRemaining(session);
   const isWarning = remaining <= REMINDER_WARNING_SECONDS && remaining > 0;
 
@@ -151,14 +155,14 @@ const getSessionStatusLabel = (session, kind) => {
   }
 
   if (session?.running) {
-    return isWarning ? "Move soon" : "Live session";
+    return isWarning ? "Move soon" : "Running";
   }
 
-  if (getSessionHasStarted(session)) {
+  if (remaining < getSessionDuration(session)) {
     return "Paused";
   }
 
-  return kind === "claimed" ? "Waiting for claim" : "Ready";
+  return "Ready";
 };
 
 const getSessionStatusAccent = (session) => {
@@ -175,38 +179,6 @@ const getSessionStatusAccent = (session) => {
 
   return session?.running ? BRAND_PALETTE.success : BRAND_PALETTE.accentBold;
 };
-
-function ZoneCard({ zone, selected, disabled, onPress }) {
-  const meta = ZONE_META[zone];
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() => onPress(zone)}
-      style={({ pressed }) => [
-        styles.zoneCard,
-        selected && styles.zoneCardSelected,
-        disabled && styles.zoneCardDisabled,
-        { opacity: pressed ? 0.96 : 1 },
-      ]}
-    >
-      <View
-        style={[
-          styles.zoneCardAccent,
-          { backgroundColor: selected ? meta.accent : meta.soft },
-        ]}
-      />
-      <Text style={[styles.zoneCardZone, selected && styles.zoneCardZoneSelected]}>
-        {zone}
-      </Text>
-      <Text style={styles.zoneCardTitle}>{meta.title}</Text>
-      <Text style={styles.zoneCardSubtitle}>{meta.subtitle}</Text>
-      <Text style={[styles.zoneCardDuration, { color: meta.accent }]}>
-        {formatShortDuration(ZONE_DURATIONS[zone])}
-      </Text>
-    </Pressable>
-  );
-}
 
 function StatTile({ label, value, accent, tone = "light" }) {
   return (
@@ -227,54 +199,98 @@ function StatTile({ label, value, accent, tone = "light" }) {
   );
 }
 
-function TimerModeCard({
-  kind,
-  active,
-  session,
-  onPress,
+function SessionCard({
+  title,
+  subtitle,
+  statusLabel,
+  statusAccent,
+  timerText,
+  progress,
+  progressAccent,
+  hintLabel,
+  badgeLabel,
+  onPrimary,
+  primaryLabel,
+  primaryDisabled = false,
+  onSecondary,
+  secondaryLabel,
 }) {
-  const meta = TIMER_KIND_META[kind];
-  const zone = session?.zone || "1P";
-  const zoneMeta = ZONE_META[zone] || ZONE_META["1P"];
-  const statusLabel = getSessionStatusLabel(session, kind);
-  const remaining = getSessionRemaining(session);
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() => onPress(kind)}
-      style={({ pressed }) => [
-        styles.modeCard,
-        active && styles.modeCardActive,
-        { opacity: pressed ? 0.96 : 1 },
-      ]}
+    <LinearGradient
+      colors={["#FFFFFF", "#F4FAFF"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.sessionCard}
     >
-      <View style={styles.modeCardTopRow}>
-        <Text style={styles.modeCardEyebrow}>{meta.eyebrow}</Text>
-        <View
-          style={[
-            styles.modeBadge,
-            { backgroundColor: active ? zoneMeta.accent : zoneMeta.soft },
-          ]}
-        >
-          <Text
-            style={[
-              styles.modeBadgeText,
-              { color: active ? "#FFFFFF" : zoneMeta.accent },
-            ]}
-          >
-            {meta.badge}
-          </Text>
+      <View style={styles.sessionCardHeader}>
+        <View>
+          <Text style={styles.sessionCardTitle}>{title}</Text>
+          <Text style={styles.sessionCardSubtitle}>{subtitle}</Text>
+        </View>
+        <View style={styles.sessionCardHeaderRight}>
+          <Text style={[styles.sessionCardStatus, { color: statusAccent }]}>{statusLabel}</Text>
+          {badgeLabel ? <Text style={styles.sessionCardBadge}>{badgeLabel}</Text> : null}
         </View>
       </View>
-      <Text style={styles.modeCardTitle}>{meta.label}</Text>
-      <Text style={styles.modeCardDescription}>{meta.description}</Text>
-      <View style={styles.modeCardMetaRow}>
-        <Text style={styles.modeCardMeta}>{zone}</Text>
-        <Text style={styles.modeCardMeta}>{statusLabel}</Text>
-        <Text style={styles.modeCardMeta}>{formatTime(remaining)}</Text>
+
+      <View style={styles.sessionCardTimerWrap}>
+        <Clock3 size={30} color={progressAccent} />
+        <Text style={styles.sessionCardTimerValue}>{timerText}</Text>
       </View>
-    </Pressable>
+
+      <View style={styles.progressTrack}>
+        <LinearGradient
+          colors={[progressAccent, BRAND_PALETTE.accentBold]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[
+            styles.progressFill,
+            { width: `${Math.max(progress * 100, 6)}%` },
+          ]}
+        />
+      </View>
+
+      <Text style={styles.sessionCardHint}>{hintLabel}</Text>
+
+      <View style={styles.sessionCardActions}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={primaryDisabled ? undefined : onPrimary}
+          disabled={primaryDisabled}
+          style={({ pressed }) => [
+            styles.primaryActionWrap,
+            primaryDisabled && styles.primaryActionDisabledWrap,
+            { opacity: pressed ? 0.95 : 1 },
+          ]}
+        >
+          <LinearGradient
+            colors={
+              primaryDisabled
+                ? ["#94A3B8", "#64748B"]
+                : ["#10B981", "#0F9F6E"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.primaryAction}
+          >
+            <Play size={20} color="#FFFFFF" />
+            <Text style={styles.primaryActionText}>{primaryLabel}</Text>
+          </LinearGradient>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={onSecondary}
+          style={({ pressed }) => [
+            styles.secondaryAction,
+            { opacity: pressed ? 0.94 : 1 },
+          ]}
+        >
+          <RotateCcw size={18} color={BRAND_PALETTE.muted} />
+          <Text style={styles.secondaryActionText}>{secondaryLabel}</Text>
+        </Pressable>
+      </View>
+    </LinearGradient>
   );
 }
 
@@ -289,10 +305,9 @@ export default function TimerScreen() {
   const { data: user } = useUser();
   const userId = user?.id;
 
-  const [activeTimerKind, setActiveTimerKind] = useState("manual");
   const [timerSessions, setTimerSessions] = useState({
-    manual: createDefaultTimerSession("1P"),
-    claimed: createDefaultTimerSession("1P"),
+    manual: createManualSession(),
+    claimed: createClaimedSession(),
   });
 
   const { data: profileData } = useQuery({
@@ -313,31 +328,53 @@ export default function TimerScreen() {
   const timerNotificationsUnsupported =
     notificationsUnsupportedInCurrentRuntime || (isExpoGo && Platform.OS === "ios");
 
-  const activeSession = timerSessions[activeTimerKind];
-  const selectedZone = activeSession.zone;
-  const timeRemaining = getSessionRemaining(activeSession);
-  const isRunning = activeSession.running;
-  const zoneMeta = ZONE_META[selectedZone] || ZONE_META["1P"];
-  const totalDurationSeconds = getSessionTotalDuration(activeSession);
-  const progress = Math.min(
-    1,
-    Math.max(0, 1 - timeRemaining / Math.max(totalDurationSeconds, 1)),
-  );
-  const percentRemaining = Math.round((timeRemaining / Math.max(totalDurationSeconds, 1)) * 100);
-  const isWarning = timeRemaining <= REMINDER_WARNING_SECONDS && timeRemaining > 0;
-  const statusLabel = getSessionStatusLabel(activeSession, activeTimerKind);
-  const statusAccent = getSessionStatusAccent(activeSession);
-  const reminderLabel = timerNotificationsUnsupported
+  const manualSession = timerSessions.manual;
+  const claimedSession = timerSessions.claimed;
+  const claimedSessionVisible =
+    Boolean(claimedSession?.isSeeded) && getSessionRemaining(claimedSession) > 0;
+
+  const manualSelectedSeconds = manualHoursToSeconds(manualSession.selectedHours);
+  const manualPaused =
+    !manualSession.running &&
+    getSessionRemaining(manualSession) > 0 &&
+    getSessionRemaining(manualSession) < getSessionDuration(manualSession);
+  const manualDisplaySeconds =
+    manualSession.running || manualPaused
+      ? getSessionRemaining(manualSession)
+      : manualSelectedSeconds;
+  const manualProgress = getSessionProgress({
+    ...manualSession,
+    durationSeconds: Math.max(manualSelectedSeconds, getSessionDuration(manualSession), 1),
+    remaining: manualDisplaySeconds,
+  });
+  const manualStatusLabel = getSessionStatusLabel({
+    ...manualSession,
+    durationSeconds: Math.max(manualSelectedSeconds, getSessionDuration(manualSession), 1),
+    remaining: manualDisplaySeconds,
+  });
+  const manualStatusAccent = getSessionStatusAccent({
+    ...manualSession,
+    durationSeconds: Math.max(manualSelectedSeconds, getSessionDuration(manualSession), 1),
+    remaining: manualDisplaySeconds,
+  });
+  const manualReminderLabel = timerNotificationsUnsupported
     ? "Dev build required"
-    : activeSession.hasReminder
+    : manualSession.hasReminder
       ? "30/15/0 reminders ready"
-      : activeSession.running
+      : manualSession.running
         ? "Checking reminder"
         : "Reminder idle";
-  const sessionHasStarted = getSessionHasStarted(activeSession);
-  const canStartActiveSession =
-    activeTimerKind === "manual" || activeSession.hasManualZoneChoice || sessionHasStarted;
-  const heroActiveLabel = TIMER_KIND_META[activeTimerKind].label;
+
+  const claimedMeta = ZONE_META[claimedSession.zone] || ZONE_META["1P"];
+  const claimedStatusLabel = getSessionStatusLabel(claimedSession);
+  const claimedStatusAccent = getSessionStatusAccent(claimedSession);
+  const claimedReminderLabel = timerNotificationsUnsupported
+    ? "Dev build required"
+    : claimedSession.hasReminder
+      ? "30/15/0 reminders ready"
+      : claimedSession.running
+        ? "Checking reminder"
+        : "Reminder idle";
 
   useEffect(() => {
     if (!hasHydratedTimerRef.current) {
@@ -354,30 +391,24 @@ export default function TimerScreen() {
       return;
     }
 
-    const manualSession = timerSessions.manual;
-    if (
-      manualSession.hasManualZoneChoice ||
-      manualSession.running ||
-      getSessionHasStarted(manualSession)
-    ) {
+    if (manualSession.hasManualChoice || manualSession.running || getSessionRemaining(manualSession) > 0) {
       return;
     }
 
-    if (!preferredZone || preferredZone === manualSession.zone) {
-      return;
-    }
+    const nextDuration = getZoneDurationSeconds(preferredZone);
 
     setTimerSessions((current) => ({
       ...current,
       manual: {
         ...current.manual,
-        zone: preferredZone,
-        remaining: ZONE_DURATIONS[preferredZone] * 60,
+        selectedHours: clampManualHours(nextDuration / 3600),
+        durationSeconds: nextDuration,
+        remaining: nextDuration,
       },
     }));
-  }, [preferredZone, timerSessions.manual]);
+  }, [manualSession, preferredZone]);
 
-  const cancelTimerNotifications = useCallback(async (notificationIds = []) => {
+  const cancelSessionNotifications = useCallback(async (notificationIds = []) => {
     const Notifications = await getNotificationsModule();
     if (!Notifications || !Array.isArray(notificationIds) || notificationIds.length === 0) {
       return;
@@ -390,8 +421,8 @@ export default function TimerScreen() {
     );
   }, []);
 
-  const scheduleTimerNotifications = useCallback(
-    async (kind, durationSeconds, zone) => {
+  const scheduleSessionNotifications = useCallback(
+    async ({ titlePrefix, durationSeconds, bodyLabel }) => {
       if (timerNotificationsUnsupported) {
         return [];
       }
@@ -403,16 +434,12 @@ export default function TimerScreen() {
 
       try {
         await ensureAlertsNotificationChannel();
-
-        const kindLabel =
-          kind === "manual" ? "Manual parking timer" : "Claimed spot timer";
-        const zoneLabel = zone || "parking";
         const notificationIds = [];
 
         const startNotificationId = await Notifications.scheduleNotificationAsync({
           content: {
-            title: `${kindLabel} started`,
-            body: `${zoneLabel} is running. You'll get alerts at 30 minutes left, 15 minutes left, and when it expires.`,
+            title: `${titlePrefix} started`,
+            body: `${bodyLabel} is running. You'll get alerts at 30 minutes left, 15 minutes left, and when it expires.`,
             sound: true,
           },
           trigger: null,
@@ -426,15 +453,14 @@ export default function TimerScreen() {
 
         for (const reminderMinutes of REMINDER_MINUTES) {
           const secondsUntilReminder = durationSeconds - reminderMinutes * 60;
-
           if (secondsUntilReminder <= 0) {
             continue;
           }
 
           const reminderId = await Notifications.scheduleNotificationAsync({
             content: {
-              title: `${kindLabel} warning`,
-              body: `${zoneLabel} expires in ${reminderMinutes} minutes.`,
+              title: `${titlePrefix} warning`,
+              body: `${bodyLabel} expires in ${reminderMinutes} minutes.`,
               sound: true,
             },
             trigger: {
@@ -448,8 +474,8 @@ export default function TimerScreen() {
 
         const expiryId = await Notifications.scheduleNotificationAsync({
           content: {
-            title: `${kindLabel} expired`,
-            body: `${zoneLabel} has expired. Move your vehicle to avoid a fine.`,
+            title: `${titlePrefix} expired`,
+            body: `${bodyLabel} has expired. Move your vehicle to avoid a fine.`,
             sound: true,
           },
           trigger: {
@@ -457,8 +483,8 @@ export default function TimerScreen() {
             seconds: durationSeconds,
           },
         });
-        notificationIds.push(expiryId);
 
+        notificationIds.push(expiryId);
         return notificationIds;
       } catch (error) {
         console.error("Error scheduling timer notifications:", error);
@@ -468,33 +494,36 @@ export default function TimerScreen() {
     [timerNotificationsUnsupported],
   );
 
-  const handleTimerExpired = useCallback(
-    async (kind, expiredSession) => {
-      await cancelTimerNotifications(expiredSession?.notificationIds || []);
-
-      const timerLabel =
-        kind === "manual" ? "Manual timer" : "Claimed spot timer";
-
-      Alert.alert(
-        "Time's up",
-        `${timerLabel} has expired. Move your vehicle to avoid a fine.`,
-      );
-    },
-    [cancelTimerNotifications],
-  );
-
   const loadTimerState = useCallback(async () => {
     try {
       const saved = await AsyncStorage.getItem(TIMER_STORAGE_KEY);
       const legacySaved = !saved ? await AsyncStorage.getItem("parkingTimer") : null;
       const now = Date.now();
 
-      const normalizeSession = (session, fallbackZone = "1P") => {
-        const safeZone = ZONE_DURATIONS[session?.zone] ? session.zone : fallbackZone;
-        const defaultRemaining = ZONE_DURATIONS[safeZone] * 60;
-        const notificationIds = Array.isArray(session?.notificationIds)
-          ? session.notificationIds.filter(Boolean)
-          : [];
+      const normalizeManualSession = (session) => {
+        const storedDuration = Number.isFinite(Number(session?.durationSeconds))
+          ? Math.max(0, Number(session.durationSeconds))
+          : Number.isFinite(Number(session?.remaining))
+            ? Math.max(0, Number(session.remaining))
+            : session?.zone
+              ? getZoneDurationSeconds(session.zone)
+              : 0;
+        const fallbackHours =
+          Number.isFinite(Number(session?.pickerHours)) &&
+          Number(session?.pickerHours) > 0
+            ? Number(session.pickerHours)
+            : storedDuration > 0
+              ? storedDuration / 3600
+              : MANUAL_HOUR_MIN;
+        const selectedHours = clampManualHours(
+          Number.isFinite(Number(session?.selectedHours))
+            ? Number(session.selectedHours)
+            : fallbackHours,
+        );
+        const durationSeconds = storedDuration > 0 ? storedDuration : manualHoursToSeconds(selectedHours);
+        const pausedRemaining = Number.isFinite(Number(session?.remaining))
+          ? Math.max(0, Math.min(durationSeconds, Number(session.remaining)))
+          : durationSeconds;
 
         if (session?.running && Number.isFinite(Number(session?.endsAt))) {
           const adjustedRemaining = Math.max(
@@ -502,61 +531,87 @@ export default function TimerScreen() {
             Math.ceil((Number(session.endsAt) - now) / 1000),
           );
 
-          if (adjustedRemaining > 0) {
-            return createDefaultTimerSession(safeZone, {
-              zone: safeZone,
-              remaining: adjustedRemaining,
-              running: true,
-              endsAt: Number(session.endsAt),
-              hasReminder: !timerNotificationsUnsupported && notificationIds.length > 0,
-              hasManualZoneChoice: Boolean(session?.hasManualZoneChoice),
-              notificationIds,
-            });
-          }
+          return createManualSession({
+            selectedHours,
+            durationSeconds: durationSeconds || adjustedRemaining,
+            remaining: adjustedRemaining,
+            running: adjustedRemaining > 0,
+            endsAt: adjustedRemaining > 0 ? Number(session.endsAt) : null,
+            hasReminder: Boolean(session?.hasReminder),
+            notificationIds: Array.isArray(session?.notificationIds) ? session.notificationIds : [],
+            hasManualChoice: Boolean(session?.hasManualChoice || durationSeconds > 0),
+          });
         }
 
-        return createDefaultTimerSession(safeZone, {
-          zone: safeZone,
-          remaining: Number.isFinite(Number(session?.remaining))
-            ? Math.max(0, Number(session.remaining))
-            : defaultRemaining,
+        return createManualSession({
+          selectedHours,
+          durationSeconds,
+          remaining: pausedRemaining,
           running: false,
           endsAt: null,
           hasReminder: false,
-          hasManualZoneChoice: Boolean(session?.hasManualZoneChoice),
           notificationIds: [],
+          hasManualChoice: Boolean(session?.hasManualChoice || durationSeconds > 0),
         });
       };
 
+      const normalizeClaimedSession = (session) => {
+        const safeZone = session?.zone && ZONE_DURATIONS[session.zone] ? session.zone : "1P";
+        const durationSeconds = Number.isFinite(Number(session?.durationSeconds))
+          ? Math.max(0, Number(session.durationSeconds))
+          : getZoneDurationSeconds(safeZone);
+
+        if (session?.running && Number.isFinite(Number(session?.endsAt))) {
+          const adjustedRemaining = Math.max(
+            0,
+            Math.ceil((Number(session.endsAt) - now) / 1000),
+          );
+
+          return createClaimedSession({
+            zone: safeZone,
+            durationSeconds,
+            remaining: adjustedRemaining,
+            running: adjustedRemaining > 0,
+            endsAt: adjustedRemaining > 0 ? Number(session.endsAt) : null,
+            hasReminder: Boolean(session?.hasReminder),
+            notificationIds: Array.isArray(session?.notificationIds) ? session.notificationIds : [],
+            isSeeded: Boolean(session?.isSeeded || adjustedRemaining > 0),
+          });
+        }
+
+        if (Boolean(session?.isSeeded) && Number.isFinite(Number(session?.remaining))) {
+          return createClaimedSession({
+            zone: safeZone,
+            durationSeconds,
+            remaining: Math.max(0, Number(session.remaining)),
+            running: false,
+            endsAt: null,
+            hasReminder: false,
+            notificationIds: [],
+            isSeeded: Number(session.remaining) > 0,
+          });
+        }
+
+        return createClaimedSession();
+      };
+
       let nextSessions = {
-        manual: createDefaultTimerSession("1P"),
-        claimed: createDefaultTimerSession("1P"),
+        manual: createManualSession(),
+        claimed: createClaimedSession(),
       };
 
       if (saved) {
         const parsed = JSON.parse(saved);
         nextSessions = {
-          manual: normalizeSession(parsed?.manual, "1P"),
-          claimed: normalizeSession(parsed?.claimed, "1P"),
+          manual: normalizeManualSession(parsed?.manual || {}),
+          claimed: normalizeClaimedSession(parsed?.claimed || {}),
         };
       } else if (legacySaved) {
         const parsedLegacy = JSON.parse(legacySaved);
-        if (isLegacyTimerState(parsedLegacy)) {
+        if (parsedLegacy && typeof parsedLegacy === "object") {
           nextSessions = {
-            manual: normalizeSession(
-              {
-                zone: parsedLegacy.zone,
-                remaining: parsedLegacy.remaining,
-                running: parsedLegacy.running,
-                endsAt:
-                  parsedLegacy.running && Number(parsedLegacy.start)
-                    ? Number(parsedLegacy.start) + (Number(parsedLegacy.remaining) || 0) * 1000
-                    : null,
-                hasManualZoneChoice: true,
-              },
-              "1P",
-            ),
-            claimed: createDefaultTimerSession("1P"),
+            manual: normalizeManualSession(parsedLegacy),
+            claimed: createClaimedSession(),
           };
         }
       }
@@ -567,7 +622,7 @@ export default function TimerScreen() {
     } finally {
       hasHydratedTimerRef.current = true;
     }
-  }, [timerNotificationsUnsupported]);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -580,25 +635,21 @@ export default function TimerScreen() {
         }),
       });
 
-      if (timerNotificationsUnsupported) {
-        return;
+      if (!timerNotificationsUnsupported) {
+        const Notifications = await getNotificationsModule();
+        if (Notifications) {
+          const { status } = await Notifications.requestPermissionsAsync();
+          if (status !== "granted") {
+            Alert.alert(
+              "Notification Permission",
+              "Please enable notifications to receive parking timer alerts.",
+            );
+          }
+        }
       }
 
-      const Notifications = await getNotificationsModule();
-      if (!Notifications) {
-        return;
-      }
-
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Notification Permission",
-          "Please enable notifications to receive parking timer alerts.",
-        );
-      }
+      loadTimerState();
     })();
-
-    loadTimerState();
 
     return () => {
       if (autoStartTimeoutRef.current) {
@@ -615,33 +666,35 @@ export default function TimerScreen() {
 
     const zoneType = params.zoneType;
     const autoStartKey = `${params.autoStart}:${zoneType}`;
-
     if (lastHandledAutoStartKeyRef.current === autoStartKey) {
       return;
     }
 
     lastHandledAutoStartKeyRef.current = autoStartKey;
-    setActiveTimerKind("claimed");
 
     autoStartTimeoutRef.current = setTimeout(async () => {
-      const existingClaimedSession = timerSessions.claimed;
-      await cancelTimerNotifications(existingClaimedSession?.notificationIds || []);
+      await cancelSessionNotifications(claimedSession.notificationIds || []);
 
-      const duration = ZONE_DURATIONS[zoneType] * 60;
-      const endsAt = Date.now() + duration * 1000;
-      const notificationIds = await scheduleTimerNotifications("claimed", duration, zoneType);
+      const durationSeconds = getZoneDurationSeconds(zoneType);
+      const endsAt = Date.now() + durationSeconds * 1000;
+      const notificationIds = await scheduleSessionNotifications({
+        titlePrefix: "Claimed spot timer",
+        durationSeconds,
+        bodyLabel: zoneType,
+      });
 
       setTimerSessions((current) => ({
         ...current,
-        claimed: {
+        claimed: createClaimedSession({
           zone: zoneType,
-          remaining: duration,
+          durationSeconds,
+          remaining: durationSeconds,
           running: true,
           endsAt,
           hasReminder: notificationIds.length > 0,
-          hasManualZoneChoice: true,
           notificationIds,
-        },
+          isSeeded: true,
+        }),
       }));
     }, 450);
 
@@ -651,11 +704,11 @@ export default function TimerScreen() {
       }
     };
   }, [
-    cancelTimerNotifications,
+    cancelSessionNotifications,
+    claimedSession.notificationIds,
     params.autoStart,
     params.zoneType,
-    scheduleTimerNotifications,
-    timerSessions.claimed,
+    scheduleSessionNotifications,
   ]);
 
   useEffect(() => {
@@ -664,160 +717,195 @@ export default function TimerScreen() {
       const expiredSessions = [];
 
       setTimerSessions((current) => {
-        let didChange = false;
+        let changed = false;
         const next = { ...current };
 
-        for (const kind of TIMER_KIND_ORDER) {
-          const session = current[kind];
+        for (const key of ["manual", "claimed"]) {
+          const session = current[key];
           if (!session.running || !Number.isFinite(Number(session.endsAt))) {
             continue;
           }
 
-          const nextRemaining = Math.max(
-            0,
-            Math.ceil((Number(session.endsAt) - now) / 1000),
-          );
-
+          const nextRemaining = Math.max(0, Math.ceil((Number(session.endsAt) - now) / 1000));
           if (nextRemaining <= 0) {
-            expiredSessions.push({ kind, session });
-            next[kind] = {
+            expiredSessions.push({ key, session });
+            next[key] = {
               ...session,
               remaining: 0,
               running: false,
               endsAt: null,
               hasReminder: false,
               notificationIds: [],
+              ...(key === "claimed" ? { isSeeded: false } : {}),
             };
-            didChange = true;
+            changed = true;
             continue;
           }
 
           if (nextRemaining !== session.remaining) {
-            next[kind] = {
+            next[key] = {
               ...session,
               remaining: nextRemaining,
             };
-            didChange = true;
+            changed = true;
           }
         }
 
-        return didChange ? next : current;
+        return changed ? next : current;
       });
 
-      if (expiredSessions.length > 0) {
-        expiredSessions.forEach(({ kind, session }) => {
-          handleTimerExpired(kind, session);
-        });
-      }
+      expiredSessions.forEach(({ key, session }) => {
+        cancelSessionNotifications(session.notificationIds || []).catch(() => null);
+        Alert.alert(
+          "Time's up",
+          key === "manual"
+            ? "Your manual timer has expired."
+            : "Your claimed spot timer has expired.",
+        );
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [handleTimerExpired]);
+  }, [cancelSessionNotifications]);
 
-  const handleReset = useCallback(async () => {
-    const sessionToReset = timerSessions[activeTimerKind];
-    await cancelTimerNotifications(sessionToReset.notificationIds || []);
+  const handleManualHoursChange = useCallback((value) => {
+    const nextHours = clampManualHours(value);
+    const nextDuration = manualHoursToSeconds(nextHours);
+
+    setTimerSessions((current) => {
+      const nextManual = createManualSession({
+        ...current.manual,
+        selectedHours: nextHours,
+        durationSeconds: nextDuration,
+        remaining: nextDuration,
+        running: false,
+        endsAt: null,
+        hasReminder: false,
+        notificationIds: [],
+        hasManualChoice: true,
+      });
+
+      return {
+        ...current,
+        manual: nextManual,
+      };
+    });
+  }, []);
+
+  const handleStartManual = useCallback(async () => {
+    const configuredDuration = manualHoursToSeconds(timerSessions.manual.selectedHours);
+    const pausedRemaining = getSessionRemaining(timerSessions.manual);
+    const baseDuration = Math.max(getSessionDuration(timerSessions.manual), configuredDuration);
+    const shouldResume =
+      !timerSessions.manual.running &&
+      pausedRemaining > 0 &&
+      pausedRemaining < baseDuration;
+    const countdownSeconds = shouldResume ? pausedRemaining : configuredDuration;
+
+    await cancelSessionNotifications(timerSessions.manual.notificationIds || []);
+    const endsAt = Date.now() + countdownSeconds * 1000;
+    const notificationIds = await scheduleSessionNotifications({
+      titlePrefix: "Manual timer",
+      durationSeconds: countdownSeconds,
+      bodyLabel: "Your manual timer",
+    });
 
     setTimerSessions((current) => ({
       ...current,
-      [activeTimerKind]: {
-        ...createDefaultTimerSession(current[activeTimerKind].zone),
-        zone: current[activeTimerKind].zone,
-        hasManualZoneChoice: current[activeTimerKind].hasManualZoneChoice,
-      },
-    }));
-  }, [activeTimerKind, cancelTimerNotifications, timerSessions]);
-
-  const handleStart = useCallback(async () => {
-    const currentSession = timerSessions[activeTimerKind];
-    await cancelTimerNotifications(currentSession.notificationIds || []);
-
-    const endsAt = Date.now() + currentSession.remaining * 1000;
-    const notificationIds = await scheduleTimerNotifications(
-      activeTimerKind,
-      currentSession.remaining,
-      currentSession.zone,
-    );
-
-    setTimerSessions((current) => ({
-      ...current,
-      [activeTimerKind]: {
-        ...current[activeTimerKind],
+      manual: {
+        ...current.manual,
+        durationSeconds: shouldResume ? baseDuration : configuredDuration,
+        remaining: countdownSeconds,
         running: true,
         endsAt,
         hasReminder: notificationIds.length > 0,
         notificationIds,
       },
     }));
+  }, [cancelSessionNotifications, scheduleSessionNotifications, timerSessions.manual]);
 
-    if (notificationIds.length === 0 && timerNotificationsUnsupported) {
-      Alert.alert(
-        "Timer Started",
-        "The parking timer is running, but reminder notifications are unavailable in Expo Go. Use a development build to test alerts.",
-      );
-    }
-  }, [
-    activeTimerKind,
-    cancelTimerNotifications,
-    scheduleTimerNotifications,
-    timerNotificationsUnsupported,
-    timerSessions,
-  ]);
-
-  const handlePause = useCallback(async () => {
-    const currentSession = timerSessions[activeTimerKind];
-    await cancelTimerNotifications(currentSession.notificationIds || []);
+  const handlePauseManual = useCallback(async () => {
+    await cancelSessionNotifications(timerSessions.manual.notificationIds || []);
+    const remaining = getSessionRemaining(timerSessions.manual);
 
     setTimerSessions((current) => ({
       ...current,
-      [activeTimerKind]: {
-        ...current[activeTimerKind],
+      manual: {
+        ...current.manual,
+        remaining,
         running: false,
         endsAt: null,
         hasReminder: false,
         notificationIds: [],
       },
     }));
-  }, [activeTimerKind, cancelTimerNotifications, timerSessions]);
+  }, [cancelSessionNotifications, timerSessions.manual]);
 
-  const handleZoneSelect = useCallback(
-    (zone) => {
-      if (activeTimerKind !== "manual") {
-        Alert.alert(
-          "Claimed timer is automatic",
-          "The claimed spot timer follows the zone type from the parking spot you claimed.",
-        );
-        return;
-      }
+  const handleResetManual = useCallback(async () => {
+    await cancelSessionNotifications(timerSessions.manual.notificationIds || []);
+    const nextDuration = manualHoursToSeconds(timerSessions.manual.selectedHours);
 
-      if (zone === selectedZone) {
-        return;
-      }
+    setTimerSessions((current) => ({
+      ...current,
+      manual: {
+        ...current.manual,
+        durationSeconds: nextDuration,
+        remaining: nextDuration,
+        running: false,
+        endsAt: null,
+        hasReminder: false,
+        notificationIds: [],
+      },
+    }));
+  }, [cancelSessionNotifications, timerSessions.manual]);
 
-      if (isRunning) {
-        Alert.alert(
-          "Timer running",
-          "Pause or reset the manual timer before switching to another parking zone.",
-        );
-        return;
-      }
+  const handlePauseClaimed = useCallback(async () => {
+    await cancelSessionNotifications(timerSessions.claimed.notificationIds || []);
+    setTimerSessions((current) => ({
+      ...current,
+      claimed: {
+        ...current.claimed,
+        running: false,
+        endsAt: null,
+        hasReminder: false,
+        notificationIds: [],
+      },
+    }));
+  }, [cancelSessionNotifications, timerSessions.claimed.notificationIds]);
 
-      setTimerSessions((current) => ({
-        ...current,
-        manual: {
-          ...current.manual,
-          zone,
-          remaining: ZONE_DURATIONS[zone] * 60,
-          running: false,
-          endsAt: null,
-          hasReminder: false,
-          hasManualZoneChoice: true,
-          notificationIds: [],
-        },
-      }));
-    },
-    [activeTimerKind, isRunning, selectedZone],
-  );
+  const handleResetClaimed = useCallback(async () => {
+    await cancelSessionNotifications(timerSessions.claimed.notificationIds || []);
+    setTimerSessions((current) => ({
+      ...current,
+      claimed: createClaimedSession(),
+    }));
+  }, [cancelSessionNotifications, timerSessions.claimed.notificationIds]);
+
+  const handleResumeClaimed = useCallback(async () => {
+    const durationSeconds = getSessionRemaining(timerSessions.claimed);
+    if (durationSeconds <= 0) {
+      return;
+    }
+
+    await cancelSessionNotifications(timerSessions.claimed.notificationIds || []);
+    const endsAt = Date.now() + durationSeconds * 1000;
+    const notificationIds = await scheduleSessionNotifications({
+      titlePrefix: "Claimed spot timer",
+      durationSeconds,
+      bodyLabel: timerSessions.claimed.zone,
+    });
+
+    setTimerSessions((current) => ({
+      ...current,
+      claimed: {
+        ...current.claimed,
+        running: true,
+        endsAt,
+        hasReminder: notificationIds.length > 0,
+        notificationIds,
+      },
+    }));
+  }, [cancelSessionNotifications, scheduleSessionNotifications, timerSessions.claimed]);
 
   return (
     <View style={styles.container}>
@@ -841,7 +929,7 @@ export default function TimerScreen() {
             <View style={styles.heroTopRow}>
               <View style={styles.heroBadge}>
                 <Sparkles size={14} color="#FFFFFF" />
-                <Text style={styles.heroBadgeText}>{heroActiveLabel}</Text>
+                <Text style={styles.heroBadgeText}>Manual timer</Text>
               </View>
 
               <Pressable
@@ -857,16 +945,16 @@ export default function TimerScreen() {
               </Pressable>
             </View>
 
-            <Text style={styles.heroTitle}>Stay ahead of the limit</Text>
+            <Text style={styles.heroTitle}>Set your countdown</Text>
             <Text style={styles.heroSubtitle}>
-              Run a manual parking timer whenever you need one, while keeping the claimed spot timer separate for auto-start sessions.
+              Set a manual parking timer with a simple hours bar. If you claim a parking spot, its timer will appear below automatically.
             </Text>
 
             <View style={styles.heroStatsRow}>
               <StatTile
                 label="Recommended"
                 value={preferredZone}
-                accent={zoneMeta.accent}
+                accent={(ZONE_META[preferredZone] || ZONE_META["1P"]).accent}
                 tone="dark"
               />
               <StatTile
@@ -876,9 +964,9 @@ export default function TimerScreen() {
                 tone="dark"
               />
               <StatTile
-                label="Active Mode"
-                value={TIMER_KIND_META[activeTimerKind].badge}
-                accent={BRAND_PALETTE.success}
+                label="Claimed"
+                value={claimedSessionVisible ? "Live" : "Idle"}
+                accent={claimedSessionVisible ? BRAND_PALETTE.success : "#94A3B8"}
                 tone="dark"
               />
             </View>
@@ -886,204 +974,163 @@ export default function TimerScreen() {
 
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={styles.sectionEyebrow}>Timer Mode</Text>
-              <Text style={styles.sectionTitle}>Choose your timer lane</Text>
+              <Text style={styles.sectionEyebrow}>Manual Timer</Text>
+              <Text style={styles.sectionTitle}>Set your parking hours</Text>
             </View>
-            <Text style={styles.sectionHint}>Both timers save separately</Text>
+            <Text style={styles.sectionHint}>Adjustable bar</Text>
           </View>
 
-          <View style={styles.modeCardGrid}>
-            {TIMER_KIND_ORDER.map((kind) => (
-              <TimerModeCard
-                key={kind}
-                kind={kind}
-                active={activeTimerKind === kind}
-                session={timerSessions[kind]}
-                onPress={setActiveTimerKind}
-              />
-            ))}
-          </View>
-
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionEyebrow}>Zone Setup</Text>
-              <Text style={styles.sectionTitle}>
-                {activeTimerKind === "manual" ? "Pick your parking limit" : "Claimed spot zone"}
+          <View style={styles.manualCard}>
+            <View style={styles.manualCardTopRow}>
+              <View>
+                <Text style={styles.manualCardTitle}>Manual timer</Text>
+                <Text style={styles.manualCardSubtitle}>
+                  Pick your parking limit on the bar, then start the countdown when you park.
+                </Text>
+              </View>
+              <Text style={[styles.manualCardStatus, { color: manualStatusAccent }]}>
+                {manualStatusLabel}
               </Text>
             </View>
-            <Text style={styles.sectionHint}>
-              {activeTimerKind === "manual"
-                ? isRunning
-                  ? "Locked while timer is live"
-                  : "Tap to change"
-                : "Auto-set from claim"}
+
+            <View style={styles.manualBarCard}>
+              <View style={styles.manualBarHeader}>
+                <Text style={styles.manualBarLabel}>Hours</Text>
+                <View style={styles.manualBarValuePill}>
+                  <Text style={styles.manualBarValueText}>
+                    {clampManualHours(manualSession.selectedHours)}H
+                  </Text>
+                </View>
+              </View>
+
+              <Slider
+                value={clampManualHours(manualSession.selectedHours)}
+                minimumValue={MANUAL_HOUR_MIN}
+                maximumValue={MANUAL_HOUR_MAX}
+                step={1}
+                disabled={manualSession.running}
+                minimumTrackTintColor={BRAND_PALETTE.accentBold}
+                maximumTrackTintColor="#D9EBF8"
+                thumbTintColor={BRAND_PALETTE.gold}
+                onValueChange={handleManualHoursChange}
+                style={styles.manualBarSlider}
+              />
+
+              <View style={styles.manualBarTicks}>
+                {[1, 3, 6, 9, 12].map((hourMark) => {
+                  const selected = clampManualHours(manualSession.selectedHours) === hourMark;
+                  return (
+                    <Text
+                      key={`manual-hour-${hourMark}`}
+                      style={[styles.manualBarTickText, selected && styles.manualBarTickTextActive]}
+                    >
+                      {hourMark}H
+                    </Text>
+                  );
+                })}
+              </View>
+            </View>
+
+            <Text style={styles.manualTimeValue}>{formatTime(manualDisplaySeconds)}</Text>
+            <Text style={styles.manualTimeHint}>
+              {manualSession.running
+                ? "Manual timer is running"
+                : manualPaused
+                  ? "Paused with time remaining"
+                  : "Adjust the bar, then start"}
             </Text>
-          </View>
 
-          <View style={styles.zoneGrid}>
-            {ZONE_ORDER.map((zone) => (
-              <ZoneCard
-                key={zone}
-                zone={zone}
-                selected={selectedZone === zone}
-                disabled={activeTimerKind !== "manual" || isRunning}
-                onPress={handleZoneSelect}
-              />
-            ))}
-          </View>
-
-          <LinearGradient
-            colors={isWarning ? ["#FFF6DB", "#FFFDF6"] : ["#FFFFFF", "#F4FAFF"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.timerStage}
-          >
-            <View style={styles.timerStageHeader}>
-              <View style={[styles.statusPill, { backgroundColor: zoneMeta.soft }]}>
-                <View style={[styles.statusDot, { backgroundColor: statusAccent }]} />
-                <Text style={[styles.statusPillText, { color: statusAccent }]}>
-                  {statusLabel}
-                </Text>
-              </View>
-
-              <View style={styles.zoneCapsule}>
-                <Text style={styles.zoneCapsuleText}>
-                  {selectedZone} • {TIMER_KIND_META[activeTimerKind].badge}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.timerOrbWrap}>
-              <View
-                style={[
-                  styles.timerOrbShadow,
-                  {
-                    backgroundColor: isWarning
-                      ? "rgba(245, 158, 11, 0.18)"
-                      : "rgba(2, 132, 199, 0.16)",
-                  },
-                ]}
-              />
-              <LinearGradient
-                colors={isWarning ? ["#FFF7E1", "#FFFFFF"] : ["#F7FCFF", "#FFFFFF"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.timerOrb, isWarning && styles.timerOrbWarning]}
-              >
-                <Clock3
-                  size={34}
-                  color={isWarning ? BRAND_PALETTE.gold : zoneMeta.accent}
-                />
-                <Text style={[styles.timerValue, isWarning && styles.timerValueWarning]}>
-                  {formatTime(timeRemaining)}
-                </Text>
-                <Text style={styles.timerCaption}>
-                  {isRunning ? "time remaining" : sessionHasStarted ? "paused session" : "session length"}
-                </Text>
-              </LinearGradient>
-            </View>
-
-            <View style={styles.progressMeta}>
-              <Text style={styles.progressLabel}>Session progress</Text>
-              <Text style={styles.progressPercent}>
-                {progress === 0 ? "Fresh start" : `${percentRemaining}% left`}
-              </Text>
-            </View>
             <View style={styles.progressTrack}>
               <LinearGradient
-                colors={
-                  isWarning
-                    ? ["#FBBF24", "#F59E0B"]
-                    : [zoneMeta.accent, BRAND_PALETTE.accentBold]
-                }
+                colors={[manualStatusAccent, BRAND_PALETTE.accentBold]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={[
                   styles.progressFill,
-                  { width: `${Math.max(progress * 100, 6)}%` },
+                  { width: `${Math.max(manualProgress * 100, 6)}%` },
                 ]}
               />
             </View>
 
-            <View style={styles.timerFactsRow}>
-              <StatTile
-                label="Reminder"
-                value={reminderLabel}
-                accent={BRAND_PALETTE.accentBold}
-              />
-              <StatTile
-                label="Zone mood"
-                value={zoneMeta.title}
-                accent={zoneMeta.accent}
-              />
+            <View style={styles.manualMetaRow}>
+              <Text style={styles.manualMetaChip}>{manualReminderLabel}</Text>
+              <Text style={styles.manualMetaChip}>
+                {manualSelectedSeconds > 0 ? formatTime(manualSelectedSeconds) : "0:00:00"}
+              </Text>
             </View>
-          </LinearGradient>
 
-          <View style={styles.actionRow}>
-            {!isRunning ? (
+            <View style={styles.sessionCardActions}>
               <Pressable
                 accessibilityRole="button"
-                onPress={canStartActiveSession ? handleStart : undefined}
+                onPress={manualSession.running ? handlePauseManual : handleStartManual}
                 style={({ pressed }) => [
                   styles.primaryActionWrap,
-                  !canStartActiveSession && styles.primaryActionDisabledWrap,
+                  manualSelectedSeconds <= 0 && !manualSession.running && styles.primaryActionDisabledWrap,
                   { opacity: pressed ? 0.95 : 1 },
                 ]}
-                disabled={!canStartActiveSession}
+                disabled={manualSelectedSeconds <= 0 && !manualSession.running}
               >
                 <LinearGradient
                   colors={
-                    canStartActiveSession
-                      ? ["#10B981", "#0F9F6E"]
-                      : ["#94A3B8", "#64748B"]
+                    manualSelectedSeconds <= 0 && !manualSession.running
+                      ? ["#94A3B8", "#64748B"]
+                      : manualSession.running
+                        ? ["#F59E0B", "#D97706"]
+                        : ["#10B981", "#0F9F6E"]
                   }
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryAction}
                 >
-                  <Play size={20} color="#FFFFFF" />
+                  {manualSession.running ? <Pause size={20} color="#FFFFFF" /> : <Play size={20} color="#FFFFFF" />}
                   <Text style={styles.primaryActionText}>
-                    {canStartActiveSession
-                      ? sessionHasStarted
-                        ? "Resume session"
-                        : "Start timer"
-                      : "Claim a spot first"}
+                    {manualSession.running ? "Pause timer" : "Start timer"}
                   </Text>
                 </LinearGradient>
               </Pressable>
-            ) : (
+
               <Pressable
                 accessibilityRole="button"
-                onPress={handlePause}
+                onPress={handleResetManual}
                 style={({ pressed }) => [
-                  styles.primaryActionWrap,
-                  { opacity: pressed ? 0.95 : 1 },
+                  styles.secondaryAction,
+                  { opacity: pressed ? 0.94 : 1 },
                 ]}
               >
-                <LinearGradient
-                  colors={["#F59E0B", "#D97706"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.primaryAction}
-                >
-                  <Pause size={20} color="#FFFFFF" />
-                  <Text style={styles.primaryActionText}>Pause session</Text>
-                </LinearGradient>
+                <RotateCcw size={18} color={BRAND_PALETTE.muted} />
+                <Text style={styles.secondaryActionText}>Reset</Text>
               </Pressable>
-            )}
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleReset}
-              style={({ pressed }) => [
-                styles.secondaryAction,
-                { opacity: pressed ? 0.94 : 1 },
-              ]}
-            >
-              <RotateCcw size={18} color={BRAND_PALETTE.muted} />
-              <Text style={styles.secondaryActionText}>Reset</Text>
-            </Pressable>
+            </View>
           </View>
+
+          {claimedSessionVisible ? (
+            <>
+              <View style={styles.sectionHeader}>
+                <View>
+                  <Text style={styles.sectionEyebrow}>Claimed Spot Timer</Text>
+                  <Text style={styles.sectionTitle}>Auto-started from your claim</Text>
+                </View>
+                <Text style={styles.sectionHint}>Shown only when active</Text>
+              </View>
+
+              <SessionCard
+                title="Claimed spot timer"
+                subtitle={`Auto-linked to ${claimedSession.zone} parking`}
+                statusLabel={claimedStatusLabel}
+                statusAccent={claimedStatusAccent}
+                timerText={formatTime(getSessionRemaining(claimedSession))}
+                progress={getSessionProgress(claimedSession)}
+                progressAccent={claimedMeta.accent}
+                hintLabel={claimedReminderLabel}
+                badgeLabel={`${claimedSession.zone} • ${formatShortDuration(claimedSession.durationSeconds / 60)}`}
+                onPrimary={claimedSession.running ? handlePauseClaimed : handleResumeClaimed}
+                primaryLabel={claimedSession.running ? "Pause claimed timer" : "Resume claimed timer"}
+                primaryDisabled={getSessionRemaining(claimedSession) <= 0}
+                onSecondary={handleResetClaimed}
+                secondaryLabel="Clear claimed timer"
+              />
+            </>
+          ) : null}
 
           <View style={styles.tipCard}>
             <View style={styles.tipIconWrap}>
@@ -1092,7 +1139,7 @@ export default function TimerScreen() {
             <View style={styles.tipCopy}>
               <Text style={styles.tipTitle}>Reminder logic</Text>
               <Text style={styles.tipText}>
-                Each timer keeps its own reminder schedule: a start alert, then warnings at 30 minutes left and 15 minutes left, then a final expiry alert.
+                Manual and claimed timers each keep their own alerts with start, warning, and expiry notifications.
               </Text>
             </View>
           </View>
@@ -1189,7 +1236,7 @@ const styles = StyleSheet.create({
   },
   heroSubtitle: {
     marginTop: 8,
-    maxWidth: 300,
+    maxWidth: 320,
     fontSize: 13,
     lineHeight: 19,
     color: "rgba(255,255,255,0.76)",
@@ -1267,243 +1314,195 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: BRAND_PALETTE.muted,
   },
-  modeCardGrid: {
-    gap: 10,
-  },
-  modeCard: {
-    borderRadius: 24,
+  manualCard: {
+    borderRadius: 28,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#D8EAF6",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 18,
     shadowColor: "#0B1F33",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  modeCardActive: {
-    borderColor: BRAND_PALETTE.accentBold,
+  manualCardTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  manualCardTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+  },
+  manualCardSubtitle: {
+    marginTop: 6,
+    maxWidth: 240,
+    fontSize: 12,
+    lineHeight: 18,
+    color: BRAND_PALETTE.muted,
+  },
+  manualCardStatus: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  manualBarCard: {
+    marginTop: 16,
+    borderRadius: 24,
     backgroundColor: "#F4FAFF",
+    borderWidth: 1,
+    borderColor: "#D8EAF6",
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
-  modeCardTopRow: {
+  manualBarHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 12,
   },
-  modeCardEyebrow: {
-    fontSize: 10,
+  manualBarLabel: {
+    fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.5,
     textTransform: "uppercase",
     color: BRAND_PALETTE.accentBold,
   },
-  modeBadge: {
+  manualBarValuePill: {
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    backgroundColor: BRAND_PALETTE.deepNavy,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
-  modeBadgeText: {
-    fontSize: 11,
-    fontWeight: "900",
+  manualBarValueText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
-  modeCardTitle: {
+  manualBarSlider: {
+    width: "100%",
+    height: 38,
     marginTop: 10,
-    fontSize: 18,
-    fontWeight: "900",
-    color: BRAND_PALETTE.deepNavy,
   },
-  modeCardDescription: {
-    marginTop: 6,
-    fontSize: 12,
-    lineHeight: 17,
+  manualBarTicks: {
+    marginTop: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  manualBarTickText: {
+    fontSize: 11,
+    fontWeight: "700",
     color: BRAND_PALETTE.muted,
   },
-  modeCardMetaRow: {
-    marginTop: 12,
+  manualBarTickTextActive: {
+    color: BRAND_PALETTE.accentBold,
+  },
+  manualTimeValue: {
+    marginTop: 18,
+    textAlign: "center",
+    fontSize: 34,
+    fontWeight: "900",
+    letterSpacing: -1,
+    color: BRAND_PALETTE.deepNavy,
+  },
+  manualTimeHint: {
+    marginTop: 6,
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "700",
+    color: BRAND_PALETTE.muted,
+  },
+  manualMetaRow: {
+    marginTop: 14,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
   },
-  modeCardMeta: {
+  manualMetaChip: {
     borderRadius: 999,
     backgroundColor: "#EEF7FD",
-    color: BRAND_PALETTE.navy,
-    fontSize: 11,
-    fontWeight: "800",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 6,
-  },
-  zoneGrid: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  zoneCard: {
-    flex: 1,
-    borderRadius: 20,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D8EAF6",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    shadowColor: "#0B1F33",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  zoneCardSelected: {
-    borderColor: BRAND_PALETTE.accentBold,
-    backgroundColor: "#F4FAFF",
-  },
-  zoneCardDisabled: {
-    opacity: 0.68,
-  },
-  zoneCardAccent: {
-    width: 22,
-    height: 4,
-    borderRadius: 999,
-    marginBottom: 10,
-  },
-  zoneCardZone: {
-    fontSize: 19,
-    fontWeight: "900",
-    color: BRAND_PALETTE.deepNavy,
-  },
-  zoneCardZoneSelected: {
-    color: BRAND_PALETTE.accentBold,
-  },
-  zoneCardTitle: {
-    marginTop: 5,
-    fontSize: 12,
-    fontWeight: "800",
-    color: BRAND_PALETTE.navy,
-  },
-  zoneCardSubtitle: {
-    marginTop: 4,
-    fontSize: 10,
-    lineHeight: 14,
-    color: BRAND_PALETTE.muted,
-    minHeight: 28,
-  },
-  zoneCardDuration: {
-    marginTop: 10,
     fontSize: 11,
     fontWeight: "800",
-    textTransform: "uppercase",
+    color: BRAND_PALETTE.navy,
   },
-  timerStage: {
-    marginTop: 18,
-    borderRadius: 32,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 20,
+  sessionCard: {
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: "#D8EAF6",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 18,
     shadowColor: "#0B1F33",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  timerStageHeader: {
+  sessionCardHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
   },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-    borderRadius: 999,
+  sessionCardHeaderRight: {
+    alignItems: "flex-end",
+    gap: 6,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  zoneCapsule: {
-    borderRadius: 999,
-    backgroundColor: BRAND_PALETTE.deepNavy,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  zoneCapsuleText: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#FFFFFF",
-  },
-  timerOrbWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 18,
-    marginBottom: 16,
-  },
-  timerOrbShadow: {
-    position: "absolute",
-    width: 244,
-    height: 244,
-    borderRadius: 122,
-  },
-  timerOrb: {
-    width: 228,
-    height: 228,
-    borderRadius: 114,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 8,
-    borderColor: "#CBEAFC",
-  },
-  timerOrbWarning: {
-    borderColor: "#FBD38D",
-  },
-  timerValue: {
-    marginTop: 12,
-    fontSize: 42,
+  sessionCardTitle: {
+    fontSize: 18,
     fontWeight: "900",
     color: BRAND_PALETTE.deepNavy,
-    letterSpacing: -1.2,
   },
-  timerValueWarning: {
-    color: "#B45309",
-  },
-  timerCaption: {
+  sessionCardSubtitle: {
     marginTop: 6,
-    fontSize: 13,
-    fontWeight: "700",
-    color: BRAND_PALETTE.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  progressMeta: {
-    marginTop: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  progressLabel: {
-    fontSize: 13,
-    fontWeight: "700",
+    maxWidth: 240,
+    fontSize: 12,
+    lineHeight: 18,
     color: BRAND_PALETTE.muted,
   },
-  progressPercent: {
+  sessionCardStatus: {
     fontSize: 13,
+    fontWeight: "800",
+  },
+  sessionCardBadge: {
+    borderRadius: 999,
+    backgroundColor: "#EEF7FD",
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 11,
     fontWeight: "800",
     color: BRAND_PALETTE.navy,
   },
-  progressTrack: {
+  sessionCardTimerWrap: {
+    marginTop: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  sessionCardTimerValue: {
+    fontSize: 34,
+    fontWeight: "900",
+    letterSpacing: -1,
+    color: BRAND_PALETTE.deepNavy,
+  },
+  sessionCardHint: {
     marginTop: 10,
+    fontSize: 12,
+    fontWeight: "700",
+    color: BRAND_PALETTE.muted,
+  },
+  progressTrack: {
+    marginTop: 14,
     height: 12,
     borderRadius: 999,
     overflow: "hidden",
@@ -1513,14 +1512,8 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 999,
   },
-  timerFactsRow: {
+  sessionCardActions: {
     marginTop: 16,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  actionRow: {
-    marginTop: 18,
     gap: 12,
   },
   primaryActionWrap: {

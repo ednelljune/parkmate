@@ -17,12 +17,23 @@ CREATE TABLE IF NOT EXISTS parking_zones (
   boundary geometry(Geometry, 4326) NOT NULL,
   capacity_spaces INTEGER,
   rules_description TEXT,
+  source_registry_key TEXT UNIQUE,
+  source_owner TEXT,
+  source_dataset TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT parking_zones_name_zone_type_key UNIQUE (name, zone_type)
 );
 
 ALTER TABLE parking_zones
 ADD COLUMN IF NOT EXISTS capacity_spaces INTEGER;
+
+ALTER TABLE parking_zones
+ADD COLUMN IF NOT EXISTS source_registry_key TEXT;
+
+ALTER TABLE parking_zones
+ADD COLUMN IF NOT EXISTS source_owner TEXT;
+
+ALTER TABLE parking_zones
+ADD COLUMN IF NOT EXISTS source_dataset TEXT;
 
 CREATE TABLE IF NOT EXISTS live_reports (
   id BIGSERIAL PRIMARY KEY,
@@ -159,6 +170,8 @@ CREATE INDEX IF NOT EXISTS idx_notification_logs_report_id ON notification_logs 
 CREATE INDEX IF NOT EXISTS idx_false_reports_report_id ON false_reports (report_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_live_reports_client_report_id ON live_reports (client_report_id);
 CREATE INDEX IF NOT EXISTS idx_parking_zones_boundary_gist ON parking_zones USING GIST (boundary);
+CREATE INDEX IF NOT EXISTS idx_parking_zones_source_owner ON parking_zones (source_owner);
+CREATE INDEX IF NOT EXISTS idx_parking_zones_source_dataset ON parking_zones (source_dataset);
 CREATE INDEX IF NOT EXISTS idx_live_reports_location_gist ON live_reports USING GIST (location);
 CREATE INDEX IF NOT EXISTS idx_user_hidden_notifications_user_feed_created
 ON user_hidden_notifications (user_id, feed_type, created_at DESC);

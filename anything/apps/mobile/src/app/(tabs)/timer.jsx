@@ -212,6 +212,7 @@ function SessionCard({
   onPrimary,
   primaryLabel,
   primaryDisabled = false,
+  isRunning = false,
   onSecondary,
   secondaryLabel,
 }) {
@@ -273,7 +274,11 @@ function SessionCard({
             end={{ x: 1, y: 1 }}
             style={styles.primaryAction}
           >
-            <Play size={20} color="#FFFFFF" />
+            {isRunning ? (
+              <Pause size={20} color="#FFFFFF" />
+            ) : (
+              <Play size={20} color="#FFFFFF" />
+            )}
             <Text style={styles.primaryActionText}>{primaryLabel}</Text>
           </LinearGradient>
         </Pressable>
@@ -1126,6 +1131,7 @@ export default function TimerScreen() {
                 onPrimary={claimedSession.running ? handlePauseClaimed : handleResumeClaimed}
                 primaryLabel={claimedSession.running ? "Pause claimed timer" : "Resume claimed timer"}
                 primaryDisabled={getSessionRemaining(claimedSession) <= 0}
+                isRunning={claimedSession.running}
                 onSecondary={handleResetClaimed}
                 secondaryLabel="Clear claimed timer"
               />

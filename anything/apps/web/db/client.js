@@ -13,10 +13,17 @@ function warnInvalidDatabaseUrl(envKey, value, error) {
   }
 
   hasWarnedAboutInvalidDatabaseUrl = true;
-  const preview = typeof value === 'string' ? value.slice(0, 80) : '';
+  
+  // Sanitize the connection string to remove credentials
+  let sanitizedPreview = '<redacted-connection-string>';
+  if (typeof value === 'string') {
+    // Try to remove user:password@ from the connection string
+    const sanitized = value.replace(/^(postgres|postgresql):\/\/[^@]*@/, '$1://***@');
+    sanitizedPreview = sanitized.length > 80 ? sanitized.slice(0, 80) : sanitized;
+  }
 
   console.warn(
-    `${INVALID_DATABASE_URL_WARNING} Received ${envKey}=${preview}${preview.length === 80 ? '...' : ''}`,
+    `${INVALID_DATABASE_URL_WARNING} Received ${envKey}=${sanitizedPreview}${typeof value === 'string' && value.length > 80 ? '...' : ''}`,
     error,
   );
 }

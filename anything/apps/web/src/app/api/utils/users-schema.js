@@ -60,8 +60,16 @@ export const getDisplayNameFallback = (user) => {
   return localPart || null;
 };
 
-export const getPlaceholderUserEmail = (userId) =>
-  `${String(userId || '').trim()}@${PLACEHOLDER_EMAIL_DOMAIN}`;
+/**
+ * Generates a placeholder email for a user when their actual email is unavailable.
+ * @param {string} userId - The user ID to generate placeholder email for
+ * @returns {string} A placeholder email address, or falls back to a safe default
+ */
+export const getPlaceholderUserEmail = (userId) => {
+  const normalizedId = String(userId || '').trim();
+  const safeLocalPart = normalizedId || 'unknown';
+  return `${safeLocalPart}@${PLACEHOLDER_EMAIL_DOMAIN}`;
+};
 
 export const upsertUserRow = async ({
   id,
@@ -76,24 +84,32 @@ export const upsertUserRow = async ({
   await ensureUsersSchema();
 
   const normalizedEmail = typeof email === 'string' ? email.trim() : '';
+  const hasNormalizedEmail = normalizedEmail.length > 0;
   const effectiveEmail = normalizedEmail || getPlaceholderUserEmail(userId);
   const placeholderEmailPattern = `%@${PLACEHOLDER_EMAIL_DOMAIN}`;
+
+  if (hasNormalizedEmail) {
+    await sql`
+      INSERT INTO users (id, email, full_name)
+      VALUES (${userId}, ${effectiveEmail}, ${fullName || null})
+      ON CONFLICT (id) DO UPDATE
+      SET
+        email = CASE
+          WHEN users.email = ''
+            OR users.email LIKE ${placeholderEmailPattern}
+          THEN EXCLUDED.email
+          ELSE users.email
+        END,
+        full_name = COALESCE(users.full_name, EXCLUDED.full_name);
+    `;
+    return;
+  }
 
   await sql`
     INSERT INTO users (id, email, full_name)
     VALUES (${userId}, ${effectiveEmail}, ${fullName || null})
     ON CONFLICT (id) DO UPDATE
     SET
-      email = CASE
-        WHEN ${normalizedEmail || null} IS NOT NULL
-          AND (
-            users.email IS NULL
-            OR users.email = ''
-            OR users.email LIKE ${placeholderEmailPattern}
-          )
-        THEN ${normalizedEmail}
-        ELSE users.email
-      END,
       full_name = COALESCE(users.full_name, EXCLUDED.full_name);
   `;
 };

@@ -48,6 +48,7 @@ function formatDate(value: string | null | undefined) {
 export default function ZonesPage() {
   const { session, isLoading: isAuthLoading } = useSupabaseAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [zoneTypeFilter, setZoneTypeFilter] = useState('All');
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -56,22 +57,33 @@ export default function ZonesPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchTerm]);
+
+  useEffect(() => {
     if (isAuthLoading) {
       return;
     }
 
     if (!session) {
+      setError("You must be signed in to view zones");
       setLoading(false);
       return;
     }
 
-    const timeoutId = window.setTimeout(async () => {
+    const loadZones = async () => {
       setLoading(true);
       setError(null);
 
       try {
         const result = await fetchAdminJson<ZonesResponse>(
-          `/api/admin/zones?search=${encodeURIComponent(searchTerm)}&zoneType=${encodeURIComponent(zoneTypeFilter)}&page=${page}&limit=25`,
+          `/api/admin/zones?search=${encodeURIComponent(debouncedSearchTerm)}&zoneType=${encodeURIComponent(zoneTypeFilter)}&page=${page}&limit=25`,
           {},
           session?.access_token,
         );
@@ -81,12 +93,10 @@ export default function ZonesPage() {
       } finally {
         setLoading(false);
       }
-    }, 250);
-
-    return () => {
-      window.clearTimeout(timeoutId);
     };
-  }, [isAuthLoading, page, refreshKey, searchTerm, session, zoneTypeFilter]);
+
+    loadZones();
+  }, [debouncedSearchTerm, isAuthLoading, page, refreshKey, session, zoneTypeFilter]);
 
   const zoneTypes = useMemo(
     () => ['All', ...(response?.zoneTypes?.map((item) => item.zone_type).filter(Boolean) ?? [])],

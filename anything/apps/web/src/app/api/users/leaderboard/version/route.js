@@ -36,7 +36,7 @@ export async function GET(request) {
         FROM users u
         LEFT JOIN report_counts rc ON rc.user_id = u.id
         LEFT JOIN claim_counts cc ON cc.user_id = u.id
-        ORDER BY u.contribution_score DESC, u.trust_score DESC, u.created_at ASC, u.id ASC
+        ORDER BY COALESCE(u.contribution_score, 0) DESC, COALESCE(u.trust_score, 0) DESC, u.created_at ASC, u.id ASC
         LIMIT $1
       )
       SELECT

@@ -318,7 +318,7 @@ const loadPersistedActivities = async (userId, limit) =>
         ELSE false
       END AS is_system_update
     FROM user_activity_logs ual
-    LEFT JOIN suggested_parking_zones spz ON spz.id = ual.report_id
+    LEFT JOIN suggested_parking_zones spz ON spz.id = ual.report_id AND ual.activity_type IN ('zone_suggested', 'zone_reviewing', 'zone_approved', 'zone_rejected')
     LEFT JOIN false_report_summary frs ON frs.report_id = ual.report_id
     WHERE ual.user_id = ${userId}
     AND ual.activity_type IN ('reported', 'claimed', 'false_reported', 'report_claimed', 'expired', 'zone_suggested', 'zone_reviewing', 'zone_approved', 'zone_rejected')

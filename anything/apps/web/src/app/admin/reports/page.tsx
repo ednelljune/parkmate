@@ -68,10 +68,21 @@ export default function ReportsPage() {
   const { session, isLoading: isAuthLoading } = useSupabaseAuth();
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [response, setResponse] = useState<ReportsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchTerm]);
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -79,17 +90,18 @@ export default function ReportsPage() {
     }
 
     if (!session) {
+      setError("Authentication required");
       setLoading(false);
       return;
     }
 
-    const timeoutId = window.setTimeout(async () => {
+    const loadReports = async () => {
       setLoading(true);
       setError(null);
 
       try {
         const result = await fetchAdminJson<ReportsResponse>(
-          `/api/admin/reports?status=${encodeURIComponent(activeTab)}&search=${encodeURIComponent(searchTerm)}&limit=50&page=1`,
+          `/api/admin/reports?status=${encodeURIComponent(activeTab)}&search=${encodeURIComponent(debouncedSearchTerm)}&limit=50&page=1`,
           {},
           session?.access_token,
         );
@@ -99,12 +111,10 @@ export default function ReportsPage() {
       } finally {
         setLoading(false);
       }
-    }, 250);
-
-    return () => {
-      window.clearTimeout(timeoutId);
     };
-  }, [activeTab, isAuthLoading, refreshKey, searchTerm, session]);
+
+    loadReports();
+  }, [activeTab, debouncedSearchTerm, isAuthLoading, refreshKey, session]);
 
   const summary = response?.summary;
 

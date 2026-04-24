@@ -156,7 +156,7 @@ export async function GET(request) {
   } catch (error) {
     console.error("Error loading admin notifications:", error);
     return Response.json(
-      { success: false, error: error.message || "Failed to load admin notifications" },
+      { success: false, error: "Failed to load admin notifications" },
       { status: 500 },
     );
   }

@@ -87,6 +87,14 @@ export function Header() {
       return;
     }
 
+    // Only advance the timestamp forward, never move backward
+    const currentTimestamp = lastViewedAt ? new Date(lastViewedAt).getTime() : 0;
+    const newTimestamp = new Date(resolvedValue).getTime();
+    
+    if (newTimestamp <= currentTimestamp) {
+      return;
+    }
+
     window.localStorage.setItem(ADMIN_NOTIFICATIONS_VIEWED_AT_KEY, resolvedValue);
     setLastViewedAt(resolvedValue);
     setNotifications((current) =>

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS parking_zones (
   source_registry_key TEXT UNIQUE,
   source_owner TEXT,
   source_dataset TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 ALTER TABLE parking_zones

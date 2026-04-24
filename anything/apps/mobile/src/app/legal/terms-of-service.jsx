@@ -15,7 +15,7 @@ export default function TermsOfServiceScreen() {
     <>
       <Stack.Screen
         options={{
-          title: "Terms of Service",
+          title: "Terms and Conditions",
           headerRight: () => (
             <TouchableOpacity onPress={handleOpenInBrowser} style={styles.headerButton}>
               <Text style={styles.headerButtonText}>Open</Text>

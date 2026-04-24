@@ -26,6 +26,7 @@ type Suggestion = {
   zone_name?: string | null;
   street_name?: string | null;
   area_name?: string | null;
+  parking_category?: string | null;
   status: string;
   confirmation_count: number;
   false_flag_count: number;
@@ -276,11 +277,11 @@ export default function SuggestedZonesPage() {
   }, [selectedSuggestion]);
 
   useEffect(() => {
-    if (!photoPreview || typeof window === 'undefined') {
+    if (typeof window === 'undefined' || (!photoPreview && !pendingAction)) {
       return;
     }
 
-                  const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         if (photoPreview) {
           closePhotoPreview();
@@ -397,7 +398,7 @@ export default function SuggestedZonesPage() {
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td colSpan={7} className="px-5 py-10 text-center text-sm text-slate-500">
+                          <td colSpan={5} className="px-5 py-10 text-center text-sm text-slate-500">
                             Loading suggestions...
                           </td>
                         </tr>
@@ -405,7 +406,7 @@ export default function SuggestedZonesPage() {
 
                       {!loading && filteredSuggestions.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-5 py-10 text-center text-sm text-slate-500">
+                          <td colSpan={5} className="px-5 py-10 text-center text-sm text-slate-500">
                             No suggestions matched this filter.
                           </td>
                         </tr>

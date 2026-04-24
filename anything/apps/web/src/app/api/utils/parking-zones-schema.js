@@ -58,6 +58,13 @@ export const ensureParkingZonesSchema = () => {
 
       await sql(
         `
+          CREATE INDEX IF NOT EXISTS idx_parking_zones_boundary_gist
+          ON parking_zones USING GIST (boundary);
+        `,
+      );
+
+      await sql(
+        `
           CREATE INDEX IF NOT EXISTS idx_parking_zones_source_owner
           ON parking_zones (source_owner);
         `,

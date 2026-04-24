@@ -244,7 +244,7 @@ export const fetchParkingZonesQuery = async (location, radiusMeters = 500) => {
     return { zones: [] };
   }
 
-  return fetchParkingEndpoint({
+  const response = await fetchParkingEndpoint({
     label: "parking zones",
     path: "/api/zones/list",
     payload: {
@@ -253,8 +253,13 @@ export const fetchParkingZonesQuery = async (location, radiusMeters = 500) => {
       radiusMeters,
       includeGeometry: true,
     },
-    fallbackResult: () => ({ zones: [] }),
   });
+
+  if (response?.success === false) {
+    throw new Error(response?.error || "Failed to fetch parking zones");
+  }
+
+  return response;
 };
 
 export const fetchCurrentZoneQuery = async (location) => {

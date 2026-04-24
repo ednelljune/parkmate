@@ -61,12 +61,23 @@ function getTrustLabel(score: number) {
 export default function UsersPage() {
   const { session, isLoading: isAuthLoading } = useSupabaseAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [response, setResponse] = useState<UsersResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchTerm]);
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -78,13 +89,13 @@ export default function UsersPage() {
       return;
     }
 
-    const timeoutId = window.setTimeout(async () => {
+    const loadUsers = async () => {
       setLoading(true);
       setError(null);
 
       try {
         const result = await fetchAdminJson<UsersResponse>(
-          `/api/admin/users?search=${encodeURIComponent(searchTerm)}&page=${page}&limit=25`,
+          `/api/admin/users?search=${encodeURIComponent(debouncedSearchTerm)}&page=${page}&limit=25`,
           {},
           session?.access_token,
         );
@@ -94,12 +105,10 @@ export default function UsersPage() {
       } finally {
         setLoading(false);
       }
-    }, 250);
-
-    return () => {
-      window.clearTimeout(timeoutId);
     };
-  }, [isAuthLoading, page, refreshKey, searchTerm, session]);
+
+    loadUsers();
+  }, [debouncedSearchTerm, isAuthLoading, page, refreshKey, session]);
 
   const filteredUsers = useMemo(() => {
     const users = response?.users || [];

@@ -89,9 +89,20 @@ async function loadVictoriaPublicRegistry() {
     .filter(Boolean);
 
   const baseLocalParkingNames = localCouncilSourcePath
-    ? [...fs.readFileSync(localCouncilSourcePath, 'utf8').matchAll(/name:\s*"([^"]+)"/g)]
-        .map((match) => String(match[1] || '').trim())
-        .filter(Boolean)
+    ? (() => {
+        try {
+          const fileContent = fs.readFileSync(localCouncilSourcePath, 'utf8');
+          // Match name: "..." or name: '...' patterns with flexible whitespace
+          const nameRegex = /name\s*:\s*["']([^"']+)["']/g;
+          const matches = [...fileContent.matchAll(nameRegex)];
+          return matches
+            .map((match) => String(match[1] || '').trim())
+            .filter(Boolean);
+        } catch (err) {
+          console.error(`Failed to parse local parking names from ${localCouncilSourcePath}:`, err);
+          return [];
+        }
+      })()
     : [];
 
   return {

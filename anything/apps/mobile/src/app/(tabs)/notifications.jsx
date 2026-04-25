@@ -207,7 +207,12 @@ export default function NotificationsScreen() {
       setIsManualRefreshing(false);
     }
   }, [refetch]);
-  const nearbyZones = useParkingZones(location, ALERT_RADIUS_METERS);
+  const nearbyZones = useParkingZones(location, ALERT_RADIUS_METERS, {
+    includeGeometry: false,
+    refetchIntervalMs: false,
+    refetchOnMount: false,
+    staleTimeMs: Infinity,
+  });
   const detectedZonePins = useMemo(
     () =>
       getDetectedZonePins({

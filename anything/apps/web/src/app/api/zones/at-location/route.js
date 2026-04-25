@@ -19,7 +19,12 @@ export async function POST(request) {
         name,
         zone_type,
         capacity_spaces,
-        rules_description
+        rules_description,
+        source_owner,
+        source_dataset,
+        ST_AsGeoJSON(boundary)::json AS boundary_geojson,
+        ST_Y(ST_Centroid(boundary::geometry)) AS center_lat,
+        ST_X(ST_Centroid(boundary::geometry)) AS center_lng
       FROM parking_zones
       WHERE ST_Contains(boundary, ST_SetSRID(ST_Point(${longitude}, ${latitude}), 4326))
         AND LOWER(COALESCE(zone_type, '')) NOT LIKE '%' || ${EXCLUDED_ZONE_TYPE} || '%'

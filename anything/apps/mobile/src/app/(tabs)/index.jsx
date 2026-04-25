@@ -617,7 +617,10 @@ function ParkMateContent() {
     syncMapHeading(true);
   }, [scheduleOverlayRefresh, syncMapHeading]);
 
-  const nearbyZones = useParkingZones(location, detectionRadius);
+  const nearbyZones = useParkingZones(location, detectionRadius, {
+    includeGeometry: true,
+    refetchIntervalMs: false,
+  });
   const currentZone = useCurrentZone(location);
   const { reports, refetch: refetchReports } = useNearbyReports(
     location,

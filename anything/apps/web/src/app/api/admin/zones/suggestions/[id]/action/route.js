@@ -3,6 +3,8 @@ import { requireAdminUser } from "@/app/api/utils/admin-auth";
 import { logUserActivity } from "@/app/api/utils/activity-log";
 import { ensureUserIdRow } from "@/app/api/utils/users-schema";
 import {
+  COMMUNITY_APPROVED_ZONE_SOURCE_DATASET,
+  COMMUNITY_APPROVED_ZONE_SOURCE_OWNER,
   createBoxPolygon,
   DEFAULT_APPROVAL_LAT_OFFSET,
   DEFAULT_APPROVAL_LNG_OFFSET,
@@ -277,7 +279,9 @@ export async function POST(request, context) {
             name = ${zoneName},
             zone_type = ${zoneType},
             capacity_spaces = ${capacitySpaces},
-            rules_description = ${rulesDescription}
+            rules_description = ${rulesDescription},
+            source_owner = COALESCE(source_owner, ${COMMUNITY_APPROVED_ZONE_SOURCE_OWNER}),
+            source_dataset = COALESCE(source_dataset, ${COMMUNITY_APPROVED_ZONE_SOURCE_DATASET})
           WHERE id = ${suggestion.approved_zone_id}
           RETURNING id, name, zone_type, capacity_spaces, rules_description;
         `;
@@ -379,16 +383,18 @@ export async function POST(request, context) {
         Number(existingZoneRows[0].id) === Number(suggestion.approved_zone_id)
       ) {
         const [updatedZoneRows, updatedSuggestionRows] = await sql.transaction(async (txn) => {
-          const zoneUpdateResult = await txn`
-            UPDATE parking_zones
-            SET
-              name = ${zoneName},
-              zone_type = ${zoneType},
-              capacity_spaces = ${capacitySpaces},
-              rules_description = ${rulesDescription}
-            WHERE id = ${suggestion.approved_zone_id}
-            RETURNING id, name, zone_type, capacity_spaces, rules_description;
-          `;
+        const zoneUpdateResult = await txn`
+          UPDATE parking_zones
+          SET
+            name = ${zoneName},
+            zone_type = ${zoneType},
+            capacity_spaces = ${capacitySpaces},
+            rules_description = ${rulesDescription},
+            source_owner = COALESCE(source_owner, ${COMMUNITY_APPROVED_ZONE_SOURCE_OWNER}),
+            source_dataset = COALESCE(source_dataset, ${COMMUNITY_APPROVED_ZONE_SOURCE_DATASET})
+          WHERE id = ${suggestion.approved_zone_id}
+          RETURNING id, name, zone_type, capacity_spaces, rules_description;
+        `;
 
           const suggestionUpdateResult = await txn`
             UPDATE suggested_parking_zones
@@ -431,16 +437,20 @@ export async function POST(request, context) {
         zone_type,
         boundary,
         capacity_spaces,
-        rules_description
+        rules_description,
+        source_owner,
+        source_dataset
       )
       VALUES (
         ${zoneName},
         ${zoneType},
         ST_GeomFromGeoJSON(${JSON.stringify(polygon)}),
         ${capacitySpaces},
-        ${rulesDescription}
+        ${rulesDescription},
+        ${COMMUNITY_APPROVED_ZONE_SOURCE_OWNER},
+        ${COMMUNITY_APPROVED_ZONE_SOURCE_DATASET}
       )
-      RETURNING id, name, zone_type, capacity_spaces, rules_description;
+      RETURNING id, name, zone_type, capacity_spaces, rules_description, source_owner, source_dataset;
     `;
 
     const approvedZone = insertedZoneRows[0];

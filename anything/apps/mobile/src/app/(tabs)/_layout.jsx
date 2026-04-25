@@ -191,7 +191,12 @@ function AuthenticatedTabLayout() {
   const lastNearbyAlertLocationRef = useRef(null);
   const alertedAlertIdsRef = useRef(new Set());
   const { reports: nearbySpots } = useNearbyReports(location, ALERT_RADIUS_METERS);
-  const nearbyZones = useParkingZones(location, ALERT_RADIUS_METERS);
+  const nearbyZones = useParkingZones(location, ALERT_RADIUS_METERS, {
+    includeGeometry: false,
+    refetchIntervalMs: false,
+    refetchOnMount: false,
+    staleTimeMs: Infinity,
+  });
   const detectedZonePins = useMemo(
     () =>
       getDetectedZonePins({

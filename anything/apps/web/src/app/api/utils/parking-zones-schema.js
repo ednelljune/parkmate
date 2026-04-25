@@ -76,6 +76,33 @@ export const ensureParkingZonesSchema = () => {
           ON parking_zones (source_dataset);
         `,
       );
+
+      await sql(
+        `
+          DO $$
+          BEGIN
+            IF EXISTS (
+              SELECT 1
+              FROM information_schema.tables
+              WHERE table_schema = 'public'
+                AND table_name = 'suggested_parking_zones'
+            ) THEN
+              UPDATE parking_zones
+              SET
+                source_owner = COALESCE(parking_zones.source_owner, 'ParkMate Community'),
+                source_dataset = COALESCE(parking_zones.source_dataset, 'Approved missing public zones')
+              FROM suggested_parking_zones
+              WHERE suggested_parking_zones.approved_zone_id = parking_zones.id
+                AND suggested_parking_zones.status = 'approved'
+                AND (
+                  parking_zones.source_owner IS NULL
+                  OR parking_zones.source_dataset IS NULL
+                );
+            END IF;
+          END
+          $$;
+        `,
+      );
     })().catch((error) => {
       parkingZonesSchemaPromise = null;
       throw error;

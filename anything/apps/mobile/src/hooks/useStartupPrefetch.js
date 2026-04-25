@@ -294,9 +294,15 @@ export const useStartupPrefetch = () => {
         await Promise.all([
           warmQueryUntilSuccess({
             queryClient,
-            queryKey: getParkingZonesQueryKey(queryLocation, DEFAULT_STARTUP_ZONE_RADIUS),
+            queryKey: getParkingZonesQueryKey(
+              queryLocation,
+              DEFAULT_STARTUP_ZONE_RADIUS,
+              false,
+            ),
             queryFn: () =>
-              fetchParkingZonesQuery(queryLocation, DEFAULT_STARTUP_ZONE_RADIUS),
+              fetchParkingZonesQuery(queryLocation, DEFAULT_STARTUP_ZONE_RADIUS, {
+                includeGeometry: false,
+              }),
             staleTime: 30000,
             deadlineMs,
             label: "parking_zones",

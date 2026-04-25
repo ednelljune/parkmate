@@ -5,6 +5,8 @@ let suggestedZonesAdminSchemaPromise = null;
 export const DEFAULT_APPROVAL_LAT_OFFSET = 0.00045;
 export const DEFAULT_APPROVAL_LNG_OFFSET = 0.00055;
 export const SUGGESTED_ZONE_TYPE_OPTIONS = ["P1", "P2", "P3", "P4", "FH"];
+export const COMMUNITY_APPROVED_ZONE_SOURCE_OWNER = "ParkMate Community";
+export const COMMUNITY_APPROVED_ZONE_SOURCE_DATASET = "Approved missing public zones";
 
 export const normalizeCoordinate = (value) => {
   const parsed = typeof value === "number" ? value : Number.parseFloat(value);

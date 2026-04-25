@@ -46,6 +46,8 @@ export async function POST(request) {
             zone_type,
             capacity_spaces,
             rules_description,
+            source_owner,
+            source_dataset,
             ${geometrySelectSql}
             ST_Y(ST_Centroid(boundary::geometry)) AS center_lat,
             ST_X(ST_Centroid(boundary::geometry)) AS center_lng
@@ -91,6 +93,8 @@ export async function POST(request) {
               parking_zones.zone_type,
               parking_zones.capacity_spaces,
               parking_zones.rules_description,
+              parking_zones.source_owner,
+              parking_zones.source_dataset,
               parking_zones.boundary,
               ST_Y(ST_Centroid(parking_zones.boundary::geometry)) AS center_lat,
               ST_X(ST_Centroid(parking_zones.boundary::geometry)) AS center_lng
@@ -107,6 +111,8 @@ export async function POST(request) {
             candidate_zones.zone_type,
             candidate_zones.capacity_spaces,
             candidate_zones.rules_description,
+            candidate_zones.source_owner,
+            candidate_zones.source_dataset,
             ${includeGeometry ? 'ST_AsGeoJSON(candidate_zones.boundary)::json AS boundary_geojson,' : 'NULL::json AS boundary_geojson,'}
             candidate_zones.center_lat,
             candidate_zones.center_lng,
@@ -143,6 +149,8 @@ export async function POST(request) {
         zone_type,
         capacity_spaces,
         rules_description,
+        source_owner,
+        source_dataset,
         ST_AsGeoJSON(boundary)::json AS boundary_geojson,
         ST_Y(ST_Centroid(boundary::geometry)) AS center_lat,
         ST_X(ST_Centroid(boundary::geometry)) AS center_lng
@@ -174,6 +182,8 @@ export async function GET() {
         zone_type,
         capacity_spaces,
         rules_description,
+        source_owner,
+        source_dataset,
         ST_AsGeoJSON(boundary)::json AS boundary_geojson,
         ST_Y(ST_Centroid(boundary::geometry)) AS center_lat,
         ST_X(ST_Centroid(boundary::geometry)) AS center_lng

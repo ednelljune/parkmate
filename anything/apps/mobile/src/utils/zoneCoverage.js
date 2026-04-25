@@ -170,6 +170,9 @@ const parseLengthMeters = (zone) => {
 };
 
 const getSourceDataset = (zone) => String(zone?.sourceDataset || zone?.source_dataset || "").trim();
+const getSourceOwner = (zone) => String(zone?.sourceOwner || zone?.source_owner || "").trim();
+const COMMUNITY_APPROVED_ZONE_SOURCE_OWNER = "ParkMate Community";
+const COMMUNITY_APPROVED_ZONE_SOURCE_DATASET = "Approved missing public zones";
 
 const getCoverageTextMetadata = (zone) => {
   const segments = getRuleSegments(zone);
@@ -299,11 +302,16 @@ export const getZoneCoverageModel = (zone) => {
   const center = getZoneCenter(zone);
   const polygons = buildMapPolygonsFromBoundary(zone?.boundary_geojson);
   const textMetadata = getCoverageTextMetadata(zone);
+  const sourceOwner = getSourceOwner(zone);
+  const sourceDataset = getSourceDataset(zone);
   const exactLineGeometry = getCoverageGeometryCandidates(zone)
     .map((candidate) => buildMapPolylinesFromGeometry(candidate))
     .find((candidate) => candidate.length > 0) || [];
+  const prefersApproximateCommunityCoverage =
+    sourceOwner === COMMUNITY_APPROVED_ZONE_SOURCE_OWNER &&
+    sourceDataset === COMMUNITY_APPROVED_ZONE_SOURCE_DATASET;
 
-  if (polygons.length > 0) {
+  if (polygons.length > 0 && !prefersApproximateCommunityCoverage) {
     return {
       kind: "polygon",
       accuracyLabel: getCoverageAccuracyLabel("polygon"),
@@ -351,6 +359,7 @@ export const getZoneCoverageModel = (zone) => {
   );
 
   if (
+    prefersApproximateCommunityCoverage ||
     shouldUseApproximateSegment ||
     textMetadata.carParkCue ||
     textMetadata.localityCue ||

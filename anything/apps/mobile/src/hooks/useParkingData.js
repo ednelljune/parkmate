@@ -126,11 +126,16 @@ export const getNearbyReportsQueryKey = (queryLocation, radiusMeters) => [
   radiusMeters,
 ];
 
-export const getParkingZonesQueryKey = (queryLocation, radiusMeters) => [
+export const getParkingZonesQueryKey = (
+  queryLocation,
+  radiusMeters,
+  includeGeometry = true,
+) => [
   "parking_zones",
   queryLocation?.latitude,
   queryLocation?.longitude,
   radiusMeters,
+  includeGeometry ? "full" : "summary",
 ];
 
 export const getCurrentZoneQueryKey = (queryLocation) => [
@@ -238,7 +243,12 @@ const readNearbyReportsVersionResponse = async (response) => {
   }
 };
 
-export const fetchParkingZonesQuery = async (location, radiusMeters = 500) => {
+export const fetchParkingZonesQuery = async (
+  location,
+  radiusMeters = 500,
+  options = {},
+) => {
+  const { includeGeometry = true } = options;
   const queryLocation = getQueryLocation(location);
   if (!queryLocation) {
     return { zones: [] };
@@ -251,7 +261,7 @@ export const fetchParkingZonesQuery = async (location, radiusMeters = 500) => {
       latitude: queryLocation.latitude,
       longitude: queryLocation.longitude,
       radiusMeters,
-      includeGeometry: true,
+      includeGeometry,
     },
   });
 
@@ -578,16 +588,30 @@ export const useVisibleParkingZones = (region, enabled = true) => {
   return zonesData?.zones || [];
 };
 
-export const useParkingZones = (location, radiusMeters = 500) => {
+export const useParkingZones = (
+  location,
+  radiusMeters = 500,
+  options = {},
+) => {
+  const {
+    includeGeometry = true,
+    refetchIntervalMs = DEFAULT_PARKING_ZONES_REFETCH_INTERVAL_MS,
+    staleTimeMs = 30000,
+    refetchOnMount = true,
+  } = options;
   const queryLocation = useMemo(() => getQueryLocation(location), [location]);
   const { data: zonesData } = useQuery({
-    queryKey: getParkingZonesQueryKey(queryLocation, radiusMeters),
-    queryFn: async () => fetchParkingZonesQuery(queryLocation, radiusMeters),
+    queryKey: getParkingZonesQueryKey(queryLocation, radiusMeters, includeGeometry),
+    queryFn: async () =>
+      fetchParkingZonesQuery(queryLocation, radiusMeters, { includeGeometry }),
     enabled: !!queryLocation,
     placeholderData: (previousData) => previousData,
-    staleTime: 30000,
-    refetchOnMount: true,
-    refetchInterval: DEFAULT_PARKING_ZONES_REFETCH_INTERVAL_MS,
+    staleTime: Math.max(0, Number(staleTimeMs) || 0),
+    refetchOnMount,
+    refetchInterval:
+      refetchIntervalMs === false
+        ? false
+        : Math.max(1000, Number(refetchIntervalMs) || DEFAULT_PARKING_ZONES_REFETCH_INTERVAL_MS),
     retry: false,
   });
 

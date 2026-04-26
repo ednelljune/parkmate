@@ -1,8 +1,20 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Redirect, Tabs, useRouter } from "expo-router";
-import { Bell, Clock, History, MapPin, Trophy, User } from "lucide-react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Redirect, Tabs, useGlobalSearchParams, useRouter } from "expo-router";
+import { Bell, ChevronRight, Clock, History, Info, MapPin, ShieldCheck, Trophy, User } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { MotiView, AnimatePresence } from "moti";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Alert, Platform } from "react-native";
+import {
+  Alert,
+  Animated,
+  Easing,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { useLocation } from "@/hooks/useLocation";
 import { getDistanceMeters } from "@/utils/geo";
@@ -35,12 +47,81 @@ import {
   captureError,
   normalizeForSentry,
 } from "@/monitoring/sentry";
+import { useFirstLoginTutorial } from "@/utils/firstLoginTutorial";
 
 export const unstable_settings = {
   initialRouteName: "index",
 };
 
 const ALERT_RADIUS_METERS = PARKING_ALERT_RADIUS_METERS;
+const IN_APP_TOUR_STEPS = [
+  {
+    id: "map",
+    route: "/",
+    label: "Map",
+    icon: MapPin,
+    title: "Find parking from the map",
+    body: "Open zone pins, report real openings, claim a spot you took, flag false reports, or suggest a missing public zone.",
+    chips: ["Zone pins", "Report spot", "Claim / false / suggest"],
+    demoTitle: "Live map actions",
+    demoHint: "Tap a zone, report an opening, or suggest a missing public zone.",
+  },
+  {
+    id: "alerts",
+    route: "/notifications",
+    label: "Alerts",
+    icon: Bell,
+    title: "Watch nearby parking movement",
+    body: "Use Alerts when you want a faster feed of nearby reports and zones without scanning the map constantly.",
+    chips: ["Nearby feed", "Open on map"],
+    demoTitle: "Nearby feed",
+    demoHint: "Fresh reports and zone updates appear here first.",
+  },
+  {
+    id: "timer",
+    route: "/timer",
+    label: "Timer",
+    icon: Clock,
+    title: "Track your stay after you park",
+    body: "Use the manual timer for your own stay and let the claimed timer handle automatic claim-linked sessions separately.",
+    chips: ["Manual timer", "Auto claimed timer"],
+    demoTitle: "Parking countdown",
+    demoHint: "Manual timer stays separate from the auto claimed timer lane.",
+  },
+  {
+    id: "activity",
+    route: "/activity",
+    label: "Activity",
+    icon: History,
+    title: "Check outcomes and system updates",
+    body: "See if your reports were claimed, expired, reviewed, approved, or rejected, then manage updates with swipe actions.",
+    chips: ["Claims", "Review outcomes"],
+    demoTitle: "Outcome updates",
+    demoHint: "Claims, approvals, and rejections land here with swipe actions.",
+  },
+  {
+    id: "leaders",
+    route: "/leaderboard",
+    label: "Leaders",
+    icon: Trophy,
+    title: "Climb the city leaderboard",
+    body: "Ranking is based on impact, so accurate reports, claims, and approved zones help move you up.",
+    chips: ["Impact rank", "Badge tier"],
+    demoTitle: "Impact competition",
+    demoHint: "Your position rises as your reports and zones help other drivers.",
+  },
+  {
+    id: "profile",
+    route: "/profile",
+    label: "Profile",
+    icon: User,
+    title: "Track your progress",
+    body: "Your profile shows your badge, rank, contribution score, legal links, and a replay entry for this tour.",
+    chips: ["Badge + rank", "Replay later"],
+    demoTitle: "Driver profile",
+    demoHint: "Check your badge, rank, and replay the tour any time.",
+  },
+];
 const isFiniteCoordinate = (value) => Number.isFinite(Number(value));
 const toNotificationString = (value, fallback = "") => {
   if (value == null) {
@@ -181,12 +262,142 @@ const buildSystemUpdateNotificationData = (item) => ({
   longitude: item?.longitude != null ? String(item.longitude) : "",
 });
 
-function AuthenticatedTabLayout() {
+function TourOverlay({
+  activeStep,
+  activeStepIndex,
+  isFirstStep,
+  isLastStep,
+  isSaving,
+  onBack,
+  onNext,
+  onClose,
+}) {
+  const insets = useSafeAreaInsets();
+  const ActiveIcon = activeStep.icon;
+  const progress = (activeStepIndex + 1) / IN_APP_TOUR_STEPS.length;
+
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <LinearGradient
+        colors={["#059669", "#0284C7"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      
+      <View style={[styles.tourOverlayWrap, { paddingTop: insets.top + 20 }]}>
+        <MotiView
+          from={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "timing", duration: 600 }}
+          style={styles.tourBranding}
+        >
+          <Text style={styles.tourBrandingPark}>Park</Text>
+          <Text style={styles.tourBrandingMate}>Mate</Text>
+        </MotiView>
+
+        <AnimatePresence mode="wait">
+          <MotiView
+            key={activeStep.id}
+            from={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            transition={{ type: "spring", damping: 15 }}
+            style={styles.tourCardContainer}
+          >
+            <BlurView intensity={Platform.OS === 'ios' ? 80 : 100} tint="light" style={styles.tourCard}>
+              <View style={styles.tourProgressBarBg}>
+                <MotiView
+                  animate={{ width: `${progress * 100}%` }}
+                  transition={{ type: "timing", duration: 500 }}
+                  style={styles.tourProgressBarFill}
+                />
+              </View>
+
+              <View style={styles.tourCardHeader}>
+                <View style={styles.tourIconCircle}>
+                  <ActiveIcon color="#0284C7" size={28} />
+                </View>
+                <View style={styles.tourStepIndicator}>
+                  <Text style={styles.tourStepIndicatorText}>
+                    STEP {activeStepIndex + 1}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.tourTitle}>{activeStep.title}</Text>
+              <Text style={styles.tourBody}>{activeStep.body}</Text>
+
+              <View style={styles.tourChipRow}>
+                {activeStep.chips.map((chip, idx) => (
+                  <MotiView
+                    key={`${activeStep.id}-${chip}`}
+                    from={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 300 + idx * 100 }}
+                    style={styles.tourChip}
+                  >
+                    <Text style={styles.tourChipText}>{chip}</Text>
+                  </MotiView>
+                ))}
+              </View>
+
+              <View style={styles.tourDemoPreview}>
+                <LinearGradient
+                  colors={["rgba(255,255,255,0.5)", "rgba(224,242,254,0.3)"]}
+                  style={styles.tourDemoGradient}
+                >
+                  <Info size={14} color="#0369A1" />
+                  <Text style={styles.tourDemoHint}>{activeStep.demoHint}</Text>
+                </LinearGradient>
+              </View>
+            </BlurView>
+          </MotiView>
+        </AnimatePresence>
+
+        <View style={[styles.tourFooter, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+          <View style={styles.tourMainActions}>
+            {!isFirstStep && (
+              <Pressable onPress={onBack} style={styles.tourBackButton}>
+                <Text style={styles.tourBackButtonText}>Back</Text>
+              </Pressable>
+            )}
+            
+            <Pressable 
+              onPress={onNext} 
+              disabled={isSaving} 
+              style={[styles.tourNextButton, isFirstStep && { flex: 1 }]}
+            >
+              <LinearGradient
+                colors={["#0284C7", "#0369A1"]}
+                style={styles.tourNextButtonGradient}
+              >
+                <Text style={styles.tourNextButtonText}>
+                  {isSaving ? "Saving..." : isLastStep ? "Get Started" : "Next"}
+                </Text>
+                {!isLastStep && <ChevronRight color="#FFF" size={18} />}
+              </LinearGradient>
+            </Pressable>
+          </View>
+
+          <Pressable onPress={onClose} style={styles.tourSkipButton}>
+            <Text style={styles.tourSkipButtonText}>Skip tour</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function AuthenticatedTabLayout({ shouldShowTutorial, completeTutorial }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const globalParams = useGlobalSearchParams();
   const { location } = useLocation();
   const { data: user } = useUser();
   const { session } = useAuthStore();
+  const [tourStepIndex, setTourStepIndex] = useState(0);
+  const [isSavingTour, setIsSavingTour] = useState(false);
   const lastNearbyAlertCheckRef = useRef(null);
   const lastNearbyAlertLocationRef = useRef(null);
   const alertedAlertIdsRef = useRef(new Set());
@@ -251,6 +462,67 @@ function AuthenticatedTabLayout() {
     }
 
     return count > 99 ? "99+" : count;
+  };
+
+  const replayParam = Array.isArray(globalParams.tour)
+    ? globalParams.tour[0]
+    : globalParams.tour;
+  const isReplayTour = replayParam === "1" || replayParam === "true";
+  const isTourActive = shouldShowTutorial || isReplayTour;
+  const activeTourStep = IN_APP_TOUR_STEPS[tourStepIndex] || IN_APP_TOUR_STEPS[0];
+  const isFirstTourStep = tourStepIndex === 0;
+  const isLastTourStep = tourStepIndex === IN_APP_TOUR_STEPS.length - 1;
+
+  useEffect(() => {
+    if (!isTourActive) {
+      setTourStepIndex(0);
+      return;
+    }
+
+    const params = isReplayTour ? { tour: "1" } : undefined;
+    router.replace(
+      params
+        ? {
+            pathname: activeTourStep.route,
+            params,
+          }
+        : activeTourStep.route,
+    );
+  }, [activeTourStep.route, isReplayTour, isTourActive, router]);
+
+  const finishTour = async () => {
+    if (isSavingTour) {
+      return;
+    }
+
+    setIsSavingTour(true);
+
+    try {
+      if (shouldShowTutorial) {
+        await completeTutorial();
+        router.replace("/");
+        return;
+      }
+
+      router.replace("/profile");
+    } finally {
+      setIsSavingTour(false);
+    }
+  };
+
+  const handleNextTourStep = async () => {
+    if (isLastTourStep) {
+      await finishTour();
+      return;
+    }
+
+    setTourStepIndex((currentStep) =>
+      Math.min(IN_APP_TOUR_STEPS.length - 1, currentStep + 1),
+    );
+  };
+
+  const handleBackTourStep = () => {
+    setTourStepIndex((currentStep) => Math.max(0, currentStep - 1));
   };
 
   useEffect(() => {
@@ -588,99 +860,121 @@ function AuthenticatedTabLayout() {
   }, [location, normalizedReportAlerts, normalizedZoneAlerts, user?.id]);
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: BRAND_PALETTE.surface,
-          borderTopWidth: 1,
-          borderColor: BRAND_PALETTE.border,
-          paddingTop: 8,
-          paddingBottom: Math.max(insets.bottom, 10),
-          height: 64 + insets.bottom,
-        },
-        tabBarActiveTintColor: BRAND_PALETTE.accentBold,
-        tabBarInactiveTintColor: BRAND_PALETTE.muted,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Map",
-          tabBarIcon: ({ color }) => <MapPin color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="spots"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: "Alerts",
-          tabBarIcon: ({ color }) => <Bell color={color} size={24} />,
-          tabBarBadge: getTabBadge(alertsBadgeCount),
-          tabBarBadgeStyle: {
-            backgroundColor: BRAND_PALETTE.error || "#D64545",
-            color: "#FFF",
-            fontSize: 11,
-            fontWeight: "700",
+    <View style={styles.screen}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: BRAND_PALETTE.surface,
+            borderTopWidth: 1,
+            borderColor: BRAND_PALETTE.border,
+            paddingTop: 8,
+            paddingBottom: Math.max(insets.bottom, 10),
+            height: 64 + insets.bottom,
+          },
+          tabBarActiveTintColor: BRAND_PALETTE.accentBold,
+          tabBarInactiveTintColor: BRAND_PALETTE.muted,
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: "600",
           },
         }}
-      />
-      <Tabs.Screen
-        name="notifications-feed"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="timer"
-        options={{
-          title: "Timer",
-          tabBarIcon: ({ color }) => <Clock color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="activity"
-        options={{
-          title: "Activity",
-          tabBarIcon: ({ color }) => <History color={color} size={24} />,
-          tabBarBadge: getTabBadge(unreadActivityCount),
-          tabBarBadgeStyle: {
-            backgroundColor: BRAND_PALETTE.error || "#D64545",
-            color: "#FFF",
-            fontSize: 11,
-            fontWeight: "700",
-          },
-        }}
-      />
-      <Tabs.Screen
-        name="leaderboard"
-        options={{
-          title: "Leaders",
-          tabBarIcon: ({ color }) => <Trophy color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => <User color={color} size={24} />,
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Map",
+            tabBarIcon: ({ color }) => <MapPin color={color} size={24} />,
+          }}
+        />
+        <Tabs.Screen
+          name="spots"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="notifications"
+          options={{
+            title: "Alerts",
+            tabBarIcon: ({ color }) => <Bell color={color} size={24} />,
+            tabBarBadge: getTabBadge(alertsBadgeCount),
+            tabBarBadgeStyle: {
+              backgroundColor: BRAND_PALETTE.error || "#D64545",
+              color: "#FFF",
+              fontSize: 11,
+              fontWeight: "700",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="notifications-feed"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="timer"
+          options={{
+            title: "Timer",
+            tabBarIcon: ({ color }) => <Clock color={color} size={24} />,
+          }}
+        />
+        <Tabs.Screen
+          name="activity"
+          options={{
+            title: "Activity",
+            tabBarIcon: ({ color }) => <History color={color} size={24} />,
+            tabBarBadge: getTabBadge(unreadActivityCount),
+            tabBarBadgeStyle: {
+              backgroundColor: BRAND_PALETTE.error || "#D64545",
+              color: "#FFF",
+              fontSize: 11,
+              fontWeight: "700",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="leaderboard"
+          options={{
+            title: "Leaders",
+            tabBarIcon: ({ color }) => <Trophy color={color} size={24} />,
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Profile",
+            tabBarIcon: ({ color }) => <User color={color} size={24} />,
+          }}
+        />
+      </Tabs>
+
+      {isTourActive ? (
+        <TourOverlay
+          activeStep={activeTourStep}
+          activeStepIndex={tourStepIndex}
+          isFirstStep={isFirstTourStep}
+          isLastStep={isLastTourStep}
+          isSaving={isSavingTour}
+          onBack={handleBackTourStep}
+          onNext={handleNextTourStep}
+          onClose={finishTour}
+        />
+      ) : null}
+    </View>
   );
 }
 
 export default function TabLayout() {
-  const { session, isReady } = useAuthStore();
+  const { session, isReady, user } = useAuthStore();
+  const userId = user?.id || session?.user?.id || null;
+  const {
+    isLoading: isLoadingTutorialStatus,
+    shouldShowTutorial,
+    completeTutorial,
+  } =
+    useFirstLoginTutorial(userId);
 
   if (!isReady) {
     return null;
@@ -690,5 +984,204 @@ export default function TabLayout() {
     return <Redirect href="/accounts/login" />;
   }
 
-  return <AuthenticatedTabLayout />;
+  if (userId && isLoadingTutorialStatus) {
+    return null;
+  }
+
+  return (
+    <AuthenticatedTabLayout
+      completeTutorial={completeTutorial}
+      shouldShowTutorial={shouldShowTutorial}
+    />
+  );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  tourOverlayWrap: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: "space-between",
+  },
+  tourBranding: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  tourBrandingPark: {
+    color: "#FFFFFF",
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+  },
+  tourBrandingMate: {
+    color: "#FEF08A",
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+  },
+  tourCardContainer: {
+    width: "100%",
+    maxWidth: 400,
+    alignSelf: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
+  },
+  tourCard: {
+    borderRadius: 32,
+    padding: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.4)",
+  },
+  tourProgressBarBg: {
+    height: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
+    borderRadius: 3,
+    marginBottom: 24,
+    overflow: "hidden",
+  },
+  tourProgressBarFill: {
+    height: "100%",
+    backgroundColor: "#0284C7",
+    borderRadius: 3,
+  },
+  tourCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  tourIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#E0F2FE",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0284C7",
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+  },
+  tourStepIndicator: {
+    backgroundColor: "rgba(2, 132, 199, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  tourStepIndicatorText: {
+    color: "#0369A1",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  tourTitle: {
+    color: "#0F172A",
+    fontSize: 24,
+    fontWeight: "900",
+    lineHeight: 30,
+    marginBottom: 12,
+  },
+  tourBody: {
+    color: "#475569",
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  tourChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 24,
+  },
+  tourChip: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  tourChipText: {
+    color: "#1E293B",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  tourDemoPreview: {
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  tourDemoGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 10,
+  },
+  tourDemoHint: {
+    color: "#0369A1",
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+  },
+  tourFooter: {
+    width: "100%",
+    gap: 16,
+  },
+  tourMainActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  tourBackButton: {
+    flex: 1,
+    height: 56,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tourBackButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  tourNextButton: {
+    flex: 2,
+    height: 56,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  tourNextButtonGradient: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  tourNextButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  tourSkipButton: {
+    alignSelf: "center",
+    paddingVertical: 8,
+  },
+  tourSkipButtonText: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 14,
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
+});

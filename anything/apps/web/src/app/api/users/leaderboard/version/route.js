@@ -1,9 +1,11 @@
 import sql from "@/app/api/utils/sql";
 import { ensureActivityLogSchema } from "@/app/api/utils/activity-log";
+import { getConfiguredAdminEmails } from "@/app/api/utils/admin-auth";
 
 export async function GET(request) {
   try {
     await ensureActivityLogSchema();
+    const excludedEmails = getConfiguredAdminEmails();
 
     const { searchParams } = new URL(request.url);
     const requestedLimit = Number.parseInt(searchParams.get("limit") || "50", 10);
@@ -36,6 +38,7 @@ export async function GET(request) {
         FROM users u
         LEFT JOIN report_counts rc ON rc.user_id = u.id
         LEFT JOIN claim_counts cc ON cc.user_id = u.id
+        WHERE LOWER(TRIM(COALESCE(u.email, ''))) <> ALL($2::text[])
         ORDER BY COALESCE(u.contribution_score, 0) DESC, COALESCE(u.trust_score, 0) DESC, u.created_at ASC, u.id ASC
         LIMIT $1
       )
@@ -62,7 +65,7 @@ export async function GET(request) {
         ) AS checksum
       FROM leaderboard_rows
     `,
-      [limit],
+      [limit, excludedEmails],
     );
 
     const status = rows[0] || {};

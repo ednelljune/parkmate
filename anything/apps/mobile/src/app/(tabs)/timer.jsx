@@ -180,25 +180,6 @@ const getSessionStatusAccent = (session) => {
   return session?.running ? BRAND_PALETTE.success : BRAND_PALETTE.accentBold;
 };
 
-function StatTile({ label, value, accent, tone = "light" }) {
-  return (
-    <View
-      style={[
-        styles.statTile,
-        tone === "dark" ? styles.statTileDark : styles.statTileLight,
-      ]}
-    >
-      <View style={[styles.statTileAccent, { backgroundColor: accent }]} />
-      <Text style={[styles.statTileValue, tone === "dark" && styles.statTileValueDark]}>
-        {value}
-      </Text>
-      <Text style={[styles.statTileLabel, tone === "dark" && styles.statTileLabelDark]}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 function SessionCard({
   title,
   subtitle,
@@ -955,26 +936,6 @@ export default function TimerScreen() {
               Set a manual parking timer with a simple hours bar. If you claim a parking spot, its timer will appear below automatically.
             </Text>
 
-            <View style={styles.heroStatsRow}>
-              <StatTile
-                label="Recommended"
-                value={preferredZone}
-                accent={(ZONE_META[preferredZone] || ZONE_META["1P"]).accent}
-                tone="dark"
-              />
-              <StatTile
-                label="Claims"
-                value={String(claimCount)}
-                accent={BRAND_PALETTE.gold}
-                tone="dark"
-              />
-              <StatTile
-                label="Claimed"
-                value={claimedSessionVisible ? "Live" : "Idle"}
-                accent={claimedSessionVisible ? BRAND_PALETTE.success : "#94A3B8"}
-                tone="dark"
-              />
-            </View>
           </LinearGradient>
 
           <View style={styles.sectionHeader}>
@@ -1246,53 +1207,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: "rgba(255,255,255,0.76)",
-  },
-  heroStatsRow: {
-    marginTop: 18,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  statTile: {
-    flex: 1,
-    minWidth: 88,
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  statTileDark: {
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  statTileLight: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D8EAF6",
-  },
-  statTileAccent: {
-    width: 20,
-    height: 4,
-    borderRadius: 999,
-    marginBottom: 8,
-  },
-  statTileValue: {
-    fontSize: 14,
-    lineHeight: 17,
-    fontWeight: "900",
-    color: BRAND_PALETTE.deepNavy,
-  },
-  statTileValueDark: {
-    color: "#FFFFFF",
-  },
-  statTileLabel: {
-    marginTop: 4,
-    fontSize: 10,
-    fontWeight: "700",
-    color: BRAND_PALETTE.muted,
-  },
-  statTileLabelDark: {
-    color: "rgba(255,255,255,0.72)",
   },
   sectionHeader: {
     marginTop: 18,

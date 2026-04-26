@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/utils/auth/store';
 import { signInWithCredentials } from '@/utils/auth/credentialsAuth';
 import { Redirect, router, useNavigation } from 'expo-router';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff, ShieldCheck, Sparkles } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -18,6 +18,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BRAND_PALETTE } from '@/theme/brandColors';
 const errorMessages = {
   'User already registered': 'This email is already registered. Try signing in instead.',
   'Password should be at least 6 characters': 'Password must be at least 6 characters.',
@@ -126,7 +128,6 @@ export default function Signup() {
         setSession(data.session);
       } else {
         setSuccess('Check your email to confirm your account, then sign in.');
-        routeToLogin();
       }
     } catch (submitError) {
       setError(
@@ -146,8 +147,13 @@ export default function Signup() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.screen}
     >
+      <LinearGradient
+        colors={['#061521', '#0B1F33']}
+        style={StyleSheet.absoluteFill}
+      />
       <View style={styles.backdropOrbLarge} />
       <View style={styles.backdropOrbSmall} />
+
       <ScrollView
         bounces={false}
         contentContainerStyle={[
@@ -158,57 +164,61 @@ export default function Signup() {
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
-          <View style={styles.header}>
+        <View style={styles.header}>
+          <View style={styles.logoCircle}>
             <Image
               resizeMode="contain"
               source={require('../../../assets/images/parkmate-logo-current.png')}
               style={styles.logoImage}
             />
-            <Text style={styles.brand}>
-              <Text style={styles.brandPark}>Park</Text>
-              <Text style={styles.brandMate}>Mate</Text>
-            </Text>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join drivers sharing real-time parking wins around you.</Text>
           </View>
+          <Text style={styles.brand}>
+            <Text style={styles.brandPark}>Park</Text>
+            <Text style={styles.brandMate}>Mate</Text>
+          </Text>
+          <Text style={styles.title}>Create account</Text>
+          <Text style={styles.subtitle}>
+            Join the community of drivers sharing real-time parking wins and map activity.
+          </Text>
+        </View>
 
+        <View style={styles.formContainer}>
           <View style={styles.formFields}>
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Name</Text>
+              <Text style={styles.label}>Full Name</Text>
               <TextInput
                 autoCapitalize="words"
                 autoComplete="name"
                 onChangeText={setFullName}
-                placeholder="Your name"
-                placeholderTextColor="#9ca3af"
+                placeholder="Driver Name"
+                placeholderTextColor="rgba(255, 255, 255, 0.3)"
                 style={styles.input}
                 value={fullName}
               />
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>Email Address</Text>
               <TextInput
                 autoCapitalize="none"
                 autoComplete="email"
                 keyboardType="email-address"
                 onChangeText={setEmail}
-                placeholder="your@email.com"
-                placeholderTextColor="#9ca3af"
+                placeholder="driver@parkmate.com"
+                placeholderTextColor="rgba(255, 255, 255, 0.3)"
                 style={styles.input}
                 value={email}
               />
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>Secure Password</Text>
               <View style={styles.passwordField}>
                 <TextInput
                   autoCapitalize="none"
                   onChangeText={setPassword}
                   placeholder="At least 6 characters"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="rgba(255, 255, 255, 0.3)"
                   secureTextEntry={!showPassword}
                   style={styles.passwordInput}
                   value={password}
@@ -219,9 +229,9 @@ export default function Signup() {
                   style={styles.passwordToggle}
                 >
                   {showPassword ? (
-                    <EyeOff color="#6b7280" size={18} />
+                    <EyeOff color="rgba(255, 255, 255, 0.5)" size={20} />
                   ) : (
-                    <Eye color="#6b7280" size={18} />
+                    <Eye color="rgba(255, 255, 255, 0.5)" size={20} />
                   )}
                 </Pressable>
               </View>
@@ -231,12 +241,19 @@ export default function Signup() {
           {error ? <Text style={styles.errorBox}>{error}</Text> : null}
           {success ? <Text style={styles.successBox}>{success}</Text> : null}
 
-          <Pressable disabled={loading} onPress={onSubmit} style={styles.button}>
-            {loading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.buttonText}>Create Account</Text>
-            )}
+          <Pressable disabled={loading} onPress={onSubmit} style={styles.buttonContainer}>
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.buttonGradient}
+            >
+              {loading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.buttonText}>Create Account</Text>
+              )}
+            </LinearGradient>
           </Pressable>
 
           <Text style={styles.footerText}>
@@ -254,173 +271,181 @@ export default function Signup() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#082032',
-    overflow: 'hidden',
-    padding: 16,
+    backgroundColor: '#061521',
   },
   scrollContent: {
-    alignItems: 'center',
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingVertical: 24,
+    paddingHorizontal: 28,
+    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+    paddingBottom: 40,
   },
   scrollContentKeyboard: {
-    justifyContent: 'flex-start',
-    paddingTop: 12,
-    paddingBottom: 24,
+    paddingTop: 40,
   },
   backdropOrbLarge: {
     position: 'absolute',
-    top: -80,
-    left: -30,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(2, 132, 199, 0.24)',
+    top: -100,
+    left: -100,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: 'rgba(2, 132, 199, 0.1)',
   },
   backdropOrbSmall: {
     position: 'absolute',
-    bottom: 60,
-    right: -30,
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
-  },
-  card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
-    borderRadius: 28,
-    maxWidth: 420,
-    padding: 32,
-    shadowColor: '#04111d',
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.22,
-    shadowRadius: 30,
-    width: '100%',
+    bottom: -50,
+    right: -50,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 44,
+  },
+  logoCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   logoImage: {
-    height: 62,
-    marginBottom: 10,
-    width: 62,
+    height: 52,
+    width: 52,
   },
   brand: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginBottom: 4,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 3,
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
   brandPark: {
-    color: '#0f172a',
+    color: '#FFFFFF',
   },
   brandMate: {
-    color: '#ca8a04',
+    color: '#FEF08A',
   },
   title: {
-    color: '#082032',
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: '#4b5563',
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 6,
+    color: '#FFFFFF',
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: -1,
     textAlign: 'center',
   },
+  subtitle: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 16,
+    lineHeight: 24,
+    marginTop: 10,
+    textAlign: 'center',
+    paddingHorizontal: 10,
+  },
+  formContainer: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
   formFields: {
-    gap: 12,
-    marginBottom: 18,
+    gap: 20,
+    marginBottom: 28,
   },
   fieldGroup: {
-    marginBottom: 0,
+    gap: 10,
   },
   label: {
-    color: '#374151',
+    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginLeft: 4,
   },
   input: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 14,
-    borderWidth: 1,
-    color: '#111827',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
+    color: '#FFFFFF',
     fontSize: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   passwordField: {
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 14,
-    borderWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
     flexDirection: 'row',
-    paddingLeft: 16,
-    paddingRight: 14,
+    paddingLeft: 20,
+    paddingRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   passwordInput: {
-    color: '#111827',
+    color: '#FFFFFF',
     flex: 1,
     fontSize: 16,
-    paddingVertical: 14,
+    paddingVertical: 18,
   },
   passwordToggle: {
-    alignItems: 'center',
-    height: 24,
-    justifyContent: 'center',
-    marginLeft: 10,
-    width: 24,
+    padding: 4,
   },
   errorBox: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#fecaca',
-    borderRadius: 12,
-    borderWidth: 1,
-    color: '#b91c1c',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderRadius: 20,
+    color: '#FCA5A5',
     fontSize: 14,
-    marginBottom: 18,
-    padding: 12,
+    fontWeight: '600',
+    marginBottom: 24,
+    padding: 16,
+    textAlign: 'center',
+    overflow: 'hidden',
   },
   successBox: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#a7f3d0',
-    borderRadius: 12,
-    borderWidth: 1,
-    color: '#047857',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderRadius: 20,
+    color: '#6EE7B7',
     fontSize: 14,
-    marginBottom: 18,
-    padding: 12,
+    fontWeight: '600',
+    marginBottom: 24,
+    padding: 16,
+    textAlign: 'center',
+    overflow: 'hidden',
   },
-  button: {
-    alignItems: 'center',
-    backgroundColor: '#0284c7',
-    borderRadius: 14,
-    justifyContent: 'center',
-    minHeight: 52,
-    shadowColor: '#0284c7',
+  buttonContainer: {
+    borderRadius: 22,
+    overflow: 'hidden',
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  buttonGradient: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
   },
   buttonText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   footerText: {
-    color: '#6b7280',
-    fontSize: 14,
-    marginTop: 24,
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 15,
+    marginTop: 32,
     textAlign: 'center',
+    fontWeight: '500',
   },
   linkText: {
-    color: '#059669',
-    fontWeight: '700',
+    color: '#10B981',
+    fontWeight: '900',
   },
 });

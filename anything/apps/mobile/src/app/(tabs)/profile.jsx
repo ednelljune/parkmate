@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { router } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -478,18 +479,24 @@ function ProfileRankBadge({ badge }) {
   );
 }
 
-function LegalLinkCard({ title, detail, onPress }) {
+function LegalLinkCard({
+  title,
+  detail,
+  onPress,
+  icon: Icon = ShieldCheck,
+  accent = "#0EA5E9",
+}) {
   return (
     <TouchableOpacity style={styles.legalLinkCard} onPress={onPress} activeOpacity={0.88}>
-      <View style={styles.legalLinkIconWrap}>
-        <ShieldCheck size={17} color="#0EA5E9" />
+      <View style={[styles.legalLinkIconWrap, { backgroundColor: `${accent}18` }]}>
+        <Icon size={17} color={accent} />
       </View>
       <View style={styles.legalLinkCopy}>
         <Text style={styles.legalLinkTitle}>{title}</Text>
         <Text style={styles.legalLinkDetail}>{detail}</Text>
       </View>
-      <View style={styles.legalLinkArrowWrap}>
-        <ArrowUpRight size={16} color="#0EA5E9" />
+      <View style={[styles.legalLinkArrowWrap, { borderColor: `${accent}33` }]}>
+        <ArrowUpRight size={16} color={accent} />
       </View>
     </TouchableOpacity>
   );
@@ -844,6 +851,27 @@ export default function ProfileScreen() {
             {PLAYBOOK_ITEMS.map((item) => (
               <PlaybookCard key={item.title} item={item} onPress={openPlaybookDetails} />
             ))}
+          </View>
+        </View>
+
+        <View style={[styles.panel, styles.legalPanelCard]}>
+          <View style={styles.sectionHeaderRow}>
+            <View>
+              <Text style={styles.sectionEyebrow}>Access</Text>
+              <Text style={[styles.sectionTitle, styles.legalSectionTitle]}>
+                Replay the app tour
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.legalLinksStack}>
+            <LegalLinkCard
+              title="Replay app tour"
+              detail="Walk through Map, Timer, Alerts, Activity, Leaders, and Profile again."
+              icon={Sparkles}
+              accent="#14B8A6"
+              onPress={() => router.push("/?tour=1")}
+            />
           </View>
         </View>
 

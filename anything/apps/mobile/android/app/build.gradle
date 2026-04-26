@@ -81,6 +81,10 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 def googleMapsApiKey = System.getenv("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY")?.trim()
+def isEasBuild = System.getenv("EAS_BUILD") == "true"
+def releaseKeystorePath = findProperty("MYAPP_UPLOAD_STORE_FILE")?.toString()
+def releaseKeystoreFile = releaseKeystorePath ? file(releaseKeystorePath) : null
+def hasReleaseKeystore = releaseKeystoreFile?.exists() ?: false
 
 def sentryAuthToken = System.getenv("SENTRY_AUTH_TOKEN")?.trim()
 def sentryGradleFile = new File(
@@ -94,59 +98,78 @@ if (sentryAuthToken) {
     logger.lifecycle("SENTRY_AUTH_TOKEN is not set; skipping Sentry Gradle source map upload.")
 }
 
-if (System.getenv("EAS_BUILD") == "true" && !googleMapsApiKey) {
+if (isEasBuild && !googleMapsApiKey) {
     throw new GradleException("Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY for Android native build.")
 }
 
+if (isEasBuild && !hasReleaseKeystore) {
+    throw new GradleException("Missing release keystore file for Android release build: ${releaseKeystorePath ?: 'MYAPP_UPLOAD_STORE_FILE is not set'}")
+}
+
+if (!isEasBuild && !hasReleaseKeystore) {
+    logger.lifecycle("Release keystore not found at ${releaseKeystorePath ?: 'unset path'}; using debug signing for local release builds.")
+}
+
 android {
-    ndkVersion rootProject.ext.ndkVersion
+    ndkVersion = rootProject.ext.ndkVersion
 
-    buildToolsVersion rootProject.ext.buildToolsVersion
-    compileSdk rootProject.ext.compileSdkVersion
+    buildToolsVersion = rootProject.ext.buildToolsVersion
+    compileSdk = rootProject.ext.compileSdkVersion
 
-    namespace 'com.parkmate.mobile'
+    namespace = 'com.parkmate.mobile'
     defaultConfig {
-        applicationId 'com.parkmate.mobile'
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        applicationId = 'com.parkmate.mobile'
+        minSdk = rootProject.ext.minSdkVersion
+        targetSdk = rootProject.ext.targetSdkVersion
+        versionCode = 1
+        versionName = "1.0.0"
         manifestPlaceholders = [googleMapsApiKey: googleMapsApiKey ?: ""]
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
     signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+    debug {
+        storeFile = file('debug.keystore')
+        storePassword = 'android'
+        keyAlias = 'androiddebugkey'
+        keyPassword = 'android'
+    }
+
+    release {
+        if (hasReleaseKeystore) {
+            storeFile = releaseKeystoreFile
+            storePassword = MYAPP_UPLOAD_STORE_PASSWORD
+            keyAlias = MYAPP_UPLOAD_KEY_ALIAS
+            keyPassword = MYAPP_UPLOAD_KEY_PASSWORD
         }
     }
-    buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
-        release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
-            shrinkResources enableShrinkResources.toBoolean()
-            minifyEnabled enableMinifyInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
-            crunchPngs enablePngCrunchInRelease.toBoolean()
-        }
+}
+
+buildTypes {
+    debug {
+        signingConfig = signingConfigs.debug
     }
+
+    release {
+        signingConfig = hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
+
+        def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
+        shrinkResources = enableShrinkResources.toBoolean()
+        minifyEnabled = enableMinifyInReleaseBuilds
+        proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+
+        def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
+        crunchPngs = enablePngCrunchInRelease.toBoolean()
+    }
+}
     packagingOptions {
         jniLibs {
             def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
-            useLegacyPackaging enableLegacyPackaging.toBoolean()
+            useLegacyPackaging = enableLegacyPackaging.toBoolean()
         }
     }
     androidResources {
-        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+        ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
 }
 

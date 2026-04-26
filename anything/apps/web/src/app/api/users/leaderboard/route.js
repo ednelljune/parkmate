@@ -1,9 +1,11 @@
 import sql from '@/app/api/utils/sql';
 import { ensureActivityLogSchema } from '@/app/api/utils/activity-log';
+import { getConfiguredAdminEmails } from '@/app/api/utils/admin-auth';
 
 export async function GET(request) {
   try {
     await ensureActivityLogSchema();
+    const excludedEmails = getConfiguredAdminEmails();
 
     const { searchParams } = new URL(request.url);
     const limit = Math.max(1, Number.parseInt(searchParams.get('limit') || '50', 10));
@@ -32,12 +34,17 @@ export async function GET(request) {
       FROM users u
       LEFT JOIN report_counts rc ON rc.user_id = u.id
       LEFT JOIN claim_counts cc ON cc.user_id = u.id
+      WHERE LOWER(TRIM(COALESCE(u.email, ''))) <> ALL(${excludedEmails}::text[])
       ORDER BY u.contribution_score DESC, u.trust_score DESC, u.created_at ASC
       LIMIT ${limit}
       OFFSET ${offset};
     `;
 
-    const totalCount = await sql`SELECT COUNT(*) AS count FROM users`;
+    const totalCount = await sql`
+      SELECT COUNT(*) AS count
+      FROM users
+      WHERE LOWER(TRIM(COALESCE(email, ''))) <> ALL(${excludedEmails}::text[])
+    `;
 
     return Response.json({
       success: true,

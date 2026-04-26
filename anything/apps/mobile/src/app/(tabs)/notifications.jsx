@@ -20,7 +20,6 @@ import {
   MapPin,
   Navigation,
   Radar,
-  Sparkles,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -281,26 +280,6 @@ export default function NotificationsScreen() {
   }, [alerts, reportAlerts, selectedTab, zoneAlerts]);
 
   const selectedTabMeta = TAB_COPY[selectedTab];
-  const spotlightAlert = currentAlerts[0] || alerts[0] || null;
-  const spotlightDistance = spotlightAlert
-    ? formatDistance(spotlightAlert.distance_meters || 0)
-    : "Scanning";
-  const spotlightTitle = spotlightAlert
-    ? spotlightAlert.zone_name ||
-      (spotlightAlert.alertType === "zone"
-        ? `${spotlightAlert.zone_type || "Parking"} zone`
-        : `${spotlightAlert.parking_type || spotlightAlert.zone_type || "Parking"} availability`)
-    : "Scanning your surrounding streets";
-  const spotlightText = !spotlightAlert
-    ? "No nearby signals yet. Pull to refresh or move into a busier area to wake the radar."
-    : spotlightAlert.alertType === "zone"
-      ? spotlightAlert.rules_description ||
-        `${spotlightAlert.zone_type || "Parking"} rules are active ${spotlightDistance} from your position.`
-      : spotlightAlert.quantity && spotlightAlert.quantity > 1
-        ? `${spotlightAlert.quantity} reported spots are clustered ${spotlightDistance} away.`
-        : `${spotlightAlert.parking_type || spotlightAlert.zone_type || "Parking"} was reported nearby and sits ${spotlightDistance} from your current position.`;
-  const spotlightKind =
-    spotlightAlert?.alertType === "zone" ? "Zone snapshot" : "Live report";
   const heroStats = [
     { label: "Signals", value: alertCounts.all },
     { label: "Reports", value: alertCounts.reports },
@@ -463,39 +442,6 @@ export default function NotificationsScreen() {
                 <Text style={styles.heroStatLabel}>{item.label}</Text>
               </View>
             ))}
-          </View>
-
-          <View style={styles.spotlightCard}>
-            <View style={styles.spotlightHeader}>
-              <View style={styles.spotlightBadge}>
-                <Sparkles size={12} color={BRAND_PALETTE.accentBold} />
-                <Text style={styles.spotlightBadgeText}>Closest signal</Text>
-              </View>
-              <View style={styles.spotlightDistancePill}>
-                <MapPin size={12} color={BRAND_PALETTE.deepNavy} />
-                <Text style={styles.spotlightDistanceText}>{spotlightDistance}</Text>
-              </View>
-            </View>
-
-            <Text style={styles.spotlightTitle}>{spotlightTitle}</Text>
-            <Text style={styles.spotlightText}>{spotlightText}</Text>
-
-            <View style={styles.spotlightMetaRow}>
-              <View style={styles.spotlightMetaChip}>
-                {spotlightAlert?.alertType === "zone" ? (
-                  <Layers size={13} color={BRAND_PALETTE.gold} />
-                ) : (
-                  <Bell size={13} color={BRAND_PALETTE.success} />
-                )}
-                <Text style={styles.spotlightMetaText}>{spotlightKind}</Text>
-              </View>
-              <View style={styles.spotlightMetaChip}>
-                <Navigation size={13} color={BRAND_PALETTE.accentBold} />
-                <Text style={styles.spotlightMetaText}>
-                  {PARKING_ALERT_RADIUS_LABEL} radius
-                </Text>
-              </View>
-            </View>
           </View>
         </LinearGradient>
 
@@ -1107,80 +1053,6 @@ const styles = StyleSheet.create({
     color: "rgba(230, 244, 255, 0.76)",
     textTransform: "uppercase",
     letterSpacing: 0.7,
-  },
-  spotlightCard: {
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 12,
-    backgroundColor: "#F8FCFF",
-  },
-  spotlightHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    marginBottom: 7,
-  },
-  spotlightBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: "#E0F2FE",
-  },
-  spotlightBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: BRAND_PALETTE.accentBold,
-    textTransform: "uppercase",
-    letterSpacing: 0.7,
-  },
-  spotlightDistancePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: "#E8F4FB",
-  },
-  spotlightDistanceText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: BRAND_PALETTE.deepNavy,
-  },
-  spotlightTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: BRAND_PALETTE.deepNavy,
-  },
-  spotlightText: {
-    marginTop: 4,
-    fontSize: 11,
-    lineHeight: 16,
-    color: BRAND_PALETTE.muted,
-  },
-  spotlightMetaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 7,
-    marginTop: 10,
-  },
-  spotlightMetaChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: "#EFF7FC",
-  },
-  spotlightMetaText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: BRAND_PALETTE.deepNavy,
   },
   filterPanel: {
     borderRadius: 20,

@@ -1,14 +1,10 @@
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@/utils/auth/useAuth';
 import {
-  clearStoredSupabaseSession,
   createSessionFromCallbackParams,
-  getSupabaseClient,
-  isSupabaseConfigured,
 } from '@/lib/supabase';
-import { useAuthStore } from '@/utils/auth/store';
 
 function normalizeParam(value) {
   if (Array.isArray(value)) {
@@ -88,29 +84,13 @@ export default function AuthCallback() {
           return;
         }
 
-        if (isSupabaseConfigured) {
-          await getSupabaseClient().auth.signOut({ scope: 'local' }).catch(() => null);
-        }
-        await clearStoredSupabaseSession().catch(() => null);
-        useAuthStore.setState({
-          isReady: true,
-          session: null,
-          user: null,
-        });
       } catch (error) {
         if (isMounted) {
           setCallbackError(error instanceof Error ? error.message : 'Unable to complete sign in.');
         }
       } finally {
         if (isMounted) {
-          if (isSignupConfirmation) {
-            router.replace({
-              pathname: '/accounts/login',
-              params: { confirmed: '1' },
-            });
-          } else {
-            setIsHandlingConfirmation(false);
-          }
+          setIsHandlingConfirmation(false);
         }
       }
     };
@@ -144,7 +124,7 @@ export default function AuthCallback() {
   }
 
   if (isReady && isAuthenticated) {
-    return <Redirect href="/" />;
+    return <Redirect href={isSignupConfirmation ? '/?tour=1' : '/'} />;
   }
 
   if (callbackError) {
@@ -157,7 +137,11 @@ export default function AuthCallback() {
   }
 
   if (isReady && !isAuthenticated) {
-    return <Redirect href="/accounts/login" />;
+    return (
+      <Redirect
+        href={isSignupConfirmation ? '/accounts/login?confirmed=1' : '/accounts/login'}
+      />
+    );
   }
 
   return (

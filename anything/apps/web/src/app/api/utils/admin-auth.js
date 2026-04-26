@@ -16,7 +16,7 @@ const normalizeEmail = (value) => {
   return trimmed || null;
 };
 
-const getConfiguredAdminEmails = () => {
+export const getConfiguredAdminEmails = () => {
   const configuredEmails = new Set(DEFAULT_ADMIN_EMAILS);
 
   for (const envName of ADMIN_EMAIL_ENV_NAMES) {

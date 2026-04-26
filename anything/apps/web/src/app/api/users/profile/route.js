@@ -1,7 +1,7 @@
 import sql from '@/app/api/utils/sql';
 import { requireAuthenticatedUser } from '@/app/api/utils/supabase-auth';
 import { ensureActivityLogSchema } from '@/app/api/utils/activity-log';
-import { isConfiguredAdminEmail } from '@/app/api/utils/admin-auth';
+import { getConfiguredAdminEmails, isConfiguredAdminEmail } from '@/app/api/utils/admin-auth';
 import { ensureUsersSchema, ensureUserRow } from '@/app/api/utils/users-schema';
 
 export async function GET(request) {
@@ -12,6 +12,7 @@ export async function GET(request) {
     }
 
     const userId = auth.user.id;
+    const excludedEmails = getConfiguredAdminEmails();
     await ensureUsersSchema();
     await ensureUserRow(auth.user);
     await ensureActivityLogSchema();
@@ -28,6 +29,7 @@ export async function GET(request) {
               id ASC
           )::int AS leaderboard_rank
         FROM users
+        WHERE LOWER(TRIM(COALESCE(email, ''))) <> ALL(${excludedEmails}::text[])
       )
       SELECT
         u.id,
@@ -37,7 +39,11 @@ export async function GET(request) {
         u.trust_score,
         u.created_at,
         ru.leaderboard_rank,
-        (SELECT COUNT(*)::int FROM users) AS ranked_count,
+        (
+          SELECT COUNT(*)::int
+          FROM users
+          WHERE LOWER(TRIM(COALESCE(email, ''))) <> ALL(${excludedEmails}::text[])
+        ) AS ranked_count,
         (SELECT COUNT(*) FROM live_reports WHERE user_id = ${userId}) AS total_reports,
         (
           SELECT COUNT(*)

@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.parkmate.mobile
 
 import android.app.Application

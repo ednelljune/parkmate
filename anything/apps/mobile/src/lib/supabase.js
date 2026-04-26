@@ -57,9 +57,10 @@ export function normalizeSupabaseUser(user) {
 }
 
 export function getEmailRedirectUrl(params = {}) {
-  const queryParams = new URLSearchParams(
-    Object.entries(params).filter(([, value]) => value != null && value !== '')
-  ).toString();
+  const filteredEntries = Object.entries(params).filter(
+    ([, value]) => value != null && value !== '',
+  );
+  const queryParams = new URLSearchParams(filteredEntries).toString();
 
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const callbackUrl = new URL('/auth/callback', window.location.origin);
@@ -69,7 +70,10 @@ export function getEmailRedirectUrl(params = {}) {
     return callbackUrl.toString();
   }
 
-  return `${MOBILE_APP_SCHEME}://auth/callback${queryParams ? `?${queryParams}` : ''}`;
+  return Linking.createURL('auth/callback', {
+    scheme: MOBILE_APP_SCHEME,
+    queryParams: Object.fromEntries(filteredEntries),
+  });
 }
 
 export async function createSessionFromUrl(url) {
@@ -169,7 +173,10 @@ export async function createSessionFromCallbackParams(params = {}) {
   }
 
   return createSessionFromUrl(
-    `${MOBILE_APP_SCHEME}://auth/callback?${serializedParams}`,
+    Linking.createURL('auth/callback', {
+      scheme: MOBILE_APP_SCHEME,
+      queryParams: Object.fromEntries(queryParams.entries()),
+    }),
   );
 }
 

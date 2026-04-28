@@ -41,3 +41,5 @@ temp-export-review/
 # iOS CocoaPods dependencies
 anything/apps/mobile/ios/Pods/
 anything/apps/mobile/android/.gradle-home/
+anything/apps/mobile/android/app/debug.keystore
+anything/apps/mobile/ios/Podfile 2.lock

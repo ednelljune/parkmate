@@ -4,6 +4,7 @@ import { logUserActivity } from '@/app/api/utils/activity-log';
 import { getEffectiveReportExpiresAtSql } from '@/app/api/utils/report-ttl';
 
 const CLAIM_SPOT_MAX_DISTANCE_METERS = 5;
+const CLAIM_SPOT_MAX_ACCURACY_TOLERANCE_METERS = 15;
 
 const isExpoPushToken = (value) =>
   typeof value === 'string' &&
@@ -12,6 +13,23 @@ const isExpoPushToken = (value) =>
 const normalizeCoordinate = (value) => {
   const parsed = typeof value === 'number' ? value : Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeAccuracyMeters = (value) => {
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getClaimDistanceThresholdMeters = (accuracyMeters) => {
+  const normalizedAccuracyMeters = normalizeAccuracyMeters(accuracyMeters);
+  if (normalizedAccuracyMeters === null) {
+    return CLAIM_SPOT_MAX_DISTANCE_METERS;
+  }
+
+  return Math.min(
+    Math.max(CLAIM_SPOT_MAX_DISTANCE_METERS, normalizedAccuracyMeters),
+    CLAIM_SPOT_MAX_ACCURACY_TOLERANCE_METERS,
+  );
 };
 
 const dispatchReporterClaimNotification = async ({
@@ -109,10 +127,14 @@ export async function POST(request) {
       return auth.response;
     }
 
-    const { reportId, latitude, longitude } = await request.json();
+    const { reportId, latitude, longitude, accuracy } = await request.json();
     const userId = auth.user.id;
     const normalizedLatitude = normalizeCoordinate(latitude);
     const normalizedLongitude = normalizeCoordinate(longitude);
+    const normalizedAccuracyMeters = normalizeAccuracyMeters(accuracy);
+    const claimDistanceThresholdMeters = getClaimDistanceThresholdMeters(
+      normalizedAccuracyMeters,
+    );
 
     if (!reportId) {
       return Response.json(
@@ -126,7 +148,7 @@ export async function POST(request) {
         {
           success: false,
           message:
-            'Your current location is required to confirm you are within 5m of the reported spot.',
+            'Your current location is required to confirm you are close enough to the reported spot.',
         },
         { status: 400 }
       );
@@ -144,6 +166,16 @@ export async function POST(request) {
           lr.quantity,
           lr.zone_id,
           lr.parking_type,
+          CASE
+            WHEN pz.boundary IS NULL THEN FALSE
+            ELSE ST_Covers(
+              pz.boundary::geometry,
+              ST_SetSRID(
+                ST_Point($1, $2),
+                4326
+              )::geometry
+            )
+          END AS is_inside_zone,
           ST_X(lr.location::geometry) AS longitude,
           ST_Y(lr.location::geometry) AS latitude,
           ST_Distance(
@@ -154,6 +186,8 @@ export async function POST(request) {
               )::geography
             ) AS distance_meters
         FROM live_reports lr
+        LEFT JOIN parking_zones pz
+          ON pz.id = lr.zone_id
         WHERE lr.id = $3
           AND lr.status = 'available'
           AND ${effectiveExpiresAtSql} > CURRENT_TIMESTAMP
@@ -167,17 +201,34 @@ export async function POST(request) {
       }
 
       const distanceMeters = Number(availableReports[0]?.distance_meters);
-      if (
+      const isInsideZone = !!availableReports[0]?.is_inside_zone;
+      const hasMatchedZone = availableReports[0]?.zone_id != null;
+
+      if (hasMatchedZone) {
+        if (!isInsideZone) {
+          const accuracyClause = normalizedAccuracyMeters
+            ? ` Your GPS accuracy is about ${Math.round(normalizedAccuracyMeters)}m.`
+            : "";
+          const error = new Error(
+            `Move inside the associated parking zone before claiming it.${accuracyClause}`,
+          );
+          error.status = 403;
+          throw error;
+        }
+      } else if (
         !Number.isFinite(distanceMeters) ||
-        distanceMeters > CLAIM_SPOT_MAX_DISTANCE_METERS
+        distanceMeters > claimDistanceThresholdMeters
       ) {
         const roundedDistance = Number.isFinite(distanceMeters)
           ? Math.round(distanceMeters)
           : null;
         const actualDistanceClause =
           roundedDistance == null ? '' : ` You are about ${roundedDistance}m away.`;
+        const accuracyClause = normalizedAccuracyMeters
+          ? ` Your GPS accuracy is about ${Math.round(normalizedAccuracyMeters)}m.`
+          : '';
         const error = new Error(
-          `Move closer to the reported spot coordinates before claiming it. You must be within ${CLAIM_SPOT_MAX_DISTANCE_METERS}m.${actualDistanceClause}`
+          `Move closer to the reported spot coordinates before claiming it. You must be within ${Math.round(claimDistanceThresholdMeters)}m.${actualDistanceClause}${accuracyClause}`,
         );
         error.status = 403;
         throw error;

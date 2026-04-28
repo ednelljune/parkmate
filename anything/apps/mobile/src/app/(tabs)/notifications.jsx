@@ -1,7 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   Platform,
   RefreshControl,
   ScrollView,
@@ -29,6 +31,8 @@ import {
   useNearbyReportsBackendVersion,
   useParkingZones,
 } from "@/hooks/useParkingData";
+import { useProAccess } from "@/hooks/useProAccess";
+import { ShiningProBadge } from "@/components/paywall/ShiningProBadge";
 import { formatDistance, formatTimeAgo } from "@/utils/formatters";
 import { getDetectedZonePins } from "@/utils/parkingZonePins";
 import {
@@ -46,6 +50,16 @@ const ALERT_TABS = [
   { id: "all", label: "All" },
   { id: "reports", label: "Reports" },
   { id: "zones", label: "Zones" },
+];
+const RADIUS_OPTIONS = [
+  { value: 300, label: "300m", pro: false },
+  { value: 500, label: "500m", pro: true },
+  { value: 1000, label: "1km", pro: true },
+  { value: 2000, label: "2km", pro: true },
+];
+const SORT_OPTIONS = [
+  { id: "nearest", label: "Nearest", pro: false },
+  { id: "best_chance", label: "Best chance", pro: true },
 ];
 
 const TYPE_COLORS = {
@@ -164,12 +178,35 @@ const formatTimeRemaining = (diffMs) => {
   return `${hours}h ${remainingMinutes}m left`;
 };
 
+const formatRadiusLabel = (radiusMeters) =>
+  radiusMeters >= 1000 ? `${radiusMeters / 1000}km` : `${radiusMeters}m`;
+
+const compareAlertsByDistance = (a, b) =>
+  (a?.distance_meters || 0) - (b?.distance_meters || 0);
+
+const getBestChanceScore = (alert, currentTimeMs) => {
+  const quantity = Math.max(1, Number(alert?.quantity) || 1);
+  const distanceMeters = Math.max(0, Number(alert?.distance_meters) || 0);
+  const createdAtMs = Date.parse(alert?.created_at ?? "");
+  const freshnessMinutes = Number.isFinite(createdAtMs)
+    ? Math.max(0, (currentTimeMs - createdAtMs) / 60000)
+    : 45;
+  const freshnessScore = Math.max(0, 30 - freshnessMinutes);
+  const reportBoost = alert?.alertType === "report" ? 20 : 8;
+  const distancePenalty = distanceMeters / 120;
+
+  return quantity * 28 + freshnessScore + reportBoost - distancePenalty;
+};
+
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const router = useRouter();
   const { location, errorMsg, status } = useLocation();
+  const { hasPro, ensureProAccess } = useProAccess();
   const [selectedTab, setSelectedTab] = useState("all");
+  const [selectedRadiusMeters, setSelectedRadiusMeters] = useState(ALERT_RADIUS_METERS);
+  const [selectedSortMode, setSelectedSortMode] = useState("nearest");
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const isCompactAndroid = Platform.OS === "android" && windowWidth <= 420;
@@ -183,18 +220,30 @@ export default function NotificationsScreen() {
     return () => clearInterval(intervalId);
   }, []);
 
+  useEffect(() => {
+    if (!hasPro) {
+      if (selectedRadiusMeters > ALERT_RADIUS_METERS) {
+        setSelectedRadiusMeters(ALERT_RADIUS_METERS);
+      }
+
+      if (selectedSortMode === "best_chance") {
+        setSelectedSortMode("nearest");
+      }
+    }
+  }, [hasPro, selectedRadiusMeters, selectedSortMode]);
+
   const {
     reports,
     refetch,
     isRefetching,
-  } = useNearbyReports(location, ALERT_RADIUS_METERS, {
+  } = useNearbyReports(location, selectedRadiusMeters, {
     refetchIntervalMs: false,
     refetchOnMount: false,
     staleTimeMs: Infinity,
   });
   useNearbyReportsBackendVersion(
     location,
-    ALERT_RADIUS_METERS,
+    selectedRadiusMeters,
     reportsVersionEnabled,
   );
   const handleRefresh = useCallback(async () => {
@@ -206,7 +255,7 @@ export default function NotificationsScreen() {
       setIsManualRefreshing(false);
     }
   }, [refetch]);
-  const nearbyZones = useParkingZones(location, ALERT_RADIUS_METERS, {
+  const nearbyZones = useParkingZones(location, selectedRadiusMeters, {
     includeGeometry: false,
     refetchIntervalMs: false,
     refetchOnMount: false,
@@ -217,9 +266,9 @@ export default function NotificationsScreen() {
       getDetectedZonePins({
         apiZones: nearbyZones,
         location,
-        radiusMeters: ALERT_RADIUS_METERS,
+        radiusMeters: selectedRadiusMeters,
       }),
-    [location, nearbyZones],
+    [location, nearbyZones, selectedRadiusMeters],
   );
 
   const reportAlerts = useMemo(
@@ -242,19 +291,19 @@ export default function NotificationsScreen() {
       .filter(Boolean);
     const councilZoneAlerts = detectedZonePins.councilZones
       .map((zone) =>
-        normalizeCouncilZoneAlert(zone, location, ALERT_RADIUS_METERS),
+        normalizeCouncilZoneAlert(zone, location, selectedRadiusMeters),
       )
       .filter(Boolean);
-    return [...apiZoneAlerts, ...councilZoneAlerts].sort(
-      (a, b) => (a.distance_meters || 0) - (b.distance_meters || 0),
-    );
-  }, [detectedZonePins.apiZones, detectedZonePins.councilZones, location]);
+    return [...apiZoneAlerts, ...councilZoneAlerts].sort(compareAlertsByDistance);
+  }, [
+    detectedZonePins.apiZones,
+    detectedZonePins.councilZones,
+    location,
+    selectedRadiusMeters,
+  ]);
 
   const alerts = useMemo(
-    () =>
-      [...reportAlerts, ...zoneAlerts].sort(
-        (a, b) => (a.distance_meters || 0) - (b.distance_meters || 0),
-      ),
+    () => [...reportAlerts, ...zoneAlerts].sort(compareAlertsByDistance),
     [reportAlerts, zoneAlerts],
   );
 
@@ -267,17 +316,37 @@ export default function NotificationsScreen() {
     [alerts.length, reportAlerts.length, zoneAlerts.length],
   );
 
+  const sortAlerts = useCallback(
+    (items) => {
+      const nextItems = [...items];
+
+      if (selectedSortMode === "best_chance" && hasPro) {
+        return nextItems.sort((a, b) => {
+          const scoreDelta = getBestChanceScore(b, currentTimeMs) - getBestChanceScore(a, currentTimeMs);
+          if (scoreDelta !== 0) {
+            return scoreDelta;
+          }
+
+          return compareAlertsByDistance(a, b);
+        });
+      }
+
+      return nextItems.sort(compareAlertsByDistance);
+    },
+    [currentTimeMs, hasPro, selectedSortMode],
+  );
+
   const currentAlerts = useMemo(() => {
     if (selectedTab === "reports") {
-      return reportAlerts;
+      return sortAlerts(reportAlerts);
     }
 
     if (selectedTab === "zones") {
-      return zoneAlerts;
+      return sortAlerts(zoneAlerts);
     }
 
-    return alerts;
-  }, [alerts, reportAlerts, selectedTab, zoneAlerts]);
+    return sortAlerts(alerts);
+  }, [alerts, reportAlerts, selectedTab, sortAlerts, zoneAlerts]);
 
   const selectedTabMeta = TAB_COPY[selectedTab];
   const heroStats = [
@@ -285,6 +354,37 @@ export default function NotificationsScreen() {
     { label: "Reports", value: alertCounts.reports },
     { label: "Zones", value: alertCounts.zones },
   ];
+  const activeRadiusLabel = formatRadiusLabel(selectedRadiusMeters);
+
+  const handleRadiusSelect = useCallback(
+    (radiusMeters) => {
+      if (radiusMeters === selectedRadiusMeters) {
+        return;
+      }
+
+      if (radiusMeters > ALERT_RADIUS_METERS && !ensureProAccess("radius_upgrade")) {
+        return;
+      }
+
+      setSelectedRadiusMeters(radiusMeters);
+    },
+    [ensureProAccess, selectedRadiusMeters],
+  );
+
+  const handleSortSelect = useCallback(
+    (sortModeId) => {
+      if (sortModeId === selectedSortMode) {
+        return;
+      }
+
+      if (sortModeId === "best_chance" && !ensureProAccess("premium_sort_mode")) {
+        return;
+      }
+
+      setSelectedSortMode(sortModeId);
+    },
+    [ensureProAccess, selectedSortMode],
+  );
 
   const openBuiltInNavigation = ({
     latitude,
@@ -453,7 +553,85 @@ export default function NotificationsScreen() {
             </View>
             <View style={styles.radiusPill}>
               <Navigation size={12} color={BRAND_PALETTE.accentBold} />
-              <Text style={styles.radiusPillText}>{PARKING_ALERT_RADIUS_LABEL}</Text>
+              <Text style={styles.radiusPillText}>{activeRadiusLabel}</Text>
+            </View>
+          </View>
+
+          <View style={styles.controlStack}>
+            <View style={styles.controlSection}>
+              <Text style={styles.controlLabel}>Radius</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.optionRail}
+              >
+                {RADIUS_OPTIONS.map((option) => {
+                  const isSelected = selectedRadiusMeters === option.value;
+                  const isLocked = option.pro && !hasPro;
+
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      onPress={() => handleRadiusSelect(option.value)}
+                      style={[
+                        styles.optionChip,
+                        isSelected && styles.optionChipSelected,
+                        isLocked && styles.optionChipLocked,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.optionChipText,
+                          isSelected && styles.optionChipTextSelected,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                      {isLocked ? (
+                        <ShiningProBadge />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <View style={styles.controlSection}>
+              <Text style={styles.controlLabel}>Sort</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.optionRail}
+              >
+                {SORT_OPTIONS.map((option) => {
+                  const isSelected = selectedSortMode === option.id;
+                  const isLocked = option.pro && !hasPro;
+
+                  return (
+                    <TouchableOpacity
+                      key={option.id}
+                      onPress={() => handleSortSelect(option.id)}
+                      style={[
+                        styles.optionChip,
+                        isSelected && styles.optionChipSelected,
+                        isLocked && styles.optionChipLocked,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.optionChipText,
+                          isSelected && styles.optionChipTextSelected,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                      {isLocked ? (
+                        <ShiningProBadge />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
           </View>
 
@@ -1073,6 +1251,20 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
+  controlStack: {
+    gap: 12,
+    marginBottom: 12,
+  },
+  controlSection: {
+    gap: 8,
+  },
+  controlLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: BRAND_PALETTE.muted,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
   filterEyebrow: {
     fontSize: 11,
     fontWeight: "800",
@@ -1101,6 +1293,35 @@ const styles = StyleSheet.create({
   radiusPillText: {
     fontSize: 11,
     fontWeight: "700",
+    color: BRAND_PALETTE.accentBold,
+  },
+  optionRail: {
+    gap: 8,
+  },
+  optionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#D7E6F2",
+    backgroundColor: "#FFFFFF",
+  },
+  optionChipSelected: {
+    backgroundColor: "#E7F4FF",
+    borderColor: BRAND_PALETTE.accentBold,
+  },
+  optionChipLocked: {
+    backgroundColor: "#F8FBFE",
+  },
+  optionChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: BRAND_PALETTE.navy,
+  },
+  optionChipTextSelected: {
     color: BRAND_PALETTE.accentBold,
   },
   tabRail: {

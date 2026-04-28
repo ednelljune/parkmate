@@ -19,7 +19,6 @@ import {
 import { ACTIVITY_NOTIFICATIONS_QUERY_KEY } from "@/hooks/useActivityNotifications";
 import { ACTIVITY_MAILBOX_QUERY_KEY } from "@/hooks/useActivityMailbox";
 
-const CLAIM_SPOT_MAX_DISTANCE_METERS = 5;
 const REPORT_TTL_MS = 3 * 60 * 1000;
 const DEFAULT_NEARBY_REPORTS_STALE_TIME_MS = 15000;
 const DEFAULT_NEARBY_REPORTS_REFETCH_INTERVAL_MS = 15000;
@@ -37,6 +36,11 @@ export const NEARBY_REPORTS_VERSION_QUERY_KEY = ["nearby_reports_version"];
 const normalizeCoordinate = (value) => {
   const parsed = typeof value === "number" ? value : Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeAccuracyMeters = (value) => {
+  const parsed = typeof value === "number" ? value : Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
 const getEffectiveExpiresAt = (report) => {
@@ -83,6 +87,44 @@ const safeJsonParse = (value) => {
   } catch {
     return null;
   }
+};
+
+const stripHtml = (value) =>
+  String(value || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getReadableHttpError = (status, responseText, payload) => {
+  const payloadMessage = payload?.message || payload?.error || null;
+  if (payloadMessage) {
+    return payloadMessage;
+  }
+
+  const normalizedText = String(responseText || "").trim();
+  const lowerText = normalizedText.toLowerCase();
+
+  if (
+    lowerText.includes("body size limit exceeded") ||
+    lowerText.includes("body exceeded") ||
+    status === 413
+  ) {
+    return "Your evidence photo is too large. Please choose a smaller photo and try again.";
+  }
+
+  if (
+    lowerText.startsWith("<!doctype html") ||
+    lowerText.startsWith("<html") ||
+    lowerText.includes("web server is returning an unknown error") ||
+    status === 520
+  ) {
+    return "ParkMate servers are temporarily unavailable. Please try your missing zone suggestion again in a moment.";
+  }
+
+  const plainText = stripHtml(normalizedText);
+  return plainText || null;
 };
 
 const normalizeParkingTypeLabel = (value) => {
@@ -735,6 +777,7 @@ export const useNearbyReports = (location, radiusMeters = 500, options = {}) => 
     refetchIntervalMs = DEFAULT_NEARBY_REPORTS_REFETCH_INTERVAL_MS,
     refetchOnMount = true,
     staleTimeMs = DEFAULT_NEARBY_REPORTS_STALE_TIME_MS,
+    currentTimeRefreshIntervalMs = 1000,
   } = options;
   const queryLocation = useMemo(() => getQueryLocation(location), [location]);
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
@@ -745,12 +788,20 @@ export const useNearbyReports = (location, radiusMeters = 500, options = {}) => 
   );
 
   useEffect(() => {
+    if (currentTimeRefreshIntervalMs === false) {
+      return undefined;
+    }
+
+    const intervalMs = Math.max(
+      250,
+      Number(currentTimeRefreshIntervalMs) || 1000,
+    );
     const intervalId = setInterval(() => {
       setCurrentTimeMs(Date.now());
-    }, 1000);
+    }, intervalMs);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [currentTimeRefreshIntervalMs]);
 
   const queryResult = useQuery({
     queryKey: getNearbyReportsQueryKey(queryLocation, radiusMeters),
@@ -1039,13 +1090,15 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
           ? {
               latitude: normalizeCoordinate(claimInput.currentLocation.latitude),
               longitude: normalizeCoordinate(claimInput.currentLocation.longitude),
+              accuracy: normalizeAccuracyMeters(claimInput.currentLocation.accuracy),
             }
           : getQueryLocation(location, 6);
 
+      if (currentLocation && !("accuracy" in currentLocation)) {
+        currentLocation.accuracy = normalizeAccuracyMeters(location?.accuracy);
+      }
+
       const reportSnapshot = findReportSnapshot(qc, reportId);
-      const claimTarget =
-        claimInput && typeof claimInput === "object" ? claimInput.spot || null : null;
-      const normalizedClaimTarget = normalizeReport(claimTarget);
       let parkingType =
         selectedParkingType ||
         normalizeParkingTypeLabel(reportSnapshot?.parking_type) ||
@@ -1074,23 +1127,9 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
         }
       }
 
-      const targetLocation = normalizedClaimTarget || reportSnapshot;
-      const claimDistanceMeters = currentLocation
-        ? getDistanceMeters(currentLocation, targetLocation)
-        : null;
-
       if (!currentLocation) {
         throw new Error(
-          "Current location is required to confirm you are within 5m of the reported spot",
-        );
-      }
-
-      if (
-        claimDistanceMeters !== null &&
-        claimDistanceMeters > CLAIM_SPOT_MAX_DISTANCE_METERS
-      ) {
-        throw new Error(
-          `Move closer to the reported spot coordinates before claiming it. You must be within ${CLAIM_SPOT_MAX_DISTANCE_METERS}m.`,
+          "Current location is required to confirm you are close enough to the reported spot",
         );
       }
 
@@ -1101,6 +1140,7 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
           reportId,
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude,
+          accuracy: normalizeAccuracyMeters(currentLocation?.accuracy),
         }),
       });
       if (!response.ok) {
@@ -1242,11 +1282,15 @@ export const useSuggestParkingZone = (location, onSuccess) => {
       });
 
       if (!response.ok) {
+        const readableError = getReadableHttpError(
+          response.status,
+          responseText,
+          payload,
+        );
+
         throw new Error(
-          payload?.message ||
-            payload?.error ||
+          readableError ||
             (response.status === 401 ? "Please sign in again and retry your zone suggestion." : null) ||
-            responseText ||
             "Failed to suggest parking zone",
         );
       }

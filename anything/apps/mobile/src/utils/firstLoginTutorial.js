@@ -27,13 +27,22 @@ export const hasCompletedFirstLoginTutorial = async (userId) => {
 
 export const markFirstLoginTutorialComplete = async (userId) => {
   if (!userId) {
-    return;
+    return true;
   }
 
-  await AsyncStorage.setItem(
-    getFirstLoginTutorialStorageKey(userId),
-    "true",
-  );
+  try {
+    await AsyncStorage.setItem(
+      getFirstLoginTutorialStorageKey(userId),
+      "true",
+    );
+    return true;
+  } catch (error) {
+    console.warn("[first-login-tutorial] Failed to persist tutorial state", {
+      userId,
+      message: error?.message || String(error),
+    });
+    return false;
+  }
 };
 
 export const useFirstLoginTutorial = (userId) => {
@@ -78,11 +87,13 @@ export const useFirstLoginTutorial = (userId) => {
 
   const completeTutorial = useCallback(async () => {
     if (!userId) {
-      return;
+      setHasCompleted(true);
+      return true;
     }
 
-    await markFirstLoginTutorialComplete(userId);
+    const didPersist = await markFirstLoginTutorialComplete(userId);
     setHasCompleted(true);
+    return didPersist;
   }, [userId]);
 
   return {

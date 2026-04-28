@@ -37,6 +37,7 @@ export async function GET(request) {
         u.full_name,
         u.contribution_score,
         u.trust_score,
+        u.pro_access,
         u.created_at,
         ru.leaderboard_rank,
         (
@@ -68,6 +69,7 @@ export async function GET(request) {
       success: true,
       user: {
         ...users[0],
+        is_pro_access: Boolean(users[0].pro_access),
         is_admin: isConfiguredAdminEmail(auth.user?.email),
       },
     });
@@ -96,7 +98,7 @@ export async function POST(request) {
       UPDATE users
       SET full_name = ${full_name || null}
       WHERE id = ${userId}
-      RETURNING id, email, full_name, contribution_score, trust_score, created_at;
+      RETURNING id, email, full_name, contribution_score, trust_score, pro_access, created_at;
     `;
 
     if (users.length === 0) {
@@ -110,6 +112,7 @@ export async function POST(request) {
       success: true,
       user: {
         ...users[0],
+        is_pro_access: Boolean(users[0].pro_access),
         is_admin: isConfiguredAdminEmail(auth.user?.email),
       },
     });

@@ -124,7 +124,7 @@ export default function AuthCallback() {
   }
 
   if (isReady && isAuthenticated) {
-    return <Redirect href={isSignupConfirmation ? '/?tour=1' : '/'} />;
+    return <Redirect href="/" />;
   }
 
   if (callbackError) {

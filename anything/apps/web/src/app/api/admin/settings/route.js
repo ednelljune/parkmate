@@ -5,7 +5,7 @@ import { ensureUsersSchema, ensureUserRow } from '@/app/api/utils/users-schema';
 async function buildSettingsPayload(user) {
   await ensureUsersSchema();
   const rows = await sql`
-    SELECT id, email, full_name, contribution_score, trust_score, created_at
+    SELECT id, email, full_name, contribution_score, trust_score, pro_access, created_at
     FROM users
     WHERE id = ${user.id}
     LIMIT 1;

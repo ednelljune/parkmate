@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as ExpoLocation from "expo-location";
 import MapView, { Circle, Polygon, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
@@ -74,6 +75,8 @@ const normalizeCoordinate = (value) => {
   const parsed = typeof value === "number" ? value : Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
+
+const MAX_SUGGESTED_ZONE_EVIDENCE_BASE64_LENGTH = 800000;
 
 const normalizeMapHeading = (value) => {
   if (!Number.isFinite(value)) {
@@ -385,6 +388,8 @@ function ParkMateContent() {
     coordinate: null,
     timestamp: 0,
   });
+  const overlayRegionFrameRef = useRef(null);
+  const pendingOverlayRegionRef = useRef(null);
   const lastNavigationRefreshRef = useRef({
     coordinate: null,
     timestamp: 0,
@@ -399,6 +404,7 @@ function ParkMateContent() {
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSuggestZoneModal, setShowSuggestZoneModal] = useState(false);
+  const [suggestedZoneLocationSnapshot, setSuggestedZoneLocationSnapshot] = useState(null);
   const [suggestedZoneCapacity, setSuggestedZoneCapacity] = useState("");
   const [suggestedZoneType, setSuggestedZoneType] = useState("");
   const [suggestedZoneStreetName, setSuggestedZoneStreetName] = useState("");
@@ -464,6 +470,131 @@ function ParkMateContent() {
     mapRegion?.longitude,
   ]);
 
+  const resetSuggestedZoneDraft = useCallback(() => {
+    setSuggestedZoneLocationSnapshot(null);
+    setSuggestedZoneStreetName("");
+    setSuggestedZoneCapacity("");
+    setSuggestedZoneType("");
+    setSuggestedZoneEvidence(null);
+    setSuggestedParkingCategory("");
+    setSuggestedZoneDescription("");
+    setIsPublicParkingConfirmed(false);
+    setIsResolvingSuggestedZoneStreetName(false);
+  }, []);
+
+  const prepareSuggestedZoneEvidence = useCallback(async (asset, fallbackFileName) => {
+    if (!asset?.uri) {
+      throw new Error("Please choose a valid photo and try again.");
+    }
+
+    const manipulations = [
+      { resize: { width: 1280 } },
+    ];
+    const firstPass = await ImageManipulator.manipulateAsync(
+      asset.uri,
+      manipulations,
+      {
+        compress: 0.55,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      },
+    );
+
+    let normalizedBase64 = firstPass?.base64 || "";
+    let normalizedUri = firstPass?.uri || asset.uri;
+
+    if (normalizedBase64.length > MAX_SUGGESTED_ZONE_EVIDENCE_BASE64_LENGTH) {
+      const secondPass = await ImageManipulator.manipulateAsync(
+        normalizedUri,
+        [{ resize: { width: 960 } }],
+        {
+          compress: 0.42,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        },
+      );
+
+      normalizedBase64 = secondPass?.base64 || normalizedBase64;
+      normalizedUri = secondPass?.uri || normalizedUri;
+    }
+
+    if (
+      !normalizedBase64 ||
+      normalizedBase64.length > MAX_SUGGESTED_ZONE_EVIDENCE_BASE64_LENGTH
+    ) {
+      throw new Error(
+        "This photo is too large to upload. Please choose a closer, smaller photo and try again.",
+      );
+    }
+
+    return {
+      uri: normalizedUri,
+      base64: normalizedBase64,
+      mimeType: "image/jpeg",
+      fileName: fallbackFileName || asset.fileName || asset.uri.split("/").pop() || "parking-zone.jpg",
+    };
+  }, []);
+
+  const scheduleOverlayRegionUpdate = useCallback((region) => {
+    if (!region) {
+      return;
+    }
+
+    const nextRegion = {
+      latitude: region.latitude,
+      longitude: region.longitude,
+      latitudeDelta: region.latitudeDelta,
+      longitudeDelta: region.longitudeDelta,
+    };
+
+    const currentRegion = pendingOverlayRegionRef.current || mapRegionRef.current;
+    if (
+      currentRegion &&
+      currentRegion.latitude === nextRegion.latitude &&
+      currentRegion.longitude === nextRegion.longitude &&
+      currentRegion.latitudeDelta === nextRegion.latitudeDelta &&
+      currentRegion.longitudeDelta === nextRegion.longitudeDelta
+    ) {
+      return;
+    }
+
+    pendingOverlayRegionRef.current = nextRegion;
+
+    if (overlayRegionFrameRef.current != null) {
+      return;
+    }
+
+    const scheduleFrame =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame
+        : (callback) => setTimeout(callback, 16);
+
+    overlayRegionFrameRef.current = scheduleFrame(() => {
+      overlayRegionFrameRef.current = null;
+
+      const nextPendingRegion = pendingOverlayRegionRef.current;
+      pendingOverlayRegionRef.current = null;
+
+      if (!nextPendingRegion) {
+        return;
+      }
+
+      setOverlayMapRegion(nextPendingRegion);
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (overlayRegionFrameRef.current != null) {
+        if (typeof cancelAnimationFrame === "function") {
+          cancelAnimationFrame(overlayRegionFrameRef.current);
+        } else {
+          clearTimeout(overlayRegionFrameRef.current);
+        }
+      }
+    };
+  }, []);
+
   // Safe wrapper — animateToRegion crashes on web (google.maps.LatLngBounds)
   const safeAnimateToRegion = useCallback((region, duration) => {
     if (!mapRef.current) return;
@@ -476,12 +607,12 @@ function ParkMateContent() {
       };
       mapRegionRef.current = nextRegion;
       setMapRegion(nextRegion);
-      setOverlayMapRegion(nextRegion);
+      scheduleOverlayRegionUpdate(nextRegion);
       mapRef.current.animateToRegion(nextRegion, duration);
     } catch (e) {
       // Not supported on web preview — initialRegion handles it
     }
-  }, []);
+  }, [scheduleOverlayRegionUpdate]);
 
   const clearExternalMapSelectionParams = useCallback(() => {
     if (typeof navigation?.setParams !== "function") {
@@ -505,7 +636,7 @@ function ParkMateContent() {
 
     mapRegionRef.current = nextRegion;
     setMapRegion(nextRegion);
-    setOverlayMapRegion(nextRegion);
+    scheduleOverlayRegionUpdate(nextRegion);
 
     try {
       if (typeof mapRef.current.animateCamera === "function") {
@@ -539,7 +670,7 @@ function ParkMateContent() {
         // Not supported on web preview — initialRegion handles it
       }
     }
-  }, []);
+  }, [scheduleOverlayRegionUpdate]);
 
   const focusMapRegion = useCallback(
     (region, duration) => {
@@ -583,7 +714,7 @@ function ParkMateContent() {
         region.longitudeDelta || mapRegionRef.current.longitudeDelta,
     };
     setMapRegion(mapRegionRef.current);
-    setOverlayMapRegion(mapRegionRef.current);
+    scheduleOverlayRegionUpdate(mapRegionRef.current);
 
     if (details?.isGesture) {
       setIsFollowingLiveLocation(false);
@@ -593,22 +724,15 @@ function ParkMateContent() {
       scheduleOverlayRefresh(true);
     }
     syncMapHeading(true);
-  }, [scheduleOverlayRefresh, syncMapHeading]);
+  }, [scheduleOverlayRefresh, scheduleOverlayRegionUpdate, syncMapHeading]);
 
   const handleRegionChange = useCallback((region) => {
     if (region) {
       if (Platform.OS === "android") {
-        setOverlayMapRegion({
-          latitude: region.latitude,
-          longitude: region.longitude,
-          latitudeDelta: region.latitudeDelta,
-          longitudeDelta: region.longitudeDelta,
-        });
+        scheduleOverlayRegionUpdate(region);
       }
-
-      syncMapHeading();
     }
-  }, [syncMapHeading]);
+  }, [scheduleOverlayRegionUpdate]);
 
   const handleMapReady = useCallback(() => {
     if (Platform.OS === "android") {
@@ -625,6 +749,9 @@ function ParkMateContent() {
   const { reports, refetch: refetchReports } = useNearbyReports(
     location,
     detectionRadius,
+    {
+      currentTimeRefreshIntervalMs: 10000,
+    },
   );
   const {
     routeCoordinates,
@@ -948,20 +1075,65 @@ function ParkMateContent() {
     nearbyZones,
   ]);
 
+  const areReportZoneOptionsEqual = useCallback((leftOptions, rightOptions) => {
+    if (leftOptions === rightOptions) {
+      return true;
+    }
+
+    if (!Array.isArray(leftOptions) || !Array.isArray(rightOptions)) {
+      return false;
+    }
+
+    if (leftOptions.length !== rightOptions.length) {
+      return false;
+    }
+
+    return leftOptions.every((leftOption, index) => {
+      const rightOption = rightOptions[index];
+      return (
+        leftOption?.zoneId === rightOption?.zoneId &&
+        leftOption?.zoneName === rightOption?.zoneName &&
+        leftOption?.parkingType === rightOption?.parkingType &&
+        Number(leftOption?.latitude) === Number(rightOption?.latitude) &&
+        Number(leftOption?.longitude) === Number(rightOption?.longitude) &&
+        String(leftOption?.boundary_geojson || "") ===
+          String(rightOption?.boundary_geojson || "")
+      );
+    });
+  }, []);
+
   useEffect(() => {
     if (!location || availableZoneOptions.length === 0) {
       return;
     }
 
-    setLastKnownReportZoneState({
-      options: availableZoneOptions,
-      location: {
-        latitude: location.latitude,
-        longitude: location.longitude,
-      },
+    const nextLocation = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    };
+
+    setLastKnownReportZoneState((currentState) => {
+      const currentLocation = currentState.location;
+      const hasSameLocation =
+        currentLocation &&
+        Number(currentLocation.latitude) === Number(nextLocation.latitude) &&
+        Number(currentLocation.longitude) === Number(nextLocation.longitude);
+
+      if (
+        hasSameLocation &&
+        areReportZoneOptionsEqual(currentState.options, availableZoneOptions)
+      ) {
+        return currentState;
+      }
+
+      return {
+        options: availableZoneOptions,
+        location: nextLocation,
+      };
     });
   }, [
     availableZoneOptions,
+    areReportZoneOptionsEqual,
     location?.latitude,
     location?.longitude,
   ]);
@@ -1347,13 +1519,7 @@ function ParkMateContent() {
   const suggestZoneMutation = useSuggestParkingZone(location, (data) => {
     setShowReportModal(false);
     setShowSuggestZoneModal(false);
-    setSuggestedZoneStreetName("");
-    setSuggestedZoneCapacity("");
-    setSuggestedZoneType("");
-    setSuggestedZoneEvidence(null);
-    setSuggestedParkingCategory("");
-    setSuggestedZoneDescription("");
-    setIsPublicParkingConfirmed(false);
+    resetSuggestedZoneDraft();
     Alert.alert(
       "Zone suggestion received",
       data?.message ||
@@ -1833,15 +1999,13 @@ function ParkMateContent() {
     if (!location || suggestZoneMutation.isPending) {
       return;
     }
-    setSuggestedZoneStreetName("");
-    setSuggestedZoneCapacity("");
-    setSuggestedZoneType("");
-    setSuggestedZoneEvidence(null);
-    setSuggestedParkingCategory("");
-    setSuggestedZoneDescription("");
-    setIsPublicParkingConfirmed(false);
+    resetSuggestedZoneDraft();
+    setSuggestedZoneLocationSnapshot({
+      latitude: location.latitude,
+      longitude: location.longitude,
+    });
     setShowSuggestZoneModal(true);
-  }, [location, suggestZoneMutation]);
+  }, [location, resetSuggestedZoneDraft, suggestZoneMutation]);
 
   const handleSuggestParkingZoneFromReport = useCallback(() => {
     setShowReportModal(false);
@@ -1849,7 +2013,9 @@ function ParkMateContent() {
   }, [handleSuggestParkingZone]);
 
   const handleConfirmSuggestParkingZone = useCallback(() => {
-    if (!location || suggestZoneMutation.isPending || isUploadingSuggestZoneEvidence) {
+    const suggestionCoords = suggestedZoneLocationSnapshot || location;
+
+    if (!suggestionCoords || suggestZoneMutation.isPending || isUploadingSuggestZoneEvidence) {
       return;
     }
 
@@ -1914,8 +2080,8 @@ function ParkMateContent() {
     suggestZoneMutation.mutate(
       {
         coords: {
-          latitude: location.latitude,
-          longitude: location.longitude,
+          latitude: suggestionCoords.latitude,
+          longitude: suggestionCoords.longitude,
         },
         streetName: normalizedStreetName,
         estimatedCapacitySpaces: parsedCapacity,
@@ -1934,6 +2100,7 @@ function ParkMateContent() {
   }, [
     isUploadingSuggestZoneEvidence,
     location,
+    suggestedZoneLocationSnapshot,
     suggestZoneMutation,
     suggestedZoneCapacity,
     suggestedParkingCategory,
@@ -1963,7 +2130,7 @@ function ParkMateContent() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 0.7,
-        base64: true,
+        base64: false,
       });
 
       if (result.canceled) {
@@ -1971,25 +2138,28 @@ function ParkMateContent() {
       }
 
       const asset = result.assets?.[0];
-      if (!asset?.uri || !asset?.base64) {
+      if (!asset?.uri) {
         Alert.alert("Photo unavailable", "Please choose a valid photo and try again.");
         return;
       }
 
-      setSuggestedZoneEvidence({
-        uri: asset.uri,
-        base64: asset.base64,
-        mimeType: asset.mimeType || "image/jpeg",
-        fileName: asset.fileName || asset.uri.split("/").pop() || "parking-zone.jpg",
-      });
+      setIsUploadingSuggestZoneEvidence(true);
+      const preparedEvidence = await prepareSuggestedZoneEvidence(asset, "parking-zone.jpg");
+      setSuggestedZoneEvidence(preparedEvidence);
     } catch (error) {
       console.error("Error picking photo:", error);
       Alert.alert(
-        "Could not access photo library",
-        "Please try again.",
+        "Could not prepare photo",
+        error?.message || "Please try again.",
       );
+    } finally {
+      setIsUploadingSuggestZoneEvidence(false);
     }
-  }, [isUploadingSuggestZoneEvidence, suggestZoneMutation.isPending]);
+  }, [
+    isUploadingSuggestZoneEvidence,
+    prepareSuggestedZoneEvidence,
+    suggestZoneMutation.isPending,
+  ]);
 
   const handleCaptureSuggestZoneEvidence = useCallback(async () => {
     if (suggestZoneMutation.isPending || isUploadingSuggestZoneEvidence) {
@@ -2010,7 +2180,7 @@ function ParkMateContent() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 0.7,
-        base64: true,
+        base64: false,
       });
 
       if (result.canceled) {
@@ -2018,28 +2188,31 @@ function ParkMateContent() {
       }
 
       const asset = result.assets?.[0];
-      if (!asset?.uri || !asset?.base64) {
+      if (!asset?.uri) {
         Alert.alert("Photo unavailable", "Please take a valid photo and try again.");
         return;
       }
 
-      setSuggestedZoneEvidence({
-        uri: asset.uri,
-        base64: asset.base64,
-        mimeType: asset.mimeType || "image/jpeg",
-        fileName: asset.fileName || asset.uri.split("/").pop() || "parking-zone.jpg",
-      });
+      setIsUploadingSuggestZoneEvidence(true);
+      const preparedEvidence = await prepareSuggestedZoneEvidence(asset, "parking-zone.jpg");
+      setSuggestedZoneEvidence(preparedEvidence);
     } catch (error) {
       console.error("Error capturing photo:", error);
       Alert.alert(
-        "Could not access camera",
-        "Please try again.",
+        "Could not prepare photo",
+        error?.message || "Please try again.",
       );
+    } finally {
+      setIsUploadingSuggestZoneEvidence(false);
     }
-  }, [isUploadingSuggestZoneEvidence, suggestZoneMutation.isPending]);
+  }, [
+    isUploadingSuggestZoneEvidence,
+    prepareSuggestedZoneEvidence,
+    suggestZoneMutation.isPending,
+  ]);
 
   useEffect(() => {
-    if (!showSuggestZoneModal || !location) {
+    if (!showSuggestZoneModal || !suggestedZoneLocationSnapshot) {
       if (!showSuggestZoneModal) {
         setIsResolvingSuggestedZoneStreetName(false);
       }
@@ -2047,21 +2220,26 @@ function ParkMateContent() {
     }
 
     let cancelled = false;
-    const fallbackLabel = formatSuggestedZoneCoordinateLabel(location);
+    const fallbackLabel = formatSuggestedZoneCoordinateLabel(
+      suggestedZoneLocationSnapshot,
+    );
 
     setSuggestedZoneStreetName(fallbackLabel);
     setIsResolvingSuggestedZoneStreetName(true);
 
     ExpoLocation.reverseGeocodeAsync({
-      latitude: location.latitude,
-      longitude: location.longitude,
+      latitude: suggestedZoneLocationSnapshot.latitude,
+      longitude: suggestedZoneLocationSnapshot.longitude,
     })
       .then((results) => {
         if (cancelled) {
           return;
         }
 
-        const nextLabel = getSuggestedZoneStreetLabel(results?.[0], location);
+        const nextLabel = getSuggestedZoneStreetLabel(
+          results?.[0],
+          suggestedZoneLocationSnapshot,
+        );
         setSuggestedZoneStreetName(nextLabel || fallbackLabel);
       })
       .catch(() => {
@@ -2078,7 +2256,7 @@ function ParkMateContent() {
     return () => {
       cancelled = true;
     };
-  }, [location, showSuggestZoneModal]);
+  }, [showSuggestZoneModal, suggestedZoneLocationSnapshot]);
 
   const logSpotSelection = useCallback((label, payload) => {
     if (!payload) {
@@ -2260,7 +2438,7 @@ function ParkMateContent() {
 
     Alert.alert(
       "Claim This Spot?",
-      "Are you at this parking spot? Your current location must be confirmed within 5m of the reported spot coordinates before the claim will succeed. Claiming will remove it from the map for others.",
+      "Are you at this parking spot? Your current location must be close enough to the reported spot coordinates before the claim will succeed. Claiming will remove it from the map for others.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -2656,13 +2834,7 @@ function ParkMateContent() {
         onRequestClose={() => {
           if (!suggestZoneMutation.isPending && !isUploadingSuggestZoneEvidence) {
             setShowSuggestZoneModal(false);
-            setSuggestedZoneStreetName("");
-            setSuggestedZoneCapacity("");
-            setSuggestedZoneType("");
-            setSuggestedZoneEvidence(null);
-            setSuggestedParkingCategory("");
-            setSuggestedZoneDescription("");
-            setIsPublicParkingConfirmed(false);
+            resetSuggestedZoneDraft();
           }
         }}
       >
@@ -2722,7 +2894,9 @@ function ParkMateContent() {
                   {suggestedZoneStreetName || "Locating current street..."}
                 </Text>
                 <Text style={{ marginTop: 6, fontSize: 12, color: "#64748B" }}>
-                  {formatSuggestedZoneCoordinateLabel(location)}
+                  {formatSuggestedZoneCoordinateLabel(
+                    suggestedZoneLocationSnapshot || location,
+                  )}
                 </Text>
                 {isResolvingSuggestedZoneStreetName ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
@@ -3097,13 +3271,7 @@ function ParkMateContent() {
                       return;
                     }
                     setShowSuggestZoneModal(false);
-                    setSuggestedZoneStreetName("");
-                    setSuggestedZoneCapacity("");
-                    setSuggestedZoneType("");
-                    setSuggestedZoneEvidence(null);
-                    setSuggestedParkingCategory("");
-                    setSuggestedZoneDescription("");
-                    setIsPublicParkingConfirmed(false);
+                    resetSuggestedZoneDraft();
                   }
                 }}
                 style={{

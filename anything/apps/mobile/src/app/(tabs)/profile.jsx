@@ -16,6 +16,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LockedFeatureCard } from "@/components/paywall/LockedFeatureCard";
 import {
   ArrowUpRight,
   LogOut,
@@ -28,6 +29,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import fetch from "@/__create/fetch";
 
+import { useProAccess } from "@/hooks/useProAccess";
 import useUser from "@/utils/auth/useUser";
 import { useAuth } from "@/utils/auth/useAuth";
 import {
@@ -507,6 +509,14 @@ export default function ProfileScreen() {
   const qc = useQueryClient();
   const { data: authUser } = useUser();
   const { session, signOut } = useAuth();
+  const {
+    hasPro,
+    ensureProAccess,
+    presentPaywall,
+    proPriceLabel,
+    isConfigured,
+    refreshServerAccess,
+  } = useProAccess();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [activePlaybookItem, setActivePlaybookItem] = useState(null);
   const heroDrift = useRef(new Animated.Value(0)).current;
@@ -553,6 +563,14 @@ export default function ProfileScreen() {
     enabled: canUseProfileApi && Boolean(profileUrl),
   });
 
+  useEffect(() => {
+    if (!canUseProfileApi || !profileData) {
+      return;
+    }
+
+    refreshServerAccess().catch(() => null);
+  }, [canUseProfileApi, profileData, refreshServerAccess]);
+
   const { data: leaderboardData } = useQuery({
     queryKey: [...LEADERBOARD_QUERY_KEY, leaderboardLimit, "profile-rank"],
     queryFn: () => fetchLeaderboardQuery(leaderboardLimit),
@@ -591,6 +609,16 @@ export default function ProfileScreen() {
   const nextTier = getNextTierMeta(points);
   const tierProgress = getTierProgress(points);
   const progressWidth = `${Math.max(6, Math.round(tierProgress.progress * 100))}%`;
+  const claimConversionRate =
+    totalReports > 0 ? Math.min(100, Math.round((totalClaims / totalReports) * 100)) : 0;
+  const impactPerReport = totalReports > 0 ? (points / totalReports).toFixed(1) : "0.0";
+  const nextUnlockIntensity = nextTier
+    ? tierProgress.pointsRemaining <= 25
+      ? "Close"
+      : tierProgress.pointsRemaining <= 75
+        ? "Building"
+        : "Early"
+    : "Complete";
   const handleSignOut = async () => {
     if (isSigningOut) {
       return;
@@ -835,6 +863,136 @@ export default function ProfileScreen() {
               accent="#F59E0B"
             />
           </View>
+        </View>
+
+        <View style={[styles.panel, styles.proAccessPanelCard]}>
+          <View style={styles.sectionHeaderRow}>
+            <View>
+              <Text style={styles.sectionEyebrow}>ParkMate Pro</Text>
+              <Text style={[styles.sectionTitle, styles.proAccessSectionTitle]}>
+                Lifetime upgrade
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.proStatusPill,
+                hasPro ? styles.proStatusPillActive : styles.proStatusPillInactive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.proStatusPillText,
+                  hasPro ? styles.proStatusPillTextActive : styles.proStatusPillTextInactive,
+                ]}
+              >
+                {hasPro ? "Active" : "Available"}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.proAccessCopy}>
+            {hasPro
+              ? "Your lifetime upgrade is active. Premium radar controls, reminder presets, and profile insights are unlocked on this account."
+              : "Upgrade once to unlock wider radar controls, better parking intelligence, and advanced timer reminders without a subscription."}
+          </Text>
+
+          <View style={styles.proAccessActions}>
+            <TouchableOpacity
+              activeOpacity={0.88}
+              disabled={!isConfigured && !hasPro}
+              onPress={() => {
+                if (!hasPro) {
+                  presentPaywall("profile_membership");
+                }
+              }}
+              style={[
+                styles.proAccessPrimaryButton,
+                hasPro && styles.proAccessPrimaryButtonActive,
+                !isConfigured && !hasPro && styles.proAccessPrimaryButtonDisabled,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.proAccessPrimaryButtonText,
+                  hasPro && styles.proAccessPrimaryButtonTextActive,
+                ]}
+              >
+                {hasPro
+                  ? "ParkMate Pro active"
+                  : isConfigured
+                    ? `Unlock for ${proPriceLabel || "A$19.99"}`
+                    : "Purchases not configured"}
+              </Text>
+            </TouchableOpacity>
+
+            {!hasPro ? (
+              <TouchableOpacity
+                activeOpacity={0.82}
+                onPress={() => ensureProAccess("profile_membership")}
+                style={styles.proAccessSecondaryButton}
+              >
+                <Text style={styles.proAccessSecondaryButtonText}>See Pro features</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={[styles.panel, styles.proInsightsPanelCard]}>
+          <View style={styles.sectionHeaderRow}>
+            <View>
+              <Text style={styles.sectionEyebrow}>Pro Insights</Text>
+              <Text style={[styles.sectionTitle, styles.proInsightsSectionTitle]}>
+                Contribution insights
+              </Text>
+            </View>
+          </View>
+
+          {hasPro ? (
+            <>
+              <Text style={styles.proInsightsIntro}>
+                Read the quality of your parking intel with deeper metrics that stay private to your profile.
+              </Text>
+
+              <View style={[styles.summaryGrid, styles.summaryGridCompact]}>
+                <MetricCard
+                  mini
+                  label="Claim rate"
+                  value={`${claimConversionRate}%`}
+                  note="reports turning into claimed parks"
+                  icon={Star}
+                  accent="#F59E0B"
+                />
+                <MetricCard
+                  mini
+                  label="Impact/report"
+                  value={impactPerReport}
+                  note="average score earned per report"
+                  icon={Sparkles}
+                  accent="#0EA5E9"
+                />
+                <MetricCard
+                  mini
+                  label="Next unlock pace"
+                  value={nextUnlockIntensity}
+                  note={
+                    nextTier
+                      ? `${tierProgress.pointsRemaining} pts to ${nextTier.label}`
+                      : "all profile tiers unlocked"
+                  }
+                  icon={ShieldCheck}
+                  accent="#14B8A6"
+                />
+              </View>
+            </>
+          ) : (
+            <View style={styles.proLockedWrap}>
+              <LockedFeatureCard
+                title="Unlock deeper contribution insights"
+                description="See claim conversion, impact per report, and how close you are to the next tier."
+                onPress={() => ensureProAccess("profile_insights")}
+              />
+            </View>
+          )}
         </View>
 
         <View style={[styles.panel, styles.playbookPanelCard]}>
@@ -1224,6 +1382,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 15,
   },
+  proAccessPanelCard: {
+    borderRadius: 22,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+  },
+  proInsightsPanelCard: {
+    borderRadius: 22,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+  },
   sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1255,6 +1423,83 @@ const styles = StyleSheet.create({
   legalSectionTitle: {
     fontSize: 18,
     lineHeight: 23,
+  },
+  proAccessSectionTitle: {
+    fontSize: 18,
+    lineHeight: 23,
+  },
+  proInsightsSectionTitle: {
+    fontSize: 18,
+    lineHeight: 23,
+  },
+  proStatusPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
+  },
+  proStatusPillActive: {
+    backgroundColor: "#ECFDF5",
+    borderColor: "#A7F3D0",
+  },
+  proStatusPillInactive: {
+    backgroundColor: "#EFF6FF",
+    borderColor: "#BFDBFE",
+  },
+  proStatusPillText: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  proStatusPillTextActive: {
+    color: "#047857",
+  },
+  proStatusPillTextInactive: {
+    color: "#1D4ED8",
+  },
+  proAccessCopy: {
+    color: "#64748B",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 12,
+  },
+  proAccessActions: {
+    marginTop: 14,
+    gap: 10,
+  },
+  proAccessPrimaryButton: {
+    borderRadius: 16,
+    backgroundColor: "#0B1F33",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  proAccessPrimaryButtonActive: {
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+  },
+  proAccessPrimaryButtonDisabled: {
+    backgroundColor: "#CBD5E1",
+  },
+  proAccessPrimaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  proAccessPrimaryButtonTextActive: {
+    color: "#047857",
+  },
+  proAccessSecondaryButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 4,
+  },
+  proAccessSecondaryButtonText: {
+    color: "#0EA5E9",
+    fontSize: 13,
+    fontWeight: "800",
   },
   sectionChip: {
     flexDirection: "row",
@@ -1369,6 +1614,15 @@ const styles = StyleSheet.create({
   summaryGridCompact: {
     marginTop: 10,
     gap: 7,
+  },
+  proInsightsIntro: {
+    color: "#64748B",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 12,
+  },
+  proLockedWrap: {
+    marginTop: 14,
   },
   metricCard: {
     backgroundColor: "#F8FCFF",

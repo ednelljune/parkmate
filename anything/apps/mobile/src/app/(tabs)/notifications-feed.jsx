@@ -1377,6 +1377,7 @@ export default function NotificationsScreen() {
   const [selectedMailboxIds, setSelectedMailboxIds] = React.useState([]);
   const lastLifecycleRefreshAtRef = React.useRef(0);
   const lifecycleRefreshInFlightRef = React.useRef(false);
+  const refreshActivityFeedsRef = React.useRef(null);
   const activityReadStateVersion = React.useSyncExternalStore(
     subscribeToActivityReadState,
     getActivityReadStateVersion,
@@ -1479,23 +1480,27 @@ export default function NotificationsScreen() {
     [mailboxUpdatedAt, notificationsUpdatedAt, refetch, refetchActivityVersion, refetchMailbox],
   );
 
+  React.useEffect(() => {
+    refreshActivityFeedsRef.current = refreshActivityFeeds;
+  }, [refreshActivityFeeds]);
+
   useFocusEffect(
     React.useCallback(() => {
-      refreshActivityFeeds({ source: "focus" }).catch(() => {});
-    }, [refreshActivityFeeds]),
+      refreshActivityFeedsRef.current?.({ source: "focus" }).catch(() => {});
+    }, []),
   );
 
   React.useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        refreshActivityFeeds({ source: "app-active" }).catch(() => {});
+        refreshActivityFeedsRef.current?.({ source: "app-active" }).catch(() => {});
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [refreshActivityFeeds]);
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;

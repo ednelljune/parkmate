@@ -179,7 +179,10 @@ export const useStartupPrefetch = () => {
       return;
     }
 
-    if (warmedSessionRef.current === accessToken && nonLocationWarmDoneRef.current) {
+    if (
+      warmedSessionRef.current === accessToken &&
+      nonLocationWarmDoneRef.current
+    ) {
       return;
     }
 

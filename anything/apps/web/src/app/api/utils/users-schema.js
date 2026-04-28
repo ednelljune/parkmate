@@ -13,6 +13,7 @@ export const ensureUsersSchema = () => {
           full_name TEXT,
           contribution_score INTEGER NOT NULL DEFAULT 0,
           trust_score INTEGER NOT NULL DEFAULT 100,
+          pro_access BOOLEAN NOT NULL DEFAULT FALSE,
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
       `;
@@ -30,6 +31,11 @@ export const ensureUsersSchema = () => {
       await sql`
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS trust_score INTEGER NOT NULL DEFAULT 100;
+      `;
+
+      await sql`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS pro_access BOOLEAN NOT NULL DEFAULT FALSE;
       `;
 
       await sql`

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Redirect, Tabs, useGlobalSearchParams, useRouter } from "expo-router";
-import { Bell, ChevronRight, Clock, History, Info, MapPin, ShieldCheck, Trophy, User } from "lucide-react-native";
+import { Bell, Clock, History, MapPin, ShieldCheck, Sparkles, Trophy, User } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { MotiView, AnimatePresence } from "moti";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import MaskedView from "@react-native-masked-view/masked-view";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Easing,
@@ -14,7 +16,9 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
+import Svg, { Circle, Rect } from "react-native-svg";
 
 import { useLocation } from "@/hooks/useLocation";
 import { getDistanceMeters } from "@/utils/geo";
@@ -54,17 +58,61 @@ export const unstable_settings = {
 };
 
 const ALERT_RADIUS_METERS = PARKING_ALERT_RADIUS_METERS;
+const TUTORIAL_TAB_ORDER = ["map", "alerts", "timer", "activity", "leaders", "profile"];
+const withAlpha = (hex, alpha) => {
+  const normalized = String(hex || "").replace("#", "");
+  const parsed = Number.parseInt(normalized, 16);
+
+  if (!Number.isFinite(parsed)) {
+    return hex;
+  }
+
+  const red = (parsed >> 16) & 255;
+  const green = (parsed >> 8) & 255;
+  const blue = parsed & 255;
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+};
+
 const IN_APP_TOUR_STEPS = [
   {
-    id: "map",
+    id: "map-overview",
     route: "/",
     label: "Map",
     icon: MapPin,
-    title: "Find parking from the map",
-    body: "Open zone pins, report real openings, claim a spot you took, flag false reports, or suggest a missing public zone.",
-    chips: ["Zone pins", "Report spot", "Claim / false / suggest"],
-    demoTitle: "Live map actions",
-    demoHint: "Tap a zone, report an opening, or suggest a missing public zone.",
+    title: "Browse live parking zones",
+    body: "The map shows parking zones and live spot reports. Tap a zone to open the details.",
+    instruction: "Start on the map, then tap any zone pin to inspect the rules and availability.",
+    simulationType: "map-overview",
+  },
+  {
+    id: "map-details",
+    route: "/",
+    label: "Map",
+    icon: MapPin,
+    title: "Open the zone details",
+    body: "A zone expands with capacity, parking rules, and live reports from other drivers.",
+    instruction: "Use the details sheet to decide whether the zone is worth driving to.",
+    simulationType: "map-details",
+  },
+  {
+    id: "claim-timer",
+    route: "/timer",
+    label: "Timer",
+    icon: Clock,
+    title: "Claim a spot and start the timer",
+    body: "When you claim a spot, the timer can auto-start for Pro. Free users can still set it manually.",
+    instruction: "Claimed spots and timer tracking live together on the timer tab.",
+    simulationType: "claim-timer",
+  },
+  {
+    id: "report-spot",
+    route: "/",
+    label: "Map",
+    icon: MapPin,
+    title: "Report an open spot",
+    body: "Report a newly open parking spot from the map so other drivers can see it fast.",
+    instruction: "Tap report, confirm the spot, and it appears in the live map feed.",
+    simulationType: "report-spot",
   },
   {
     id: "alerts",
@@ -72,56 +120,51 @@ const IN_APP_TOUR_STEPS = [
     label: "Alerts",
     icon: Bell,
     title: "Watch nearby parking movement",
-    body: "Use Alerts when you want a faster feed of nearby reports and zones without scanning the map constantly.",
-    chips: ["Nearby feed", "Open on map"],
-    demoTitle: "Nearby feed",
-    demoHint: "Fresh reports and zone updates appear here first.",
-  },
-  {
-    id: "timer",
-    route: "/timer",
-    label: "Timer",
-    icon: Clock,
-    title: "Track your stay after you park",
-    body: "Use the manual timer for your own stay and let the claimed timer handle automatic claim-linked sessions separately.",
-    chips: ["Manual timer", "Auto claimed timer"],
-    demoTitle: "Parking countdown",
-    demoHint: "Manual timer stays separate from the auto claimed timer lane.",
+    body: "Alerts keep you updated when a zone or spot opens near you.",
+    instruction: "Use alerts when you want a faster feed without scanning the map constantly.",
+    simulationType: "alerts",
   },
   {
     id: "activity",
     route: "/activity",
     label: "Activity",
     icon: History,
-    title: "Check outcomes and system updates",
-    body: "See if your reports were claimed, expired, reviewed, approved, or rejected, then manage updates with swipe actions.",
-    chips: ["Claims", "Review outcomes"],
-    demoTitle: "Outcome updates",
-    demoHint: "Claims, approvals, and rejections land here with swipe actions.",
+    title: "Track report outcomes",
+    body: "See whether your reports were claimed, expired, approved, or flagged.",
+    instruction: "Swipe an item to review the outcome or follow up on a report.",
+    simulationType: "activity",
   },
   {
     id: "leaders",
     route: "/leaderboard",
     label: "Leaders",
     icon: Trophy,
-    title: "Climb the city leaderboard",
-    body: "Ranking is based on impact, so accurate reports, claims, and approved zones help move you up.",
-    chips: ["Impact rank", "Badge tier"],
-    demoTitle: "Impact competition",
-    demoHint: "Your position rises as your reports and zones help other drivers.",
+    title: "Climb the leaderboard",
+    body: "Earn points for accurate reports, approved zones, and useful claims.",
+    instruction: "Your rank improves as your contributions help more drivers.",
+    simulationType: "leaders",
   },
   {
     id: "profile",
     route: "/profile",
     label: "Profile",
     icon: User,
-    title: "Track your progress",
-    body: "Your profile shows your badge, rank, contribution score, legal links, and a replay entry for this tour.",
-    chips: ["Badge + rank", "Replay later"],
-    demoTitle: "Driver profile",
-    demoHint: "Check your badge, rank, and replay the tour any time.",
+    title: "Manage your profile",
+    body: "Your profile shows your badge, trust score, stats, and the replay shortcut for this tour.",
+    instruction: "Keep your profile updated so your contributions stay visible and trusted.",
+    simulationType: "profile",
   },
 ];
+const COACHMARK_LAYOUTS = {
+  "map-overview": { tabIndex: 0, holeRadius: 36 },
+  "map-details": { tabIndex: 0, holeRadius: 36 },
+  "report-spot": { tabIndex: 0, holeRadius: 36 },
+  "claim-timer": { tabIndex: 2, holeRadius: 36 },
+  alerts: { tabIndex: 1, holeRadius: 36 },
+  activity: { tabIndex: 3, holeRadius: 36 },
+  leaders: { tabIndex: 4, holeRadius: 36 },
+  profile: { tabIndex: 5, holeRadius: 36 },
+};
 const isFiniteCoordinate = (value) => Number.isFinite(Number(value));
 const toNotificationString = (value, fallback = "") => {
   if (value == null) {
@@ -262,129 +305,487 @@ const buildSystemUpdateNotificationData = (item) => ({
   longitude: item?.longitude != null ? String(item.longitude) : "",
 });
 
+function FeatureSimulation({ type }) {
+  if (type === "map-overview") {
+    return (
+      <MotiView from={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} style={styles.simContainer}>
+        <View style={styles.simOverviewCard}>
+          <View style={styles.simMapCanvas}>
+            <View style={styles.simMapRoadH} />
+            <View style={styles.simMapRoadV} />
+            <View style={[styles.simMapRoadH, styles.simMapRoadLower]} />
+            <View style={[styles.simMapRoadV, styles.simMapRoadRight]} />
+            <View style={styles.simMapBlockLabel}>
+              <Text style={styles.simMapBlockLabelText}>UNION SQUARE</Text>
+            </View>
+            <View style={styles.simMapZonePulse} />
+            <View style={styles.simMapZonePin}>
+              <MapPin color="#FFF" size={16} />
+            </View>
+            <View style={styles.simMapZoneTag}>
+              <Text style={styles.simMapZoneTagText}>1P</Text>
+            </View>
+          </View>
+          <View style={styles.simMapHeader}>
+            <View style={styles.simMapPin}>
+              <MapPin color="#FFF" size={12} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.simMapTitle}>Public parking zone</Text>
+              <Text style={styles.simMapSubtitle}>Tap the highlighted zone to open details</Text>
+            </View>
+          </View>
+          <View style={styles.simZoneSnippet}>
+            <View style={styles.simZoneSnippetHeader}>
+              <View style={styles.simZoneSnippetType}>
+                <Text style={styles.simZoneSnippetTypeText}>1P</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.simZoneSnippetTitle}>Collins St public zone</Text>
+                <Text style={styles.simZoneSnippetSubtitle}>4 open spots · 12 spaces total</Text>
+              </View>
+            </View>
+            <Text style={styles.simZoneSnippetBody}>
+              Mon-Fri 8am-6pm. Tap the zone to see capacity, rules, and live reports.
+            </Text>
+          </View>
+        </View>
+      </MotiView>
+    );
+  }
+
+  if (type === "map-details") {
+    return (
+      <MotiView from={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={styles.simContainer}>
+        <View style={styles.simDetailCard}>
+          <View style={styles.simDetailHeader}>
+            <View>
+              <Text style={styles.simDetailTitle}>Parking Zone Details</Text>
+              <Text style={styles.simDetailSubtitle}>Capacity, rules, and live reports</Text>
+            </View>
+            <View style={styles.simDetailBadge}>
+              <Text style={styles.simDetailBadgeText}>PUBLIC</Text>
+            </View>
+          </View>
+          <View style={styles.simDetailRow}>
+            <Text style={styles.simDetailLabel}>Capacity</Text>
+            <Text style={styles.simDetailValue}>12 spots</Text>
+          </View>
+          <View style={styles.simDetailRow}>
+            <Text style={styles.simDetailLabel}>Rules</Text>
+            <Text style={styles.simDetailValue}>Mon-Fri 8am-6pm • 1 Hour Max</Text>
+          </View>
+          <View style={styles.simDetailRow}>
+            <Text style={styles.simDetailLabel}>Reports</Text>
+            <Text style={styles.simDetailValue}>4 nearby drivers</Text>
+          </View>
+          <View style={styles.simDetailDescriptionBox}>
+            <Text style={styles.simDetailDescriptionTitle}>Description</Text>
+            <Text style={styles.simDetailDescriptionBody}>
+              Public parking zone on Collins St. Tap a spot marker or claim from here to start the next step.
+            </Text>
+          </View>
+          <View style={styles.simDetailAction}>
+            <Text style={styles.simDetailActionText}>Claim spot</Text>
+          </View>
+        </View>
+      </MotiView>
+    );
+  }
+
+  if (type === "claim-timer") {
+    return (
+      <View style={styles.simContainer}>
+        <View style={styles.simClaimCard}>
+          <View style={styles.simClaimHeader}>
+            <Text style={styles.simClaimTitle}>Claimed spot</Text>
+            <View style={styles.simClaimBadge}>
+              <Text style={styles.simClaimBadgeText}>Pro auto-start</Text>
+            </View>
+          </View>
+          <View style={styles.simClaimSpotRow}>
+            <View style={styles.simClaimSpotDot} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.simClaimSpotTitle}>Collins St - 1P zone</Text>
+              <Text style={styles.simClaimSpotBody}>Confirm the claim and the timer starts.</Text>
+            </View>
+          </View>
+          <View style={styles.simTimerRing}>
+            <Text style={styles.simTimerText}>00:54:12</Text>
+            <Text style={styles.simTimerLabel}>REMAINING</Text>
+          </View>
+          <Text style={styles.simClaimFooterText}>Free users can still set a manual timer.</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (type === "report-spot") {
+    return (
+      <MotiView from={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} style={styles.simContainer}>
+        <View style={styles.simReportCard}>
+          <View style={styles.simReportMapRow}>
+            <View style={styles.simReportMapPin}>
+              <MapPin color={BRAND_PALETTE.accentBold} size={14} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.simReportTitle}>Open spot in zone</Text>
+              <Text style={styles.simReportBody}>Tap report to add it to the live map.</Text>
+            </View>
+          </View>
+          <View style={styles.simReportAction}>
+            <Text style={styles.simReportActionText}>Report spot</Text>
+          </View>
+        </View>
+      </MotiView>
+    );
+  }
+
+  if (type === "alerts") {
+    return (
+      <MotiView from={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} style={styles.simContainer}>
+        <View style={styles.simAlertCard}>
+          <View style={styles.simAlertIcon}>
+            <Bell color="#0284C7" size={14} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.simAlertTitle}>New spot found!</Text>
+            <Text style={styles.simAlertBody}>2P spot just opened in Lonsdale St</Text>
+          </View>
+          <View style={styles.simAlertTime}>
+            <Text style={styles.simAlertTimeText}>Just now</Text>
+          </View>
+        </View>
+      </MotiView>
+    );
+  }
+
+  if (type === "activity") {
+    return (
+      <MotiView from={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} style={styles.simContainer}>
+        <View style={styles.simFeedCard}>
+          <View style={styles.simFeedHeader}>
+            <View style={[styles.simFeedStatusDot, { backgroundColor: "#8B5CF6" }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.simFeedTitle}>Missing zone under review</Text>
+              <Text style={styles.simFeedSubtitle}>11 hours ago · Union Square</Text>
+            </View>
+          </View>
+          <View style={styles.simFeedDivider} />
+          <View style={styles.simFeedHeader}>
+            <View style={[styles.simFeedStatusDot, { backgroundColor: "#10B981" }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.simFeedTitle}>Your report was claimed</Text>
+              <Text style={styles.simFeedSubtitle}>You earned +10 contribution points</Text>
+            </View>
+          </View>
+        </View>
+      </MotiView>
+    );
+  }
+
+  if (type === "leaders") {
+    return (
+      <MotiView from={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} style={styles.simContainer}>
+        <View style={styles.simLeaderboardCard}>
+          <View style={styles.simLeaderboardHeader}>
+            <Text style={styles.simLeaderboardEyebrow}>TOP THREE</Text>
+            <Text style={styles.simLeaderboardHeaderText}>Mini podium preview</Text>
+          </View>
+          <View style={styles.simLeaderboardPodium}>
+            <View style={styles.simLeaderboardLane}>
+              <View style={[styles.simLeaderboardBadge, styles.simLeaderboardBadgeSilver]}>
+                <Text style={styles.simLeaderboardBadgeText}>2</Text>
+              </View>
+              <View style={[styles.simLeaderboardColumn, styles.simLeaderboardColumnSide]}>
+                <View style={[styles.simLeaderboardAvatar, styles.simLeaderboardAvatarSilver]}>
+                  <Text style={styles.simLeaderboardAvatarText}>JT</Text>
+                </View>
+                <Text style={styles.simLeaderboardTier}>PACESETTER</Text>
+                <Text style={styles.simLeaderboardName}>Jamie</Text>
+                <Text style={styles.simLeaderboardPoints}>255</Text>
+              </View>
+            </View>
+            <View style={styles.simLeaderboardLane}>
+              <View style={[styles.simLeaderboardBadge, styles.simLeaderboardBadgeGold]}>
+                <Text style={styles.simLeaderboardBadgeText}>1</Text>
+              </View>
+              <View style={[styles.simLeaderboardColumn, styles.simLeaderboardColumnCenter]}>
+                <View style={[styles.simLeaderboardAvatar, styles.simLeaderboardAvatarGold]}>
+                  <Text style={styles.simLeaderboardAvatarText}>AT</Text>
+                </View>
+                <Text style={styles.simLeaderboardTier}>CHAMPION</Text>
+                <Text style={styles.simLeaderboardName}>Alex</Text>
+                <Text style={styles.simLeaderboardPoints}>1,250</Text>
+              </View>
+            </View>
+            <View style={styles.simLeaderboardLane}>
+              <View style={[styles.simLeaderboardBadge, styles.simLeaderboardBadgeBronze]}>
+                <Text style={styles.simLeaderboardBadgeText}>3</Text>
+              </View>
+              <View style={[styles.simLeaderboardColumn, styles.simLeaderboardColumnSide]}>
+                <View style={[styles.simLeaderboardAvatar, styles.simLeaderboardAvatarBronze]}>
+                  <Text style={styles.simLeaderboardAvatarText}>JS</Text>
+                </View>
+                <Text style={styles.simLeaderboardTier}>CONTENDER</Text>
+                <Text style={styles.simLeaderboardName}>June</Text>
+                <Text style={styles.simLeaderboardPoints}>190</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.simLeaderboardFooter}>
+            <Sparkles color="#0284C7" size={12} />
+            <Text style={styles.simLeaderboardFooterText}>Impact decides rank</Text>
+          </View>
+        </View>
+      </MotiView>
+    );
+  }
+
+  if (type === "profile") {
+    return (
+      <MotiView from={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} style={styles.simContainer}>
+        <View style={styles.simProfileCard}>
+          <View style={styles.simProfileTopRow}>
+            <View style={styles.simProfileAvatar}>
+              <Text style={styles.simProfileAvatarText}>JS</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.simProfileName}>June S</Text>
+              <Text style={styles.simProfileMeta}>City Vanguard · #9 citywide</Text>
+            </View>
+          </View>
+          <View style={styles.simProfileStatRow}>
+            <View style={styles.simProfileStatPill}>
+              <Text style={styles.simProfileStatValue}>180</Text>
+              <Text style={styles.simProfileStatLabel}>impact</Text>
+            </View>
+            <View style={styles.simProfileStatPill}>
+              <Text style={styles.simProfileStatValue}>20</Text>
+              <Text style={styles.simProfileStatLabel}>reports</Text>
+            </View>
+            <View style={styles.simProfileStatPill}>
+              <Text style={styles.simProfileStatValue}>3</Text>
+              <Text style={styles.simProfileStatLabel}>claims</Text>
+            </View>
+          </View>
+        </View>
+      </MotiView>
+    );
+  }
+
+  return (
+    <View style={styles.simContainer}>
+      <ActivityIndicator color={BRAND_PALETTE.accentBold} />
+    </View>
+  );
+}
+
+function SpotlightOrb({ style, colors, duration = 4200, delay = 0 }) {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration,
+          delay,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    loop.start();
+    return () => loop.stop();
+  }, [delay, duration, pulse]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.tourSpotlight,
+        style,
+        {
+          opacity: pulse.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.16, 0.32],
+          }),
+          transform: [
+            {
+              scale: pulse.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.96, 1.08],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <LinearGradient
+        colors={colors}
+        start={{ x: 0.2, y: 0.2 }}
+        end={{ x: 0.8, y: 0.8 }}
+        style={StyleSheet.absoluteFill}
+      />
+    </Animated.View>
+  );
+}
+
 function TourOverlay({
   activeStep,
   activeStepIndex,
-  isFirstStep,
   isLastStep,
   isSaving,
-  onBack,
   onNext,
   onClose,
 }) {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const ActiveIcon = activeStep.icon;
-  const progress = (activeStepIndex + 1) / IN_APP_TOUR_STEPS.length;
+  const coachmark = COACHMARK_LAYOUTS[activeStep.id] || COACHMARK_LAYOUTS["map-overview"];
+  const tabIndex = coachmark.tabIndex ?? 0;
+  const holeX = width * ((tabIndex + 0.5) / TUTORIAL_TAB_ORDER.length);
+  const tabBarHeight = 64 + insets.bottom;
+  const tabBarTop = height - tabBarHeight;
+  const holeY = tabBarTop + 20;
+  const holeR = coachmark.holeRadius ?? 36;
+  const beaconLeft = holeX - 42;
+  const beaconTop = holeY - 42;
+  const cardWidth = Math.min(width - 48, 420);
+  const cardHeight = 374;
+  const cardLeft = Math.min(Math.max(24, holeX - cardWidth / 2), width - cardWidth - 24);
+  const cardBelow = holeY + holeR + 28;
+  const cardAbove = holeY - holeR - cardHeight - 28;
+  const showCardBelow =
+    cardBelow + cardHeight <= height - insets.bottom - 24;
+  const cardTop = showCardBelow
+    ? cardBelow
+    : Math.max(insets.top + 112, cardAbove);
+  const pointerLeft = Math.min(
+    Math.max(holeX - cardLeft - 10, 28),
+    cardWidth - 48,
+  );
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <LinearGradient
-        colors={["#059669", "#0284C7"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <MaskedView
+        maskElement={
+          <Svg height={height} width={width} viewBox={`0 0 ${width} ${height}`}>
+            <Rect x="0" y="0" width={width} height={height} fill="white" />
+            <Circle cx={holeX} cy={holeY} r={holeR} fill="black" />
+          </Svg>
+        }
         style={StyleSheet.absoluteFill}
+      >
+        <LinearGradient
+          colors={[
+            withAlpha(BRAND_PALETTE.deepNavy, 0.82),
+            withAlpha(BRAND_PALETTE.navy, 0.88),
+            withAlpha(BRAND_PALETTE.deepNavy, 0.94),
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </MaskedView>
+
+      <SpotlightOrb
+        style={[
+          styles.tourSpotlightOrbLarge,
+          {
+            left: holeX - 150,
+            top: holeY - 150,
+          },
+        ]}
+        colors={[
+          withAlpha(BRAND_PALETTE.surface, 0.26),
+          withAlpha(BRAND_PALETTE.surface, 0.1),
+          withAlpha(BRAND_PALETTE.surface, 0),
+        ]}
+        duration={5200}
       />
-      
-      <View style={[styles.tourOverlayWrap, { paddingTop: insets.top + 20 }]}>
-        <MotiView
-          from={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "timing", duration: 600 }}
-          style={styles.tourBranding}
-        >
-          <Text style={styles.tourBrandingPark}>Park</Text>
-          <Text style={styles.tourBrandingMate}>Mate</Text>
-        </MotiView>
+      <SpotlightOrb
+        style={[
+          styles.tourSpotlightOrbCore,
+          {
+            left: holeX - 92,
+            top: holeY - 92,
+          },
+        ]}
+        colors={[
+          withAlpha(BRAND_PALETTE.surface, 0.56),
+          withAlpha(BRAND_PALETTE.surface, 0.22),
+          withAlpha(BRAND_PALETTE.surface, 0),
+        ]}
+        duration={3600}
+        delay={120}
+      />
 
-        <AnimatePresence mode="wait">
-          <MotiView
-            key={activeStep.id}
-            from={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            transition={{ type: "spring", damping: 15 }}
-            style={styles.tourCardContainer}
-          >
-            <BlurView intensity={Platform.OS === 'ios' ? 80 : 100} tint="light" style={styles.tourCard}>
-              <View style={styles.tourProgressBarBg}>
-                <MotiView
-                  animate={{ width: `${progress * 100}%` }}
-                  transition={{ type: "timing", duration: 500 }}
-                  style={styles.tourProgressBarFill}
-                />
-              </View>
-
-              <View style={styles.tourCardHeader}>
-                <View style={styles.tourIconCircle}>
-                  <ActiveIcon color="#0284C7" size={28} />
-                </View>
-                <View style={styles.tourStepIndicator}>
-                  <Text style={styles.tourStepIndicatorText}>
-                    STEP {activeStepIndex + 1}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.tourTitle}>{activeStep.title}</Text>
-              <Text style={styles.tourBody}>{activeStep.body}</Text>
-
-              <View style={styles.tourChipRow}>
-                {activeStep.chips.map((chip, idx) => (
-                  <MotiView
-                    key={`${activeStep.id}-${chip}`}
-                    from={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 300 + idx * 100 }}
-                    style={styles.tourChip}
-                  >
-                    <Text style={styles.tourChipText}>{chip}</Text>
-                  </MotiView>
-                ))}
-              </View>
-
-              <View style={styles.tourDemoPreview}>
-                <LinearGradient
-                  colors={["rgba(255,255,255,0.5)", "rgba(224,242,254,0.3)"]}
-                  style={styles.tourDemoGradient}
-                >
-                  <Info size={14} color="#0369A1" />
-                  <Text style={styles.tourDemoHint}>{activeStep.demoHint}</Text>
-                </LinearGradient>
-              </View>
-            </BlurView>
-          </MotiView>
-        </AnimatePresence>
-
-        <View style={[styles.tourFooter, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-          <View style={styles.tourMainActions}>
-            {!isFirstStep && (
-              <Pressable onPress={onBack} style={styles.tourBackButton}>
-                <Text style={styles.tourBackButtonText}>Back</Text>
-              </Pressable>
-            )}
-            
-            <Pressable 
-              onPress={onNext} 
-              disabled={isSaving} 
-              style={[styles.tourNextButton, isFirstStep && { flex: 1 }]}
-            >
-              <LinearGradient
-                colors={["#0284C7", "#0369A1"]}
-                style={styles.tourNextButtonGradient}
-              >
-                <Text style={styles.tourNextButtonText}>
-                  {isSaving ? "Saving..." : isLastStep ? "Get Started" : "Next"}
-                </Text>
-                {!isLastStep && <ChevronRight color="#FFF" size={18} />}
-              </LinearGradient>
-            </Pressable>
+      <View pointerEvents="none" style={[styles.tourBeaconWrap, { left: beaconLeft, top: beaconTop }]}>
+        <View style={styles.tourBeaconOuter}>
+          <View style={styles.tourBeaconInner}>
+            <ActiveIcon color={BRAND_PALETTE.accentBold} size={22} />
           </View>
-
-          <Pressable onPress={onClose} style={styles.tourSkipButton}>
-            <Text style={styles.tourSkipButtonText}>Skip tour</Text>
-          </Pressable>
         </View>
       </View>
+
+      <AnimatePresence mode="wait">
+        <MotiView
+          key={activeStep.id}
+          from={{ opacity: 0, scale: 0.98, y: 14 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.98, y: 8 }}
+          transition={{ type: "timing", duration: 350 }}
+          style={[styles.tourCardContainer, { width: cardWidth, left: cardLeft, top: cardTop }]}
+        >
+          <View
+            style={[
+              styles.tourCardPointer,
+              showCardBelow ? styles.tourCardPointerTop : styles.tourCardPointerBottom,
+              { left: pointerLeft },
+            ]}
+          />
+          <BlurView intensity={88} tint="light" style={styles.tourCard}>
+            <View style={styles.tourCardTopRow}>
+              <Text style={styles.tourStepMeta}>
+                TIP {activeStepIndex + 1} OF {IN_APP_TOUR_STEPS.length}
+              </Text>
+              <Pressable onPress={onClose} hitSlop={10} style={styles.tourCardCloseButton}>
+                <Text style={styles.tourCardCloseText}>×</Text>
+              </Pressable>
+            </View>
+
+            <Text style={styles.tourTitle}>{activeStep.title}</Text>
+            <Text style={styles.tourBody}>{activeStep.body}</Text>
+            <FeatureSimulation type={activeStep.simulationType} />
+
+            <View style={styles.tourCardActions}>
+              <Pressable onPress={onClose} style={styles.tourSkipLink}>
+                <Text style={styles.tourSkipLinkText}>Skip tour</Text>
+              </Pressable>
+
+              <Pressable onPress={onNext} disabled={isSaving} style={styles.tourPrimaryButton}>
+                <LinearGradient
+                  colors={[BRAND_PALETTE.deepNavy, BRAND_PALETTE.navy]}
+                  style={styles.tourPrimaryButtonGradient}
+                >
+                  <Text style={styles.tourPrimaryButtonText}>
+                    {isSaving ? "Saving..." : isLastStep ? "GOT IT" : "NEXT"}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </BlurView>
+        </MotiView>
+      </AnimatePresence>
     </View>
   );
 }
@@ -398,9 +799,13 @@ function AuthenticatedTabLayout({ shouldShowTutorial, completeTutorial }) {
   const { session } = useAuthStore();
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const [isSavingTour, setIsSavingTour] = useState(false);
+  const [tourDismissed, setTourDismissed] = useState(false);
+  const [replayTourActive, setReplayTourActive] = useState(false);
+  const [tutorialCompletedThisSession, setTutorialCompletedThisSession] = useState(false);
   const lastNearbyAlertCheckRef = useRef(null);
   const lastNearbyAlertLocationRef = useRef(null);
   const alertedAlertIdsRef = useRef(new Set());
+  const hasConsumedReplayParamRef = useRef(false);
   const { reports: nearbySpots } = useNearbyReports(location, ALERT_RADIUS_METERS);
   const nearbyZones = useParkingZones(location, ALERT_RADIUS_METERS, {
     includeGeometry: false,
@@ -467,11 +872,34 @@ function AuthenticatedTabLayout({ shouldShowTutorial, completeTutorial }) {
   const replayParam = Array.isArray(globalParams.tour)
     ? globalParams.tour[0]
     : globalParams.tour;
-  const isReplayTour = replayParam === "1" || replayParam === "true";
-  const isTourActive = shouldShowTutorial || isReplayTour;
+  const isReplayTourRequested = replayParam === "1" || replayParam === "true";
+  const shouldStartReplayTour =
+    isReplayTourRequested &&
+    !shouldShowTutorial &&
+    !replayTourActive &&
+    !hasConsumedReplayParamRef.current;
+  const shouldDisplayFirstLoginTour =
+    shouldShowTutorial && !tutorialCompletedThisSession;
+  const isTourActive =
+    (shouldDisplayFirstLoginTour || replayTourActive) && !tourDismissed;
   const activeTourStep = IN_APP_TOUR_STEPS[tourStepIndex] || IN_APP_TOUR_STEPS[0];
-  const isFirstTourStep = tourStepIndex === 0;
   const isLastTourStep = tourStepIndex === IN_APP_TOUR_STEPS.length - 1;
+
+  useEffect(() => {
+    if (shouldStartReplayTour) {
+      hasConsumedReplayParamRef.current = true;
+      setTourStepIndex(0);
+      setReplayTourActive(true);
+      setTourDismissed(false);
+      router.replace(IN_APP_TOUR_STEPS[0].route);
+    }
+  }, [router, shouldStartReplayTour]);
+
+  useEffect(() => {
+    if (!isReplayTourRequested && !replayTourActive) {
+      hasConsumedReplayParamRef.current = false;
+    }
+  }, [isReplayTourRequested, replayTourActive]);
 
   useEffect(() => {
     if (!isTourActive) {
@@ -479,16 +907,15 @@ function AuthenticatedTabLayout({ shouldShowTutorial, completeTutorial }) {
       return;
     }
 
-    const params = isReplayTour ? { tour: "1" } : undefined;
-    router.replace(
-      params
-        ? {
-            pathname: activeTourStep.route,
-            params,
-          }
-        : activeTourStep.route,
-    );
-  }, [activeTourStep.route, isReplayTour, isTourActive, router]);
+    router.replace(activeTourStep.route);
+  }, [activeTourStep.route, isTourActive, router]);
+
+  useEffect(() => {
+    if (shouldShowTutorial) {
+      setTourDismissed(false);
+      setTutorialCompletedThisSession(false);
+    }
+  }, [shouldShowTutorial]);
 
   const finishTour = async () => {
     if (isSavingTour) {
@@ -496,6 +923,9 @@ function AuthenticatedTabLayout({ shouldShowTutorial, completeTutorial }) {
     }
 
     setIsSavingTour(true);
+    setTourDismissed(true);
+    setTutorialCompletedThisSession(true);
+    setReplayTourActive(false);
 
     try {
       if (shouldShowTutorial) {
@@ -505,6 +935,10 @@ function AuthenticatedTabLayout({ shouldShowTutorial, completeTutorial }) {
       }
 
       router.replace("/profile");
+    } catch (error) {
+      setTourDismissed(false);
+      setTutorialCompletedThisSession(false);
+      throw error;
     } finally {
       setIsSavingTour(false);
     }
@@ -519,10 +953,6 @@ function AuthenticatedTabLayout({ shouldShowTutorial, completeTutorial }) {
     setTourStepIndex((currentStep) =>
       Math.min(IN_APP_TOUR_STEPS.length - 1, currentStep + 1),
     );
-  };
-
-  const handleBackTourStep = () => {
-    setTourStepIndex((currentStep) => Math.max(0, currentStep - 1));
   };
 
   useEffect(() => {
@@ -954,10 +1384,8 @@ function AuthenticatedTabLayout({ shouldShowTutorial, completeTutorial }) {
         <TourOverlay
           activeStep={activeTourStep}
           activeStepIndex={tourStepIndex}
-          isFirstStep={isFirstTourStep}
           isLastStep={isLastTourStep}
           isSaving={isSavingTour}
-          onBack={handleBackTourStep}
           onNext={handleNextTourStep}
           onClose={finishTour}
         />
@@ -1003,7 +1431,38 @@ const styles = StyleSheet.create({
   tourOverlayWrap: {
     flex: 1,
     paddingHorizontal: 24,
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
+  },
+  tourBeaconWrap: {
+    position: "absolute",
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: BRAND_PALETTE.accentBold,
+    shadowOpacity: 0.3,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 12,
+  },
+  tourBeaconOuter: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.surface, 0.82),
+    backgroundColor: withAlpha(BRAND_PALETTE.surface, 0.18),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tourBeaconInner: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: BRAND_PALETTE.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
   tourBranding: {
     flexDirection: "row",
@@ -1012,176 +1471,812 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   tourBrandingPark: {
-    color: "#FFFFFF",
+    color: BRAND_PALETTE.surface,
     fontSize: 28,
     fontWeight: "900",
     letterSpacing: -0.5,
   },
   tourBrandingMate: {
-    color: "#FEF08A",
+    color: BRAND_PALETTE.accent,
     fontSize: 28,
     fontWeight: "900",
     letterSpacing: -0.5,
   },
   tourCardContainer: {
-    width: "100%",
-    maxWidth: 400,
-    alignSelf: "center",
+    position: "absolute",
     shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
+    shadowOpacity: 0.28,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 18,
   },
   tourCard: {
-    borderRadius: 32,
+    borderRadius: 30,
     padding: 24,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.4)",
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.96),
+    backgroundColor: withAlpha(BRAND_PALETTE.surface, 0.98),
   },
-  tourProgressBarBg: {
-    height: 6,
-    backgroundColor: "rgba(0, 0, 0, 0.05)",
-    borderRadius: 3,
-    marginBottom: 24,
-    overflow: "hidden",
+  tourCardPointer: {
+    position: "absolute",
+    width: 20,
+    height: 20,
+    backgroundColor: withAlpha(BRAND_PALETTE.surface, 0.98),
+    transform: [{ rotate: "45deg" }],
+    borderTopLeftRadius: 4,
   },
-  tourProgressBarFill: {
-    height: "100%",
-    backgroundColor: "#0284C7",
-    borderRadius: 3,
+  tourCardPointerTop: {
+    top: -8,
   },
-  tourCardHeader: {
+  tourCardPointerBottom: {
+    bottom: -8,
+  },
+  tourCardTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
-  },
-  tourIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#E0F2FE",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#0284C7",
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-  },
-  tourStepIndicator: {
-    backgroundColor: "rgba(2, 132, 199, 0.1)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  tourStepIndicatorText: {
-    color: "#0369A1",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  tourTitle: {
-    color: "#0F172A",
-    fontSize: 24,
-    fontWeight: "900",
-    lineHeight: 30,
     marginBottom: 12,
   },
+  tourStepMeta: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.4,
+  },
+  tourCardCloseButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tourCardCloseText: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 24,
+    lineHeight: 24,
+    fontWeight: "300",
+  },
+  tourTitle: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 23,
+    fontWeight: "900",
+    lineHeight: 28,
+    marginBottom: 8,
+  },
   tourBody: {
-    color: "#475569",
-    fontSize: 15,
+    color: BRAND_PALETTE.muted,
+    fontSize: 16,
     lineHeight: 22,
-    marginBottom: 20,
+    marginBottom: 22,
   },
-  tourChipRow: {
+  tourCardActions: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 24,
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
   },
-  tourChip: {
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+  tourSkipLink: {
+    flexShrink: 0,
+    paddingVertical: 10,
+    paddingRight: 4,
+  },
+  tourSkipLinkText: {
+    color: BRAND_PALETTE.navy,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  tourPrimaryButton: {
+    flex: 1,
+    height: 52,
+    borderRadius: 18,
+    overflow: "hidden",
+  },
+  tourPrimaryButtonGradient: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tourPrimaryButtonText: {
+    color: BRAND_PALETTE.surface,
+    fontSize: 15,
+    fontWeight: "900",
+    letterSpacing: 0.4,
+  },
+  tourSpotlightOrbLarge: {
+    position: "absolute",
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    overflow: "hidden",
+  },
+  tourSpotlightOrbCore: {
+    position: "absolute",
+    width: 184,
+    height: 184,
+    borderRadius: 92,
+    overflow: "hidden",
+  },
+  tourSpotlight: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    borderRadius: 9999,
+  },
+  simContainer: {
+    marginTop: 8,
+    marginBottom: 18,
+  },
+  simOverviewCard: {
+    backgroundColor: withAlpha(BRAND_PALETTE.highlight, 0.92),
+    borderRadius: 22,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.9),
   },
-  tourChipText: {
-    color: "#1E293B",
+  simMapCanvas: {
+    height: 150,
+    borderRadius: 18,
+    overflow: "hidden",
+    backgroundColor: withAlpha(BRAND_PALETTE.background, 0.92),
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.75),
+  },
+  simMapRoadH: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 48,
+    height: 2,
+    backgroundColor: withAlpha(BRAND_PALETTE.navy, 0.14),
+  },
+  simMapRoadLower: {
+    top: 102,
+  },
+  simMapRoadV: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 126,
+    width: 2,
+    backgroundColor: withAlpha(BRAND_PALETTE.navy, 0.14),
+  },
+  simMapRoadRight: {
+    left: 236,
+  },
+  simMapBlockLabel: {
+    position: "absolute",
+    top: 14,
+    left: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: withAlpha(BRAND_PALETTE.surface, 0.86),
+  },
+  simMapBlockLabelText: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  simMapZonePulse: {
+    position: "absolute",
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    left: 145,
+    top: 52,
+    backgroundColor: withAlpha(BRAND_PALETTE.accentBold, 0.16),
+    borderWidth: 2,
+    borderColor: withAlpha(BRAND_PALETTE.accentBold, 0.45),
+  },
+  simMapZonePin: {
+    position: "absolute",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    left: 164,
+    top: 71,
+    backgroundColor: BRAND_PALETTE.accentBold,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: BRAND_PALETTE.accentBold,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+  },
+  simMapZoneTag: {
+    position: "absolute",
+    left: 154,
+    top: 106,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: BRAND_PALETTE.surface,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.accentBold, 0.2),
+  },
+  simMapZoneTagText: {
+    color: BRAND_PALETTE.accentBold,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+  },
+  simMapHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  simMapPin: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: BRAND_PALETTE.accentBold,
+  },
+  simMapTitle: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  simMapSubtitle: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  simMapZoneRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  simMapZonePill: {
+    flex: 1,
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    backgroundColor: BRAND_PALETTE.surface,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.92),
+  },
+  simMapZonePillActive: {
+    borderColor: BRAND_PALETTE.accentBold,
+    backgroundColor: withAlpha(BRAND_PALETTE.highlight, 0.6),
+  },
+  simMapZonePillTitle: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  simMapZonePillText: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  simMapFlowRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  simMapFlowStep: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    backgroundColor: withAlpha(BRAND_PALETTE.surface, 0.94),
+  },
+  simMapFlowStepTitle: {
+    color: BRAND_PALETTE.accentBold,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  simMapFlowStepText: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  simZoneSnippet: {
+    backgroundColor: BRAND_PALETTE.surface,
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.92),
+  },
+  simZoneSnippetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  simZoneSnippetType: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: withAlpha(BRAND_PALETTE.highlight, 0.96),
+  },
+  simZoneSnippetTypeText: {
+    color: BRAND_PALETTE.accentBold,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  simZoneSnippetTitle: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  simZoneSnippetSubtitle: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  simZoneSnippetBody: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 16,
+  },
+  simDetailCard: {
+    backgroundColor: BRAND_PALETTE.surface,
+    borderRadius: 22,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.92),
+  },
+  simDetailHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 10,
+  },
+  simDetailTitle: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  simDetailSubtitle: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  simDetailBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: withAlpha(BRAND_PALETTE.highlight, 0.9),
+  },
+  simDetailBadgeText: {
+    color: BRAND_PALETTE.accentBold,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+  simDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: withAlpha(BRAND_PALETTE.border, 0.52),
+  },
+  simDetailDescriptionBox: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: withAlpha(BRAND_PALETTE.highlight, 0.34),
+  },
+  simDetailDescriptionTitle: {
+    color: BRAND_PALETTE.accentBold,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  simDetailDescriptionBody: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 16,
+  },
+  simDetailLabel: {
+    color: BRAND_PALETTE.muted,
     fontSize: 12,
     fontWeight: "700",
   },
-  tourDemoPreview: {
-    borderRadius: 20,
-    overflow: "hidden",
+  simDetailValue: {
+    flex: 1,
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 12,
+    fontWeight: "800",
+    textAlign: "right",
   },
-  tourDemoGradient: {
+  simDetailAction: {
+    marginTop: 10,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: BRAND_PALETTE.accentBold,
+  },
+  simDetailActionText: {
+    color: BRAND_PALETTE.surface,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  simClaimCard: {
+    backgroundColor: BRAND_PALETTE.surface,
+    borderRadius: 22,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.92),
+  },
+  simClaimHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  simClaimTitle: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  simClaimBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: withAlpha(BRAND_PALETTE.navy, 0.08),
+  },
+  simClaimBadgeText: {
+    color: BRAND_PALETTE.navy,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  simClaimSpotRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  simClaimSpotDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: BRAND_PALETTE.accentBold,
+  },
+  simClaimSpotTitle: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  simClaimSpotBody: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  simTimerRing: {
+    alignSelf: "center",
+    width: 118,
+    height: 118,
+    borderRadius: 59,
+    borderWidth: 8,
+    borderColor: withAlpha(BRAND_PALETTE.accentBold, 0.22),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  simTimerText: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  simTimerLabel: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.9,
+    marginTop: 2,
+  },
+  simClaimFooterText: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  simReportCard: {
+    backgroundColor: BRAND_PALETTE.surface,
+    borderRadius: 22,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.92),
+  },
+  simReportMapRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  simReportMapPin: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: withAlpha(BRAND_PALETTE.highlight, 0.92),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  simReportTitle: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  simReportBody: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  simReportAction: {
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: BRAND_PALETTE.deepNavy,
+  },
+  simReportActionText: {
+    color: BRAND_PALETTE.surface,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  simAlertCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    gap: 10,
+    backgroundColor: BRAND_PALETTE.surface,
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.92),
+  },
+  simAlertIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: withAlpha(BRAND_PALETTE.highlight, 0.92),
+  },
+  simAlertTitle: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  simAlertBody: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  simAlertTime: {
+    alignItems: "flex-end",
+  },
+  simAlertTimeText: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  simFeedCard: {
+    backgroundColor: BRAND_PALETTE.surface,
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.92),
+  },
+  simFeedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
-  tourDemoHint: {
-    color: "#0369A1",
+  simFeedStatusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  simFeedTitle: {
+    color: BRAND_PALETTE.deepNavy,
     fontSize: 13,
+    fontWeight: "900",
+  },
+  simFeedSubtitle: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
     fontWeight: "600",
-    flex: 1,
+    marginTop: 2,
   },
-  tourFooter: {
-    width: "100%",
-    gap: 16,
+  simFeedDivider: {
+    height: 1,
+    backgroundColor: withAlpha(BRAND_PALETTE.border, 0.62),
+    marginVertical: 10,
   },
-  tourMainActions: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  tourBackButton: {
-    flex: 1,
-    height: 56,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  simLeaderboardCard: {
+    backgroundColor: BRAND_PALETTE.surface,
+    borderRadius: 18,
+    padding: 12,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.92),
   },
-  tourBackButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "800",
+  simLeaderboardHeader: {
+    marginBottom: 10,
   },
-  tourNextButton: {
-    flex: 2,
-    height: 56,
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+  simLeaderboardEyebrow: {
+    color: BRAND_PALETTE.accentBold,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1,
   },
-  tourNextButtonGradient: {
-    flex: 1,
+  simLeaderboardHeaderText: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 13,
+    fontWeight: "900",
+    marginTop: 4,
+  },
+  simLeaderboardPodium: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
-  tourNextButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
+  simLeaderboardLane: {
+    flex: 1,
+    alignItems: "center",
+  },
+  simLeaderboardBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  simLeaderboardBadgeText: {
+    color: BRAND_PALETTE.surface,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  simLeaderboardBadgeSilver: {
+    backgroundColor: "#94A3B8",
+  },
+  simLeaderboardBadgeGold: {
+    backgroundColor: BRAND_PALETTE.gold,
+  },
+  simLeaderboardBadgeBronze: {
+    backgroundColor: "#B45309",
+  },
+  simLeaderboardColumn: {
+    alignItems: "center",
+    gap: 2,
+  },
+  simLeaderboardColumnSide: {
+    paddingTop: 6,
+  },
+  simLeaderboardColumnCenter: {
+    paddingTop: 0,
+  },
+  simLeaderboardAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  simLeaderboardAvatarSilver: {
+    backgroundColor: withAlpha("#94A3B8", 0.18),
+  },
+  simLeaderboardAvatarGold: {
+    backgroundColor: withAlpha(BRAND_PALETTE.gold, 0.16),
+  },
+  simLeaderboardAvatarBronze: {
+    backgroundColor: withAlpha("#B45309", 0.16),
+  },
+  simLeaderboardAvatarText: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  simLeaderboardTier: {
+    color: BRAND_PALETTE.accentBold,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+  simLeaderboardName: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 12,
     fontWeight: "800",
   },
-  tourSkipButton: {
-    alignSelf: "center",
-    paddingVertical: 8,
-  },
-  tourSkipButtonText: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: 14,
+  simLeaderboardPoints: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
     fontWeight: "700",
-    textDecorationLine: "underline",
+  },
+  simLeaderboardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 10,
+  },
+  simLeaderboardFooterText: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  simProfileCard: {
+    backgroundColor: BRAND_PALETTE.surface,
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: withAlpha(BRAND_PALETTE.border, 0.92),
+  },
+  simProfileTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
+  simProfileAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: withAlpha(BRAND_PALETTE.highlight, 0.92),
+  },
+  simProfileAvatarText: {
+    color: BRAND_PALETTE.accentBold,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  simProfileName: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  simProfileMeta: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  simProfileStatRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  simProfileStatPill: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    alignItems: "center",
+    backgroundColor: withAlpha(BRAND_PALETTE.highlight, 0.86),
+  },
+  simProfileStatValue: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  simProfileStatLabel: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 10,
+    fontWeight: "700",
+    marginTop: 2,
   },
 });

@@ -80,6 +80,7 @@ export async function GET(request) {
             u.full_name,
             u.contribution_score,
             u.trust_score,
+            u.pro_access,
             u.created_at,
             COALESCE(rc.total_reports, 0) AS total_reports,
             COALESCE(sc.total_suggestions, 0) AS total_suggestions,

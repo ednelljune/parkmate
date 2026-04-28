@@ -24,7 +24,9 @@
     "eas:build:android:production": "npx eas build --platform android --profile production",
     "eas:submit:android:production": "npx eas submit --platform android --profile production",
     "eas-build-post-install": "node ./scripts/patch-sentry-gradle.cjs",
-    "postinstall": "patch-package && node ./scripts/dedupe-native-deps.cjs"
+    "postinstall": "patch-package && node ./scripts/dedupe-native-deps.cjs",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@anythingai/app": "0.1.96",

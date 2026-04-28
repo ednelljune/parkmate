@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "ParkMate.app"
+               BuildableName = "ParkMates.app"
                BlueprintName = "ParkMates"
                ReferencedContainer = "container:ParkMate.xcodeproj">
             </BuildableReference>
@@ -28,6 +28,16 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "00E356ED1AD99517003FC87E"
+               BuildableName = "ParkMateTests.xctest"
+               BlueprintName = "ParkMateTests"
+               ReferencedContainer = "container:ParkMate.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -45,11 +55,28 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "ParkMate.app"
+            BuildableName = "ParkMates.app"
             BlueprintName = "ParkMates"
             ReferencedContainer = "container:ParkMate.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "SENTRY_DISABLE_AUTO_UPLOAD"
+            value = "true"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "EXPO_PUBLIC_SUPABASE_URL"
+            value = "https://tkjqredjgkijcrrfewbj.supabase.co"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+            value = "sb_publishable_j6U_1ahMlhXTEMj49uhYXQ_WkxFIlq5"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -62,7 +89,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "ParkMate.app"
+            BuildableName = "ParkMates.app"
             BlueprintName = "ParkMates"
             ReferencedContainer = "container:ParkMate.xcodeproj">
          </BuildableReference>

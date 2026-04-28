@@ -258,7 +258,7 @@ export const SpotDetailsModal = ({
                           lineHeight: 19,
                         }}
                       >
-                        Claiming is only allowed when your current location is confirmed within 5m of this reported spot's coordinates.
+                        Claiming is only allowed when your current location is close enough to this reported spot's coordinates.
                       </Text>
                     </View>
 

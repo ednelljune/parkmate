@@ -1,10 +1,12 @@
 import { useAuth } from '@/utils/auth/useAuth';
 import { AnimatedParkMateLogo } from '@/components/AnimatedParkMateLogo';
+import { ProPaywall } from '@/components/paywall/ProPaywall';
 import { Asset } from 'expo-asset';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useStartupPrefetch } from '@/hooks/useStartupPrefetch';
+import { ProAccessProvider } from '@/hooks/useProAccess';
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -36,7 +38,10 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <RootLayoutContent />
+      <ProAccessProvider>
+        <RootLayoutContent />
+        <ProPaywall />
+      </ProAccessProvider>
     </QueryClientProvider>
   );
 }

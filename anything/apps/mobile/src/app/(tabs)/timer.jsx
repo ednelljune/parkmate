@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
 import Slider from "@react-native-community/slider";
+import fetch from "@/__create/fetch";
 import {
   BellRing,
   Clock3,
@@ -31,10 +32,13 @@ import {
   isExpoGo,
   notificationsUnsupportedInCurrentRuntime,
 } from "@/lib/notifications";
+import { ShiningProBadge } from "@/components/paywall/ShiningProBadge";
+import { useProAccess } from "@/hooks/useProAccess";
 import useUser from "@/utils/auth/useUser";
 import { BRAND_PALETTE } from "@/theme/brandColors";
 
 const TIMER_STORAGE_KEY = "parkingTimers";
+const TIMER_REMINDER_PRESET_STORAGE_KEY = "parkingTimerReminderPreset";
 const MANUAL_HOUR_MIN = 1;
 const MANUAL_HOUR_MAX = 12;
 
@@ -62,8 +66,37 @@ const ZONE_META = {
   },
 };
 
-const REMINDER_MINUTES = [30, 15];
-const REMINDER_WARNING_SECONDS = REMINDER_MINUTES[REMINDER_MINUTES.length - 1] * 60;
+const DEFAULT_REMINDER_PRESET_KEY = "standard";
+const REMINDER_PRESETS = [
+  {
+    key: DEFAULT_REMINDER_PRESET_KEY,
+    label: "30m + 15m",
+    shortLabel: "30/15/0 reminders",
+    minutes: [30, 15],
+    pro: false,
+  },
+  {
+    key: "commuter",
+    label: "20m + 10m",
+    shortLabel: "20/10/0 reminders",
+    minutes: [20, 10],
+    pro: true,
+  },
+  {
+    key: "tight_window",
+    label: "15m + 5m",
+    shortLabel: "15/5/0 reminders",
+    minutes: [15, 5],
+    pro: true,
+  },
+  {
+    key: "final_warning",
+    label: "Final warning only",
+    shortLabel: "0 reminder only",
+    minutes: [],
+    pro: true,
+  },
+];
 
 const formatTime = (seconds) => {
   const safeSeconds = Math.max(0, Number(seconds) || 0);
@@ -146,9 +179,19 @@ const getSessionProgress = (session) => {
   return Math.min(1, Math.max(0, 1 - remaining / duration));
 };
 
-const getSessionStatusLabel = (session) => {
+const getReminderPresetByKey = (presetKey) =>
+  REMINDER_PRESETS.find((preset) => preset.key === presetKey) || REMINDER_PRESETS[0];
+
+const getReminderWarningSeconds = (presetKey) => {
+  const preset = getReminderPresetByKey(presetKey);
+  const warningMinutes = preset.minutes[preset.minutes.length - 1];
+
+  return Number.isFinite(Number(warningMinutes)) ? Number(warningMinutes) * 60 : 0;
+};
+
+const getSessionStatusLabel = (session, warningSeconds = 0) => {
   const remaining = getSessionRemaining(session);
-  const isWarning = remaining <= REMINDER_WARNING_SECONDS && remaining > 0;
+  const isWarning = warningSeconds > 0 && remaining <= warningSeconds && remaining > 0;
 
   if (remaining <= 0) {
     return "Expired";
@@ -165,9 +208,9 @@ const getSessionStatusLabel = (session) => {
   return "Ready";
 };
 
-const getSessionStatusAccent = (session) => {
+const getSessionStatusAccent = (session, warningSeconds = 0) => {
   const remaining = getSessionRemaining(session);
-  const isWarning = remaining <= REMINDER_WARNING_SECONDS && remaining > 0;
+  const isWarning = warningSeconds > 0 && remaining <= warningSeconds && remaining > 0;
 
   if (remaining <= 0) {
     return "#DC2626";
@@ -290,11 +333,15 @@ export default function TimerScreen() {
 
   const { data: user } = useUser();
   const userId = user?.id;
+  const { hasPro, ensureProAccess } = useProAccess();
 
   const [timerSessions, setTimerSessions] = useState({
     manual: createManualSession(),
     claimed: createClaimedSession(),
   });
+  const [selectedReminderPresetKey, setSelectedReminderPresetKey] = useState(
+    DEFAULT_REMINDER_PRESET_KEY,
+  );
 
   const { data: profileData } = useQuery({
     queryKey: ["user_profile", userId],
@@ -313,11 +360,19 @@ export default function TimerScreen() {
   const preferredZone = useMemo(() => getPreferredZone(claimCount), [claimCount]);
   const timerNotificationsUnsupported =
     notificationsUnsupportedInCurrentRuntime || (isExpoGo && Platform.OS === "ios");
+  const selectedReminderPreset = useMemo(
+    () => getReminderPresetByKey(selectedReminderPresetKey),
+    [selectedReminderPresetKey],
+  );
+  const reminderWarningSeconds = useMemo(
+    () => getReminderWarningSeconds(selectedReminderPresetKey),
+    [selectedReminderPresetKey],
+  );
 
   const manualSession = timerSessions.manual;
   const claimedSession = timerSessions.claimed;
   const claimedSessionVisible =
-    Boolean(claimedSession?.isSeeded) && getSessionRemaining(claimedSession) > 0;
+    hasPro && Boolean(claimedSession?.isSeeded) && getSessionRemaining(claimedSession) > 0;
 
   const manualSelectedSeconds = manualHoursToSeconds(manualSession.selectedHours);
   const manualPaused =
@@ -337,27 +392,27 @@ export default function TimerScreen() {
     ...manualSession,
     durationSeconds: Math.max(manualSelectedSeconds, getSessionDuration(manualSession), 1),
     remaining: manualDisplaySeconds,
-  });
+  }, reminderWarningSeconds);
   const manualStatusAccent = getSessionStatusAccent({
     ...manualSession,
     durationSeconds: Math.max(manualSelectedSeconds, getSessionDuration(manualSession), 1),
     remaining: manualDisplaySeconds,
-  });
+  }, reminderWarningSeconds);
   const manualReminderLabel = timerNotificationsUnsupported
     ? "Dev build required"
     : manualSession.hasReminder
-      ? "30/15/0 reminders ready"
+      ? `${selectedReminderPreset.shortLabel} ready`
       : manualSession.running
         ? "Checking reminder"
         : "Reminder idle";
 
   const claimedMeta = ZONE_META[claimedSession.zone] || ZONE_META["1P"];
-  const claimedStatusLabel = getSessionStatusLabel(claimedSession);
-  const claimedStatusAccent = getSessionStatusAccent(claimedSession);
+  const claimedStatusLabel = getSessionStatusLabel(claimedSession, reminderWarningSeconds);
+  const claimedStatusAccent = getSessionStatusAccent(claimedSession, reminderWarningSeconds);
   const claimedReminderLabel = timerNotificationsUnsupported
     ? "Dev build required"
     : claimedSession.hasReminder
-      ? "30/15/0 reminders ready"
+      ? `${selectedReminderPreset.shortLabel} ready`
       : claimedSession.running
         ? "Checking reminder"
         : "Reminder idle";
@@ -371,6 +426,25 @@ export default function TimerScreen() {
       console.error("Error saving timer sessions:", error);
     });
   }, [timerSessions]);
+
+  useEffect(() => {
+    if (!hasHydratedTimerRef.current) {
+      return;
+    }
+
+    AsyncStorage.setItem(
+      TIMER_REMINDER_PRESET_STORAGE_KEY,
+      selectedReminderPresetKey,
+    ).catch((error) => {
+      console.error("Error saving reminder preset:", error);
+    });
+  }, [selectedReminderPresetKey]);
+
+  useEffect(() => {
+    if (!hasPro && getReminderPresetByKey(selectedReminderPresetKey).pro) {
+      setSelectedReminderPresetKey(DEFAULT_REMINDER_PRESET_KEY);
+    }
+  }, [hasPro, selectedReminderPresetKey]);
 
   useEffect(() => {
     if (!hasHydratedTimerRef.current) {
@@ -437,7 +511,7 @@ export default function TimerScreen() {
           channelId: "alerts",
         };
 
-        for (const reminderMinutes of REMINDER_MINUTES) {
+        for (const reminderMinutes of selectedReminderPreset.minutes) {
           const secondsUntilReminder = durationSeconds - reminderMinutes * 60;
           if (secondsUntilReminder <= 0) {
             continue;
@@ -477,13 +551,39 @@ export default function TimerScreen() {
         return [];
       }
     },
-    [timerNotificationsUnsupported],
+    [selectedReminderPreset.minutes, timerNotificationsUnsupported],
   );
+
+  useEffect(() => {
+    if (hasPro) {
+      return;
+    }
+
+    const hasClaimedTimerState = Boolean(claimedSession?.isSeeded) || Boolean(claimedSession?.running);
+
+    if (!hasClaimedTimerState) {
+      return;
+    }
+
+    cancelSessionNotifications(claimedSession.notificationIds || []).catch(() => null);
+    setTimerSessions((current) => ({
+      ...current,
+      claimed: createClaimedSession(),
+    }));
+  }, [
+    cancelSessionNotifications,
+    claimedSession?.isSeeded,
+    claimedSession?.running,
+    hasPro,
+  ]);
 
   const loadTimerState = useCallback(async () => {
     try {
       const saved = await AsyncStorage.getItem(TIMER_STORAGE_KEY);
       const legacySaved = !saved ? await AsyncStorage.getItem("parkingTimer") : null;
+      const savedReminderPresetKey = await AsyncStorage.getItem(
+        TIMER_REMINDER_PRESET_STORAGE_KEY,
+      );
       const now = Date.now();
 
       const normalizeManualSession = (session) => {
@@ -603,12 +703,27 @@ export default function TimerScreen() {
       }
 
       setTimerSessions(nextSessions);
+      if (savedReminderPresetKey) {
+        setSelectedReminderPresetKey(getReminderPresetByKey(savedReminderPresetKey).key);
+      }
     } catch (error) {
       console.error("Error loading timer state:", error);
     } finally {
       hasHydratedTimerRef.current = true;
     }
   }, []);
+
+  const handleReminderPresetSelect = useCallback(
+    (presetKey) => {
+      const preset = getReminderPresetByKey(presetKey);
+      if (preset.pro && !ensureProAccess("custom_timer_reminders")) {
+        return;
+      }
+
+      setSelectedReminderPresetKey(preset.key);
+    },
+    [ensureProAccess],
+  );
 
   useEffect(() => {
     (async () => {
@@ -646,6 +761,12 @@ export default function TimerScreen() {
 
   useEffect(() => {
     if (params.autoStart !== "true" || !params.zoneType || !ZONE_DURATIONS[params.zoneType]) {
+      lastHandledAutoStartKeyRef.current = null;
+      return;
+    }
+
+    if (!hasPro) {
+      ensureProAccess("claimed_spot_timer");
       lastHandledAutoStartKeyRef.current = null;
       return;
     }
@@ -692,6 +813,8 @@ export default function TimerScreen() {
   }, [
     cancelSessionNotifications,
     claimedSession.notificationIds,
+    ensureProAccess,
+    hasPro,
     params.autoStart,
     params.zoneType,
     scheduleSessionNotifications,
@@ -933,7 +1056,7 @@ export default function TimerScreen() {
 
             <Text style={styles.heroTitle}>Set your countdown</Text>
             <Text style={styles.heroSubtitle}>
-              Set a manual parking timer with a simple hours bar. If you claim a parking spot, its timer will appear below automatically.
+              Set a manual parking timer with a simple hours bar. If you claim a parking spot, the claimed timer is available in Pro.
             </Text>
 
           </LinearGradient>
@@ -1023,6 +1146,55 @@ export default function TimerScreen() {
               <Text style={styles.manualMetaChip}>
                 {manualSelectedSeconds > 0 ? formatTime(manualSelectedSeconds) : "0:00:00"}
               </Text>
+            </View>
+
+            <View style={styles.reminderPresetPanel}>
+              <View style={styles.reminderPresetHeader}>
+                <View>
+                  <Text style={styles.reminderPresetEyebrow}>Reminder mode</Text>
+                  <Text style={styles.reminderPresetTitle}>Choose your warning pattern</Text>
+                </View>
+                <Text style={styles.reminderPresetHint}>
+                  {manualSession.running || claimedSession.running
+                    ? "Applies next start"
+                    : hasPro
+                      ? "Pro active"
+                      : "Standard free"}
+                </Text>
+              </View>
+
+              <View style={styles.reminderPresetRail}>
+                {REMINDER_PRESETS.map((preset) => {
+                  const isSelected = selectedReminderPresetKey === preset.key;
+                  const isLocked = preset.pro && !hasPro;
+
+                  return (
+                    <Pressable
+                      key={preset.key}
+                      accessibilityRole="button"
+                      onPress={() => handleReminderPresetSelect(preset.key)}
+                      style={({ pressed }) => [
+                        styles.reminderPresetChip,
+                        isSelected && styles.reminderPresetChipSelected,
+                        isLocked && styles.reminderPresetChipLocked,
+                        { opacity: pressed ? 0.95 : 1 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.reminderPresetChipText,
+                          isSelected && styles.reminderPresetChipTextSelected,
+                        ]}
+                      >
+                        {preset.label}
+                      </Text>
+                      {isLocked ? (
+                        <ShiningProBadge />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
 
             <View style={styles.sessionCardActions}>
@@ -1353,6 +1525,73 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
     color: BRAND_PALETTE.navy,
+  },
+  reminderPresetPanel: {
+    marginTop: 16,
+    borderRadius: 22,
+    backgroundColor: "#F7FBFF",
+    borderWidth: 1,
+    borderColor: "#D8EAF6",
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
+    gap: 10,
+  },
+  reminderPresetHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  reminderPresetEyebrow: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: BRAND_PALETTE.accentBold,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  reminderPresetTitle: {
+    marginTop: 4,
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  reminderPresetHint: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  reminderPresetRail: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  reminderPresetChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#D7E6F2",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  reminderPresetChipSelected: {
+    backgroundColor: "#E7F4FF",
+    borderColor: BRAND_PALETTE.accentBold,
+  },
+  reminderPresetChipLocked: {
+    backgroundColor: "#F8FBFE",
+  },
+  reminderPresetChipText: {
+    color: BRAND_PALETTE.navy,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  reminderPresetChipTextSelected: {
+    color: BRAND_PALETTE.accentBold,
   },
   sessionCard: {
     borderRadius: 28,

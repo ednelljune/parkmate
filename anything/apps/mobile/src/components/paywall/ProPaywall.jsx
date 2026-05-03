@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import {
   CheckCircle2,
   Radar,
@@ -71,22 +72,22 @@ const FEATURE_ROWS = [
   {
     icon: Radar,
     title: 'Custom Alert Radius',
-    description: 'Unlock the 500m, 1km, and 2km radius presets in Notifications.',
+    description: 'Expand your radar from the default 300m view to wider Pro presets when you need a bigger search area.',
   },
   {
     icon: Sparkles,
     title: 'Best chance sorting',
-    description: 'Use the Best chance sort mode for higher-confidence parking signals.',
+    description: 'Prioritize fresher, stronger signals so the most promising openings rise to the top first.',
   },
   {
     icon: TimerReset,
     title: 'Custom Reminders',
-    description: 'Pick Pro reminder presets like 20/10, 15/5, or final warning only.',
+    description: 'Choose reminder patterns that fit the stay instead of using one fixed warning cadence.',
   },
   {
     icon: CheckCircle2,
     title: 'Profile Insights',
-    description: 'View claim conversion, impact per report, and next-tier progress on your profile.',
+    description: 'See deeper personal metrics like claim conversion, impact per report, and progression pacing.',
   },
 ];
 
@@ -203,6 +204,13 @@ export function ProPaywall() {
     return label ? `Unlock Pro for ${label}` : 'Unlock ParkMate Pro';
   }, [proPriceLabel]);
 
+  const handlePurchasePress = async () => {
+    const customerInfo = await purchasePro();
+    if (customerInfo) {
+      router.replace('/pro-center');
+    }
+  };
+
   return (
     <Modal
       animationType="fade"
@@ -258,10 +266,11 @@ export function ProPaywall() {
               <Text style={styles.heroTitleMate}>Mate</Text>
               {' '}Pro
             </Text>
-            <Text style={styles.heroSubhead}>Master your city's parking intelligence.</Text>
+            <Text style={styles.heroSubhead}>One payment. Permanent premium parking tools.</Text>
             <View style={styles.contextPill}>
               <Text style={styles.contextText}>{contextualLabel}</Text>
             </View>
+            <Text style={styles.heroLifetimeNote}>Lifetime access. No recurring subscription.</Text>
           </Animated.View>
 
           <ScrollView
@@ -307,7 +316,7 @@ export function ProPaywall() {
                 disabled={!isConfigured || isPurchaseInFlight || isRestoreInFlight}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
-                onPress={() => purchasePro().catch(() => null)}
+                onPress={() => handlePurchasePress().catch(() => null)}
               >
                 <LinearGradient
                   colors={PAYWALL_COLORS.logoGradient}
@@ -440,6 +449,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 24,
+  },
+  heroLifetimeNote: {
+    color: PAYWALL_COLORS.legalText,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    marginTop: 10,
+    textAlign: 'center',
   },
   contextPill: {
     marginTop: 24,

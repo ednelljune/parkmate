@@ -58,8 +58,7 @@ export const SpotDetailsModal = ({
   };
 
   useEffect(() => {
-    if (!spot) {
-      console.log("[spot.crash] modal.render missing spot");
+    if (!visible || !spot) {
       return;
     }
     console.log(
@@ -70,7 +69,11 @@ export const SpotDetailsModal = ({
       `status=${spot.status}`,
       `expires_at=${spot.expires_at}`,
     );
-  }, [spot]);
+  }, [spot, visible]);
+
+  if (!visible || !spot) {
+    return null;
+  }
 
   return (
     <Modal
@@ -258,7 +261,7 @@ export const SpotDetailsModal = ({
                           lineHeight: 19,
                         }}
                       >
-                        Claiming is only allowed when your current location is close enough to this reported spot's coordinates.
+                        Claiming is allowed when your current location is inside the same parking zone, or close enough to the reported spot's coordinates.
                       </Text>
                     </View>
 

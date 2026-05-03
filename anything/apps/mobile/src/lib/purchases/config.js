@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 import { getPublicConfigValue } from '@/lib/publicConfig';
 
 export const PRO_ENTITLEMENT_ID = 'pro';
@@ -13,9 +14,12 @@ const APPLE_REVENUECAT_API_KEY = getPublicConfigValue(
 const GOOGLE_REVENUECAT_API_KEY = getPublicConfigValue(
   'EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY',
 );
+const ALLOW_IOS_SIMULATOR_PURCHASES =
+  getPublicConfigValue('EXPO_PUBLIC_REVENUECAT_ALLOW_SIMULATOR') === 'true';
 
 export const PURCHASES_SUPPORTS_NATIVE =
-  Platform.OS === 'ios' || Platform.OS === 'android';
+  Platform.OS === 'android' ||
+  (Platform.OS === 'ios' && (Device.isDevice || ALLOW_IOS_SIMULATOR_PURCHASES));
 
 export const getRevenueCatApiKey = () => {
   if (Platform.OS === 'ios') {
@@ -31,4 +35,3 @@ export const getRevenueCatApiKey = () => {
 
 export const isRevenueCatConfigured = () =>
   Boolean(PURCHASES_SUPPORTS_NATIVE && getRevenueCatApiKey());
-

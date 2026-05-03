@@ -3,8 +3,8 @@ import { requireAuthenticatedUser } from '@/app/api/utils/supabase-auth';
 import { logUserActivity } from '@/app/api/utils/activity-log';
 import { getEffectiveReportExpiresAtSql } from '@/app/api/utils/report-ttl';
 
-const CLAIM_SPOT_MAX_DISTANCE_METERS = 5;
-const CLAIM_SPOT_MAX_ACCURACY_TOLERANCE_METERS = 15;
+const CLAIM_SPOT_MIN_DISTANCE_METERS = 35;
+const CLAIM_SPOT_MAX_DISTANCE_METERS = 75;
 
 const isExpoPushToken = (value) =>
   typeof value === 'string' &&
@@ -23,12 +23,12 @@ const normalizeAccuracyMeters = (value) => {
 const getClaimDistanceThresholdMeters = (accuracyMeters) => {
   const normalizedAccuracyMeters = normalizeAccuracyMeters(accuracyMeters);
   if (normalizedAccuracyMeters === null) {
-    return CLAIM_SPOT_MAX_DISTANCE_METERS;
+    return CLAIM_SPOT_MIN_DISTANCE_METERS;
   }
 
   return Math.min(
-    Math.max(CLAIM_SPOT_MAX_DISTANCE_METERS, normalizedAccuracyMeters),
-    CLAIM_SPOT_MAX_ACCURACY_TOLERANCE_METERS,
+    Math.max(CLAIM_SPOT_MIN_DISTANCE_METERS, normalizedAccuracyMeters),
+    CLAIM_SPOT_MAX_DISTANCE_METERS,
   );
 };
 
@@ -129,6 +129,7 @@ export async function POST(request) {
 
     const { reportId, latitude, longitude, accuracy } = await request.json();
     const userId = auth.user.id;
+    const normalizedReportId = Number(reportId);
     const normalizedLatitude = normalizeCoordinate(latitude);
     const normalizedLongitude = normalizeCoordinate(longitude);
     const normalizedAccuracyMeters = normalizeAccuracyMeters(accuracy);
@@ -136,7 +137,7 @@ export async function POST(request) {
       normalizedAccuracyMeters,
     );
 
-    if (!reportId) {
+    if (!Number.isInteger(normalizedReportId) || normalizedReportId <= 0) {
       return Response.json(
         { success: false, message: 'reportId is required.' },
         { status: 400 }
@@ -155,6 +156,10 @@ export async function POST(request) {
     }
 
     const results = await sql.transaction(async (txn) => {
+      await txn`
+        SELECT pg_advisory_xact_lock(${normalizedReportId}::bigint)
+      `;
+
       const effectiveExpiresAtSql = getEffectiveReportExpiresAtSql('lr');
       const availableReports = await txn(
         `
@@ -166,16 +171,6 @@ export async function POST(request) {
           lr.quantity,
           lr.zone_id,
           lr.parking_type,
-          CASE
-            WHEN pz.boundary IS NULL THEN FALSE
-            ELSE ST_Covers(
-              pz.boundary::geometry,
-              ST_SetSRID(
-                ST_Point($1, $2),
-                4326
-              )::geometry
-            )
-          END AS is_inside_zone,
           ST_X(lr.location::geometry) AS longitude,
           ST_Y(lr.location::geometry) AS latitude,
           ST_Distance(
@@ -186,55 +181,117 @@ export async function POST(request) {
               )::geography
             ) AS distance_meters
         FROM live_reports lr
-        LEFT JOIN parking_zones pz
-          ON pz.id = lr.zone_id
         WHERE lr.id = $3
           AND lr.status = 'available'
           AND ${effectiveExpiresAtSql} > CURRENT_TIMESTAMP
-        FOR UPDATE
       `,
-        [normalizedLongitude, normalizedLatitude, reportId],
+        [normalizedLongitude, normalizedLatitude, normalizedReportId],
       );
 
       if (availableReports.length === 0) {
         return { availableReports, claimedReports: [] };
       }
 
+      const targetReport = availableReports[0];
+      const reportLongitude = Number(targetReport?.longitude);
+      const reportLatitude = Number(targetReport?.latitude);
       const distanceMeters = Number(availableReports[0]?.distance_meters);
-      const isInsideZone = !!availableReports[0]?.is_inside_zone;
-      const hasMatchedZone = availableReports[0]?.zone_id != null;
+      const currentZoneRows = await txn`
+        SELECT
+          id,
+          name,
+          zone_type
+        FROM parking_zones
+        WHERE boundary IS NOT NULL
+          AND ST_Covers(
+          boundary::geometry,
+          ST_SetSRID(
+            ST_Point(${normalizedLongitude}, ${normalizedLatitude}),
+            4326
+          )::geometry
+        )
+        LIMIT 1
+      `;
+      const currentZone = currentZoneRows[0] || null;
 
-      if (hasMatchedZone) {
-        if (!isInsideZone) {
-          const accuracyClause = normalizedAccuracyMeters
-            ? ` Your GPS accuracy is about ${Math.round(normalizedAccuracyMeters)}m.`
-            : "";
-          const error = new Error(
-            `Move inside the associated parking zone before claiming it.${accuracyClause}`,
-          );
-          error.status = 403;
-          throw error;
-        }
+      let reportZone = null;
+      if (targetReport?.zone_id != null) {
+        const reportZoneRows = await txn`
+          SELECT
+            id,
+            name,
+            zone_type
+          FROM parking_zones
+          WHERE id = ${targetReport.zone_id}
+            AND boundary IS NOT NULL
+          LIMIT 1
+        `;
+        reportZone = reportZoneRows[0] || null;
       } else if (
-        !Number.isFinite(distanceMeters) ||
-        distanceMeters > claimDistanceThresholdMeters
+        Number.isFinite(reportLongitude) &&
+        Number.isFinite(reportLatitude)
       ) {
-        const roundedDistance = Number.isFinite(distanceMeters)
-          ? Math.round(distanceMeters)
-          : null;
-        const actualDistanceClause =
-          roundedDistance == null ? '' : ` You are about ${roundedDistance}m away.`;
-        const accuracyClause = normalizedAccuracyMeters
-          ? ` Your GPS accuracy is about ${Math.round(normalizedAccuracyMeters)}m.`
-          : '';
-        const error = new Error(
-          `Move closer to the reported spot coordinates before claiming it. You must be within ${Math.round(claimDistanceThresholdMeters)}m.${actualDistanceClause}${accuracyClause}`,
-        );
-        error.status = 403;
-        throw error;
+        const inferredReportZoneRows = await txn`
+          SELECT
+            id,
+            name,
+            zone_type
+          FROM parking_zones
+          WHERE boundary IS NOT NULL
+            AND ST_Covers(
+            boundary::geometry,
+            ST_SetSRID(
+              ST_Point(${reportLongitude}, ${reportLatitude}),
+              4326
+            )::geometry
+          )
+          LIMIT 1
+        `;
+        reportZone = inferredReportZoneRows[0] || null;
       }
 
-      const targetReport = availableReports[0];
+      const hasZoneMatch =
+        !!reportZone &&
+        !!currentZone &&
+        String(currentZone.id) === String(reportZone.id);
+      const hasDistanceMatch =
+        Number.isFinite(distanceMeters) &&
+        distanceMeters <= claimDistanceThresholdMeters;
+      const canClaimZoneLinkedReport =
+        !!targetReport?.zone_id && hasZoneMatch;
+      const canClaimLegacyReport =
+        !targetReport?.zone_id && hasDistanceMatch;
+
+      if (!canClaimZoneLinkedReport && !canClaimLegacyReport) {
+        const accuracyClause = normalizedAccuracyMeters
+          ? ` Your GPS accuracy is about ${Math.round(normalizedAccuracyMeters)}m.`
+          : "";
+        const actualDistanceClause = Number.isFinite(distanceMeters)
+          ? ` You are about ${Math.round(distanceMeters)}m away.`
+          : "";
+        const zoneClause = reportZone
+          ? " This report is linked to a parking zone, but your current location did not resolve to the same zone."
+          : "";
+        const error = new Error(
+          `Move closer to the reported spot coordinates before claiming it. You must be within ${Math.round(claimDistanceThresholdMeters)}m.${zoneClause}${actualDistanceClause}${accuracyClause}`,
+        );
+        error.status = 403;
+        console.warn('[report.claim] Claim rejected', {
+          reportId,
+          userId,
+          distanceMeters: Number.isFinite(distanceMeters)
+            ? Math.round(distanceMeters)
+            : null,
+          claimDistanceThresholdMeters: Math.round(claimDistanceThresholdMeters),
+          normalizedAccuracyMeters: normalizedAccuracyMeters
+            ? Math.round(normalizedAccuracyMeters)
+            : null,
+          reportZoneId: reportZone?.id || null,
+          currentZoneId: currentZone?.id || null,
+          targetReportZoneId: targetReport?.zone_id || null,
+        });
+        throw error;
+      }
       const existingQuantity = Math.max(
         1,
         Number.isFinite(Number(targetReport?.quantity))
@@ -248,7 +305,7 @@ export async function POST(request) {
           ? await txn`
               UPDATE live_reports
               SET quantity = ${remainingQuantity}
-              WHERE id = ${reportId}
+              WHERE id = ${normalizedReportId}
                 AND status = 'available'
               RETURNING *
             `
@@ -259,7 +316,7 @@ export async function POST(request) {
                 status = 'claimed',
                 claimed_by = ${userId},
                 claimed_at = CURRENT_TIMESTAMP
-              WHERE id = ${reportId}
+              WHERE id = ${normalizedReportId}
                 AND status = 'available'
               RETURNING *
             `;
@@ -267,11 +324,11 @@ export async function POST(request) {
       await txn`
         UPDATE users
         SET contribution_score = contribution_score + 10
-        WHERE id = (SELECT user_id FROM live_reports WHERE id = ${reportId})
+        WHERE id = (SELECT user_id FROM live_reports WHERE id = ${normalizedReportId})
           AND EXISTS (
             SELECT 1
             FROM live_reports
-            WHERE id = ${reportId}
+            WHERE id = ${normalizedReportId}
               AND user_id IS NOT NULL
           )
       `;

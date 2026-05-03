@@ -2,7 +2,9 @@
   "name": "parkmate-root",
   "private": true,
   "dependencies": {
-    "expo": "^55.0.15"
+    "expo": "^55.0.15",
+    "react-native-purchases": "^10.0.1",
+    "react-native-purchases-ui": "^10.0.1"
   },
   "devDependencies": {
     "@types/react": "~19.2.10",

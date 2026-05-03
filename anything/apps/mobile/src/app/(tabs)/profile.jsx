@@ -513,8 +513,8 @@ export default function ProfileScreen() {
     hasPro,
     ensureProAccess,
     presentPaywall,
+    restorePurchases,
     proPriceLabel,
-    isConfigured,
     refreshServerAccess,
   } = useProAccess();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -730,16 +730,25 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.heroIdentityRow}>
-            <LinearGradient
-              colors={["rgba(255,255,255,0.9)", "rgba(255,255,255,0.18)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.avatarRing}
-            >
-              <View style={styles.avatarCore}>
-                <Text style={styles.avatarInitials}>{getInitials(profile?.full_name)}</Text>
-              </View>
-            </LinearGradient>
+            <View style={[styles.avatarFrame, hasPro && styles.avatarFramePro]}>
+              {hasPro ? <View style={styles.avatarAura} /> : null}
+              <LinearGradient
+                colors={
+                  hasPro
+                    ? ["rgba(255, 214, 102, 0.98)", "rgba(96, 165, 250, 0.72)"]
+                    : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.18)"]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.avatarRing, hasPro && styles.avatarRingPro]}
+              >
+                <View style={[styles.avatarCore, hasPro && styles.avatarCorePro]}>
+                  {hasPro ? <View style={styles.avatarSheen} /> : null}
+                  <Text style={styles.avatarInitials}>{getInitials(profile?.full_name)}</Text>
+                  {hasPro ? <View style={styles.avatarGem} /> : null}
+                </View>
+              </LinearGradient>
+            </View>
 
             <View style={styles.identityCopy}>
               <Text style={styles.heroName}>{profile?.full_name || fallbackName || "Anonymous User"}</Text>
@@ -892,23 +901,17 @@ export default function ProfileScreen() {
 
           <Text style={styles.proAccessCopy}>
             {hasPro
-              ? "Your lifetime upgrade is active. Premium radar controls, reminder presets, and profile insights are unlocked on this account."
-              : "Upgrade once to unlock wider radar controls, better parking intelligence, and advanced timer reminders without a subscription."}
+              ? "Your premium mode is active. Open the Pro Center to review your setup, restore access, and see what the upgrade changes."
+              : "Upgrade once to unlock premium radar controls, better parking intelligence, and advanced timer reminders without a subscription."}
           </Text>
 
           <View style={styles.proAccessActions}>
             <TouchableOpacity
               activeOpacity={0.88}
-              disabled={!isConfigured && !hasPro}
-              onPress={() => {
-                if (!hasPro) {
-                  presentPaywall("profile_membership");
-                }
-              }}
+              onPress={() => router.push("/pro-center")}
               style={[
                 styles.proAccessPrimaryButton,
                 hasPro && styles.proAccessPrimaryButtonActive,
-                !isConfigured && !hasPro && styles.proAccessPrimaryButtonDisabled,
               ]}
             >
               <Text
@@ -917,23 +920,29 @@ export default function ProfileScreen() {
                   hasPro && styles.proAccessPrimaryButtonTextActive,
                 ]}
               >
-                {hasPro
-                  ? "ParkMate Pro active"
-                  : isConfigured
-                    ? `Unlock for ${proPriceLabel || "A$19.99"}`
-                    : "Purchases not configured"}
+                {hasPro ? "Open Pro Center" : "See Pro Center"}
               </Text>
             </TouchableOpacity>
 
             {!hasPro ? (
               <TouchableOpacity
                 activeOpacity={0.82}
-                onPress={() => ensureProAccess("profile_membership")}
+                onPress={() => presentPaywall("profile_membership")}
                 style={styles.proAccessSecondaryButton}
               >
-                <Text style={styles.proAccessSecondaryButtonText}>See Pro features</Text>
+                <Text style={styles.proAccessSecondaryButtonText}>
+                  Unlock for {proPriceLabel || "A$19.99"}
+                </Text>
               </TouchableOpacity>
-            ) : null}
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.82}
+                onPress={() => restorePurchases().catch(() => null)}
+                style={styles.proAccessSecondaryButton}
+              >
+                <Text style={styles.proAccessSecondaryButtonText}>Restore access</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -1249,11 +1258,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  avatarFrame: {
+    position: "relative",
+    width: 84,
+    height: 84,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarFramePro: {
+    shadowColor: "#FBBF24",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.34,
+    shadowRadius: 18,
+    elevation: 10,
+  },
+  avatarAura: {
+    position: "absolute",
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: "rgba(251, 191, 36, 0.16)",
+  },
   avatarRing: {
     width: 80,
     height: 80,
     borderRadius: 999,
     padding: 2,
+  },
+  avatarRingPro: {
+    padding: 3,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.22)",
   },
   avatarCore: {
     flex: 1,
@@ -1261,12 +1296,40 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarCorePro: {
+    backgroundColor: "#FFF7D6",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.48)",
+  },
+  avatarSheen: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "42%",
+    backgroundColor: "rgba(255,255,255,0.22)",
   },
   avatarInitials: {
     color: "#0F172A",
     fontSize: 26,
     fontWeight: "900",
     letterSpacing: 0.5,
+  },
+  avatarGem: {
+    position: "absolute",
+    top: 8,
+    right: 9,
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.84)",
+    shadowColor: "#FFFFFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    elevation: 3,
   },
   identityCopy: {
     flex: 1,

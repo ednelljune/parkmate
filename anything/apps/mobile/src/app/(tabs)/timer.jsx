@@ -416,6 +416,12 @@ export default function TimerScreen() {
       : claimedSession.running
         ? "Checking reminder"
         : "Reminder idle";
+  const premiumTimerHeadline = hasPro
+    ? "Pro reminder mode is active"
+    : "Unlock smarter reminder patterns";
+  const premiumTimerCopy = hasPro
+    ? "Your premium reminder setup is ready. Use the recommended presets below or jump straight into a claimed spot timer."
+    : "Open ParkMate Pro to choose smarter warning patterns and unlock claimed-spot auto-start.";
 
   useEffect(() => {
     if (!hasHydratedTimerRef.current) {
@@ -1061,6 +1067,26 @@ export default function TimerScreen() {
 
           </LinearGradient>
 
+          <View style={[styles.proBanner, hasPro ? styles.proBannerActive : styles.proBannerInactive]}>
+            <View style={styles.proBannerCopy}>
+              <View style={styles.proBannerTopRow}>
+                <ShiningProBadge label={hasPro ? "Pro active" : "Pro"} />
+                <Text style={styles.proBannerHeadline}>{premiumTimerHeadline}</Text>
+              </View>
+              <Text style={styles.proBannerText}>{premiumTimerCopy}</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/pro-center")}
+              style={({ pressed }) => [
+                styles.proBannerButton,
+                { opacity: pressed ? 0.92 : 1 },
+              ]}
+            >
+              <Text style={styles.proBannerButtonText}>{hasPro ? "Pro Center" : "Unlock Pro"}</Text>
+            </Pressable>
+          </View>
+
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionEyebrow}>Manual Timer</Text>
@@ -1163,6 +1189,12 @@ export default function TimerScreen() {
                 </Text>
               </View>
 
+              <Text style={styles.reminderPresetCopy}>
+                {hasPro
+                  ? "Recommended Pro presets are tuned for shorter exits, tighter warning windows, and cleaner parking handoffs."
+                  : "Free users keep the default reminder cadence. Unlock Pro to switch to tighter warning windows."}
+              </Text>
+
               <View style={styles.reminderPresetRail}>
                 {REMINDER_PRESETS.map((preset) => {
                   const isSelected = selectedReminderPresetKey === preset.key;
@@ -1180,17 +1212,25 @@ export default function TimerScreen() {
                         { opacity: pressed ? 0.95 : 1 },
                       ]}
                     >
+                      <View style={styles.reminderPresetChipRow}>
+                        <Text
+                          style={[
+                            styles.reminderPresetChipText,
+                            isSelected && styles.reminderPresetChipTextSelected,
+                          ]}
+                        >
+                          {preset.label}
+                        </Text>
+                        {isLocked ? <ShiningProBadge /> : null}
+                      </View>
                       <Text
                         style={[
-                          styles.reminderPresetChipText,
-                          isSelected && styles.reminderPresetChipTextSelected,
+                          styles.reminderPresetChipSubtext,
+                          isSelected && styles.reminderPresetChipSubtextSelected,
                         ]}
                       >
-                        {preset.label}
+                        {preset.shortLabel}
                       </Text>
-                      {isLocked ? (
-                        <ShiningProBadge />
-                      ) : null}
                     </Pressable>
                   );
                 })}
@@ -1380,6 +1420,53 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: "rgba(255,255,255,0.76)",
   },
+  proBanner: {
+    borderRadius: 20,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    marginTop: 14,
+  },
+  proBannerActive: {
+    backgroundColor: "#F7FFFC",
+    borderColor: "rgba(16, 185, 129, 0.18)",
+  },
+  proBannerInactive: {
+    backgroundColor: "#F8FCFF",
+    borderColor: "rgba(2, 132, 199, 0.16)",
+  },
+  proBannerCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  proBannerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  proBannerHeadline: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  proBannerText: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  proBannerButton: {
+    backgroundColor: BRAND_PALETTE.deepNavy,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  proBannerButtonText: {
+    color: BRAND_PALETTE.surface,
+    fontSize: 12,
+    fontWeight: "800",
+  },
   sectionHeader: {
     marginTop: 18,
     marginBottom: 10,
@@ -1556,6 +1643,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
   },
+  reminderPresetCopy: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
   reminderPresetHint: {
     color: BRAND_PALETTE.muted,
     fontSize: 11,
@@ -1568,15 +1660,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   reminderPresetChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#D7E6F2",
     paddingHorizontal: 12,
     paddingVertical: 9,
+    gap: 4,
   },
   reminderPresetChipSelected: {
     backgroundColor: "#E7F4FF",
@@ -1585,6 +1675,11 @@ const styles = StyleSheet.create({
   reminderPresetChipLocked: {
     backgroundColor: "#F8FBFE",
   },
+  reminderPresetChipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   reminderPresetChipText: {
     color: BRAND_PALETTE.navy,
     fontSize: 12,
@@ -1592,6 +1687,14 @@ const styles = StyleSheet.create({
   },
   reminderPresetChipTextSelected: {
     color: BRAND_PALETTE.accentBold,
+  },
+  reminderPresetChipSubtext: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 10,
+    lineHeight: 13,
+  },
+  reminderPresetChipSubtextSelected: {
+    color: BRAND_PALETTE.navy,
   },
   sessionCard: {
     borderRadius: 28,

@@ -138,6 +138,14 @@ function RootLayoutContent() {
   }, []);
 
   useEffect(() => {
+    if (!hasLoadedStartupState || !hasCompletedStartupBefore) {
+      return;
+    }
+
+    setHasCompletedBootScene(true);
+  }, [hasCompletedStartupBefore, hasLoadedStartupState]);
+
+  useEffect(() => {
     if (!isReady || !isStartupReady || hasCompletedStartupBefore) {
       return;
     }
@@ -147,9 +155,7 @@ function RootLayoutContent() {
   }, [hasCompletedStartupBefore, isReady, isStartupReady]);
 
   const shouldShowStartupScreen =
-    !hasLoadedStartupState ||
-    !isReady ||
-    ((!hasCompletedBootScene || !isStartupReady) && !hasCompletedStartupBefore);
+    !hasLoadedStartupState || !isReady || !isStartupReady || !hasCompletedBootScene;
 
   return shouldShowStartupScreen ? (
     <View onLayout={hideNativeSplash} style={styles.loadingScreen}>

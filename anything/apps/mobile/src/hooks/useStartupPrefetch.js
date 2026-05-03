@@ -27,15 +27,16 @@ import {
   getQueryLocation,
 } from "@/hooks/useParkingData";
 import { PARKING_ALERT_RADIUS_METERS } from "@/constants/detectionRadius";
-import { resolveBackendUrl } from "@/utils/backend";
+import { getResolvedBaseUrl, resolveBackendUrl } from "@/utils/backend";
 
 const DEFAULT_ACTIVITY_LIMIT = 60;
 const DEFAULT_ACTIVITY_MAILBOX_LIMIT = 30;
-const DEFAULT_LEADERBOARD_LIMIT = 30;
+const DEFAULT_LEADERBOARD_LIMIT = 10;
 const STARTUP_PREFETCH_TIMEOUT_MS = 45000;
 const DEFAULT_STARTUP_ZONE_RADIUS = PARKING_ALERT_RADIUS_METERS;
 const STARTUP_RETRY_DELAY_MS = 1500;
 const LOCATION_WARM_STEP_COUNT = 3;
+let hasLoggedStartupBackendUrl = false;
 
 const STARTUP_STEP_LABELS = {
   backend_connection: "Connecting to ParkMate",
@@ -95,6 +96,33 @@ const warmQueryUntilSuccess = async ({
 };
 
 const warmBackendConnection = async () => {
+  const resolvedBaseUrl = getResolvedBaseUrl();
+
+  if (!hasLoggedStartupBackendUrl) {
+    hasLoggedStartupBackendUrl = true;
+    let protocol = null;
+    let isLocal = false;
+
+    try {
+      if (resolvedBaseUrl) {
+        const parsedUrl = new URL(resolvedBaseUrl);
+        protocol = parsedUrl.protocol;
+        isLocal = ["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(
+          parsedUrl.hostname,
+        );
+      }
+    } catch {
+      // Leave the diagnostic fields null/false if the configured URL is malformed.
+    }
+
+    console.info("[startup.backend] Resolved backend URL", {
+      resolvedBaseUrl,
+      protocol,
+      isSecure: resolvedBaseUrl ? resolvedBaseUrl.startsWith("https://") : false,
+      isLocal,
+    });
+  }
+
   const leaderboardVersionUrl = resolveBackendUrl(
     `/api/users/leaderboard/version?limit=${DEFAULT_LEADERBOARD_LIMIT}`,
   );

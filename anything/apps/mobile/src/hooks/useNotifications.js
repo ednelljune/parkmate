@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
+import { Platform } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   androidPushNotificationsConfigured,
@@ -333,6 +334,18 @@ export const useNotifications = (onNotificationResponse) => {
 
           if (!registerTokenUrl) {
             console.warn("Skipping push token registration because no backend URL is configured");
+            return;
+          }
+
+          if (
+            __DEV__ &&
+            Platform.OS === "ios" &&
+            registerTokenUrl.startsWith("http://")
+          ) {
+            console.warn(
+              "Skipping push token registration because the resolved backend URL is insecure on iOS dev.",
+              { registerTokenUrl },
+            );
             return;
           }
 

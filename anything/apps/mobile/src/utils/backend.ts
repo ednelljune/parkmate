@@ -78,9 +78,18 @@ const normalizeConfiguredBackendUrl = (value?: string | null, expoHost?: string)
   try {
     const configuredUrl = new URL(configuredBaseUrl);
     const configuredHost = configuredUrl.hostname;
+    const isLocalHost =
+      localhostHosts.has(configuredHost) ||
+      isIpv4Host(configuredHost) ||
+      configuredHost === expoHost;
+
+    if (!isLocalHost && configuredUrl.protocol === "http:") {
+      // Keep remote backends on HTTPS so ATS never blocks production-style API traffic.
+      configuredUrl.protocol = "https:";
+    }
 
     if (!shouldForceDevBackendPort(configuredHost, expoHost)) {
-      return configuredBaseUrl;
+      return trimTrailingSlash(configuredUrl.toString());
     }
 
     if (expoHost && configuredHost !== expoHost && localhostHosts.has(configuredHost)) {

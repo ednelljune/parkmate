@@ -31,6 +31,7 @@ import {
 } from "@/utils/trustBadges";
 import { resolveBackendUrl } from "@/utils/backend";
 import useUser from "@/utils/auth/useUser";
+import { useProAccess } from "@/hooks/useProAccess";
 
 const PODIUM_META = {
   1: {
@@ -74,7 +75,60 @@ const getInitials = (name) => {
     .join("");
 };
 
-function PodiumCard({ item, rank }) {
+function AvatarFrame({ size, pro = false, proCompact = false, champion = false, children }) {
+  const shellSize = size;
+  const auraSize = shellSize + (champion ? 16 : 12);
+
+  return (
+    <View
+      style={[
+        styles.avatarFrameBase,
+        {
+          width: auraSize,
+          height: auraSize,
+        },
+        pro && styles.avatarFrameBasePro,
+      ]}
+    >
+      {pro ? (
+        <>
+          <View
+            style={[
+              styles.avatarFrameAura,
+              {
+                width: auraSize,
+                height: auraSize,
+                borderRadius: auraSize / 2,
+              },
+              proCompact && styles.avatarFrameAuraCompact,
+              champion && styles.avatarFrameAuraChampion,
+            ]}
+          />
+          <View style={styles.avatarFrameSpark} />
+        </>
+      ) : null}
+
+      <View
+        style={[
+          styles.avatarShell,
+          champion && styles.avatarShellChampion,
+          pro && styles.avatarShellPro,
+        ]}
+      >
+        <LinearGradient
+          colors={["#FFFFFF", "#E2E8F0"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.avatarCore}
+        >
+          {children}
+        </LinearGradient>
+      </View>
+    </View>
+  );
+}
+
+function PodiumCard({ item, rank, showProBadge = false }) {
   const trustScore = normalizeTrustScore(item?.trust_score);
   const contributionScore = normalizeImpactScore(item?.contribution_score);
   const badge = getLeaderboardBadgeMeta(contributionScore);
@@ -116,29 +170,22 @@ function PodiumCard({ item, rank }) {
           isChampion ? styles.podiumCardChampion : styles.podiumCardSide,
         ]}
       >
-        <View
-          style={[
-            styles.avatarShell,
-            isChampion && styles.avatarShellChampion,
-            { borderColor: meta.colors[1] },
-          ]}
+        <AvatarFrame
+          size={isChampion ? 54 : 46}
+          pro={showProBadge}
+          proCompact={!isChampion}
+          champion={isChampion}
         >
-          <LinearGradient
-            colors={["#FFFFFF", "#E2E8F0"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.avatarCore}
+          <Text
+            style={[
+              styles.avatarText,
+              isChampion && styles.avatarTextChampion,
+              showProBadge && styles.avatarTextPro,
+            ]}
           >
-            <Text
-              style={[
-                styles.avatarText,
-                isChampion && styles.avatarTextChampion,
-              ]}
-            >
-              {getInitials(item?.full_name)}
-            </Text>
-          </LinearGradient>
-        </View>
+            {getInitials(item?.full_name)}
+          </Text>
+        </AvatarFrame>
 
         <Text
           style={styles.podiumOverline}
@@ -246,15 +293,24 @@ function PodiumCard({ item, rank }) {
   );
 }
 
-function RankedRow({ item, rank }) {
+function RankedRow({ item, rank, showProBadge = false }) {
   const trustScore = normalizeTrustScore(item?.trust_score);
   const contributionScore = normalizeImpactScore(item?.contribution_score);
   const badge = getLeaderboardBadgeMeta(contributionScore);
+  const hasUserAvatar = Boolean(showProBadge);
 
   return (
     <View style={styles.rowCard}>
       <View style={styles.rowTop}>
         <View style={styles.rowIdentity}>
+          {hasUserAvatar ? (
+            <AvatarFrame size={34} pro={showProBadge} proCompact>
+              <Text style={[styles.rowAvatarText, showProBadge && styles.rowAvatarTextPro]}>
+                {getInitials(item?.full_name)}
+              </Text>
+            </AvatarFrame>
+          ) : null}
+
           <View style={styles.rankBadge}>
             <Text style={styles.rankBadgeText}>#{rank}</Text>
           </View>
@@ -316,6 +372,7 @@ function RankedRow({ item, rank }) {
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
   const { data: authUser } = useUser();
+  const { hasPro } = useProAccess();
   const userId = authUser?.id || null;
   const leaderboardLimit = 10;
   const leaderboardUrl = resolveBackendUrl(`/api/users/leaderboard?limit=${leaderboardLimit}`);
@@ -387,9 +444,13 @@ export default function LeaderboardScreen() {
   const shouldShowYourRankCard =
     Boolean(userId) && Number.isFinite(profileRank) && profileRank > 10;
 
-  const renderLeaderboardItem = ({ item, index }) => (
-    <RankedRow item={item} rank={index + 4} />
-  );
+  const renderLeaderboardItem = ({ item, index }) => {
+    const isCurrentUser = Boolean(
+      userId != null && item?.id != null && String(item.id) === String(userId),
+    );
+
+    return <RankedRow item={item} rank={index + 4} showProBadge={isCurrentUser && hasPro} />;
+  };
 
   const renderHeader = () => (
     <View
@@ -437,9 +498,31 @@ export default function LeaderboardScreen() {
           </View>
 
           <View style={styles.podiumRow}>
-            {podium[1] ? <PodiumCard item={podium[1]} rank={2} /> : <View style={styles.podiumSpacer} />}
-            {podium[0] ? <PodiumCard item={podium[0]} rank={1} /> : null}
-            {podium[2] ? <PodiumCard item={podium[2]} rank={3} /> : <View style={styles.podiumSpacer} />}
+            {podium[1] ? (
+              <PodiumCard
+                item={podium[1]}
+                rank={2}
+                showProBadge={Boolean(userId && podium[1]?.id != null && String(podium[1].id) === String(userId) && hasPro)}
+              />
+            ) : (
+              <View style={styles.podiumSpacer} />
+            )}
+            {podium[0] ? (
+              <PodiumCard
+                item={podium[0]}
+                rank={1}
+                showProBadge={Boolean(userId && podium[0]?.id != null && String(podium[0].id) === String(userId) && hasPro)}
+              />
+            ) : null}
+            {podium[2] ? (
+              <PodiumCard
+                item={podium[2]}
+                rank={3}
+                showProBadge={Boolean(userId && podium[2]?.id != null && String(podium[2].id) === String(userId) && hasPro)}
+              />
+            ) : (
+              <View style={styles.podiumSpacer} />
+            )}
           </View>
         </View>
       ) : null}
@@ -473,6 +556,12 @@ export default function LeaderboardScreen() {
         <View style={styles.yourRankCard}>
           <View style={styles.yourRankTopRow}>
             <View style={styles.yourRankIdentity}>
+              <AvatarFrame size={38} pro={hasPro} proCompact>
+                <Text style={[styles.yourRankAvatarText, hasPro && styles.yourRankAvatarTextPro]}>
+                  {getInitials(profileData?.full_name || "You")}
+                </Text>
+              </AvatarFrame>
+
               <View style={styles.yourRankBadge}>
                 <Text style={styles.yourRankBadgeText}>#{profileRank}</Text>
               </View>
@@ -842,6 +931,50 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     minHeight: 188,
   },
+  avatarFrameBase: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarFrameBasePro: {
+    shadowColor: "#FBBF24",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 7,
+  },
+  avatarFrameAura: {
+    position: "absolute",
+    backgroundColor: "rgba(251, 191, 36, 0.12)",
+  },
+  avatarFrameAuraCompact: {
+    backgroundColor: "rgba(96, 165, 250, 0.12)",
+  },
+  avatarFrameAuraChampion: {
+    backgroundColor: "rgba(251, 191, 36, 0.16)",
+  },
+  avatarFrameSpark: {
+    position: "absolute",
+    top: 3,
+    right: 7,
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#FFFFFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  avatarShellPro: {
+    borderColor: "#F8D77A",
+    shadowColor: "#FBBF24",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
   avatarShell: {
     width: 46,
     height: 46,
@@ -860,6 +993,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  rowAvatarText: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+  },
+  rowAvatarTextPro: {
+    color: "#0F172A",
+  },
   avatarText: {
     fontSize: 13,
     fontWeight: "900",
@@ -867,6 +1008,9 @@ const styles = StyleSheet.create({
   },
   avatarTextChampion: {
     fontSize: 14,
+  },
+  avatarTextPro: {
+    color: "#0F172A",
   },
   podiumOverline: {
     marginTop: 8,
@@ -1015,6 +1159,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  yourRankAvatarText: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: BRAND_PALETTE.deepNavy,
+  },
+  yourRankAvatarTextPro: {
+    color: "#0F172A",
   },
   yourRankBadge: {
     width: 42,

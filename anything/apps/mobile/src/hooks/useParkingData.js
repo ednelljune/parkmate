@@ -1075,6 +1075,8 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
         throw new Error("Please sign in to claim parking spots");
       }
 
+      const claimSpot =
+        claimInput && typeof claimInput === "object" ? claimInput.spot || null : null;
       const reportId =
         claimInput && typeof claimInput === "object" ? claimInput.reportId : claimInput;
       const selectedParkingType =
@@ -1103,29 +1105,9 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
         selectedParkingType ||
         normalizeParkingTypeLabel(reportSnapshot?.parking_type) ||
         normalizeParkingTypeLabel(reportSnapshot?.zone_type) ||
+        normalizeParkingTypeLabel(claimSpot?.parking_type) ||
+        normalizeParkingTypeLabel(claimSpot?.zone_type) ||
         "1P";
-      if (!selectedParkingType) {
-        const spotResponse = await fetch("/api/reports/nearby", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            latitude: 0,
-            longitude: 0,
-            radiusMeters: 999999,
-          }),
-        });
-
-        if (spotResponse.ok) {
-          const spotsData = await spotResponse.json();
-          const spot = spotsData.spots?.find((s) => s.id === reportId);
-          if (spot) {
-            parkingType =
-              normalizeParkingTypeLabel(spot.parking_type) ||
-              normalizeParkingTypeLabel(spot.zone_type) ||
-              "1P";
-          }
-        }
-      }
 
       if (!currentLocation) {
         throw new Error(
@@ -1144,8 +1126,29 @@ export const useClaimSpot = (location, onSuccess, onTimerStart) => {
         }),
       });
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to claim spot");
+        const responseText = await response.text().catch(() => "");
+        let errorMessage = "Failed to claim spot";
+
+        if (responseText) {
+          try {
+            const error = JSON.parse(responseText);
+            errorMessage = error.message || error.error || errorMessage;
+          } catch {
+            errorMessage = responseText.slice(0, 300) || errorMessage;
+          }
+        }
+
+        console.error("[claim.spot] Server rejected claim", {
+          reportId,
+          userId: user.id,
+          status: response.status,
+          message: errorMessage,
+          parkingType,
+          currentLocation,
+          reportSnapshotId: reportSnapshot?.id || null,
+          claimSpotId: claimSpot?.id || null,
+        });
+        throw new Error(errorMessage);
       }
       const result = await response.json();
       return { ...result, parkingType, reportId, reportSnapshot, currentLocation };

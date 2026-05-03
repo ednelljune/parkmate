@@ -31,6 +31,8 @@ const getExpoPublicEnvironment = () =>
 
 module.exports = () => {
   const expoPublicEnvironment = getExpoPublicEnvironment();
+  const isProductionLikeBuild =
+    process.env.EAS_BUILD === "true" || process.env.NODE_ENV === "production";
   const backendUrl =
     expoPublicEnvironment.EXPO_PUBLIC_BASE_URL ||
     expoPublicEnvironment.EXPO_PUBLIC_APP_URL ||
@@ -83,6 +85,19 @@ module.exports = () => {
   return {
     ...appJson,
     icon: PARKMATE_LOGO_PNG_PATH,
+    ios: {
+      ...appJson.ios,
+      infoPlist: {
+        ...(appJson.ios?.infoPlist ?? {}),
+        ...(isProductionLikeBuild
+          ? {}
+          : {
+              NSAppTransportSecurity: {
+                NSAllowsArbitraryLoads: true,
+              },
+            }),
+      },
+    },
     android: {
       ...appJson.android,
       adaptiveIcon: {

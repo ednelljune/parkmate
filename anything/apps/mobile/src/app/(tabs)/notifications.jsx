@@ -355,6 +355,12 @@ export default function NotificationsScreen() {
     { label: "Zones", value: alertCounts.zones },
   ];
   const activeRadiusLabel = formatRadiusLabel(selectedRadiusMeters);
+  const proRadarHeadline = hasPro
+    ? "Pro radar is active"
+    : "Unlock a wider radar";
+  const proRadarCopy = hasPro
+    ? `You are watching ${activeRadiusLabel} with premium sorting available.`
+    : "Open ParkMate Pro to unlock wider radius presets and best-chance sorting.";
 
   const handleRadiusSelect = useCallback(
     (radiusMeters) => {
@@ -545,6 +551,25 @@ export default function NotificationsScreen() {
           </View>
         </LinearGradient>
 
+        <View style={[styles.proBanner, hasPro ? styles.proBannerActive : styles.proBannerInactive]}>
+          <View style={styles.proBannerCopy}>
+            <View style={styles.proBannerEyebrowRow}>
+              <ShiningProBadge label={hasPro ? "Pro active" : "Pro"} />
+              <Text style={styles.proBannerHeadline}>{proRadarHeadline}</Text>
+            </View>
+            <Text style={styles.proBannerText}>{proRadarCopy}</Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => router.push("/pro-center")}
+            style={styles.proBannerButton}
+          >
+            <Text style={styles.proBannerButtonText}>
+              {hasPro ? "Open Pro Center" : "See Pro"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.filterPanel}>
           <View style={styles.filterPanelHeader}>
             <View>
@@ -579,17 +604,25 @@ export default function NotificationsScreen() {
                         isLocked && styles.optionChipLocked,
                       ]}
                     >
+                      <View style={styles.optionChipTopRow}>
+                        <Text
+                          style={[
+                            styles.optionChipText,
+                            isSelected && styles.optionChipTextSelected,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                        {isLocked ? <ShiningProBadge /> : null}
+                      </View>
                       <Text
                         style={[
-                          styles.optionChipText,
-                          isSelected && styles.optionChipTextSelected,
+                          styles.optionChipSubtext,
+                          isSelected && styles.optionChipSubtextSelected,
                         ]}
                       >
-                        {option.label}
+                        {isLocked ? "Included in Pro" : "Default"}
                       </Text>
-                      {isLocked ? (
-                        <ShiningProBadge />
-                      ) : null}
                     </TouchableOpacity>
                   );
                 })}
@@ -617,17 +650,25 @@ export default function NotificationsScreen() {
                         isLocked && styles.optionChipLocked,
                       ]}
                     >
+                      <View style={styles.optionChipTopRow}>
+                        <Text
+                          style={[
+                            styles.optionChipText,
+                            isSelected && styles.optionChipTextSelected,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                        {isLocked ? <ShiningProBadge /> : null}
+                      </View>
                       <Text
                         style={[
-                          styles.optionChipText,
-                          isSelected && styles.optionChipTextSelected,
+                          styles.optionChipSubtext,
+                          isSelected && styles.optionChipSubtextSelected,
                         ]}
                       >
-                        {option.label}
+                        {isLocked ? "Best chance preview" : "Standard"}
                       </Text>
-                      {isLocked ? (
-                        <ShiningProBadge />
-                      ) : null}
                     </TouchableOpacity>
                   );
                 })}
@@ -1232,6 +1273,57 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.7,
   },
+  proBanner: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    shadowColor: BRAND_PALETTE.navy,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  proBannerActive: {
+    backgroundColor: "#F8FFFD",
+    borderColor: "rgba(16, 185, 129, 0.18)",
+  },
+  proBannerInactive: {
+    backgroundColor: "#F8FCFF",
+    borderColor: "rgba(2, 132, 199, 0.16)",
+  },
+  proBannerCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  proBannerEyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  proBannerHeadline: {
+    color: BRAND_PALETTE.deepNavy,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  proBannerText: {
+    color: BRAND_PALETTE.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  proBannerButton: {
+    backgroundColor: BRAND_PALETTE.deepNavy,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  proBannerButtonText: {
+    color: BRAND_PALETTE.surface,
+    fontSize: 12,
+    fontWeight: "800",
+  },
   filterPanel: {
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.82)",
@@ -1299,9 +1391,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   optionChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+    gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 14,
@@ -1316,6 +1406,11 @@ const styles = StyleSheet.create({
   optionChipLocked: {
     backgroundColor: "#F8FBFE",
   },
+  optionChipTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   optionChipText: {
     fontSize: 12,
     fontWeight: "700",
@@ -1323,6 +1418,14 @@ const styles = StyleSheet.create({
   },
   optionChipTextSelected: {
     color: BRAND_PALETTE.accentBold,
+  },
+  optionChipSubtext: {
+    fontSize: 10,
+    lineHeight: 13,
+    color: BRAND_PALETTE.muted,
+  },
+  optionChipSubtextSelected: {
+    color: BRAND_PALETTE.navy,
   },
   tabRail: {
     gap: 8,
